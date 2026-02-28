@@ -13,7 +13,7 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(
     page_title="NCCAT Weather Intelligence",
     layout="wide",
-    page_icon="🏔️"
+    page_icon="NT"
 )
 st_autorefresh(interval=300000, key="refresh")
 

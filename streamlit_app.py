@@ -11,7 +11,7 @@ from streamlit_autorefresh import st_autorefresh
 #  CONFIG
 # ─────────────────────────────────────────────
 st.set_page_config(
-    page_title="NCCAT Weather Intelligence",
+    page_title="Cullowhee Weather Intelligence",
     layout="wide",
     page_icon="NT"
 )

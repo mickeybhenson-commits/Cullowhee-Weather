@@ -383,7 +383,8 @@ pop_today = forecast[0]["pop"] if forecast else 0
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture(hist_rain, rain_today)
 risk_score, risk_label, risk_color = compute_risk(soil_pct, rain_today, rain_3d_forecast, wind_now, pop_today)
 
-now = datetime.now()
+from zoneinfo import ZoneInfo
+now = datetime.now(ZoneInfo("America/New_York"))
 
 # ─────────────────────────────────────────────
 #  RENDER

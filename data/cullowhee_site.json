@@ -1,0 +1,21 @@
+```json
+{
+  "project_name": "NCCAT - Cullowhee, NC",
+  "location": "Cullowhee, NC",
+  "last_updated": "2026-02-27 22:47 EST",
+  "swppp": {
+    "risk": "LOW",
+    "rain_24h": 0.00,
+    "notes": "Site stable."
+  },
+  "concrete": {
+    "temp_low": 40,
+    "blankets_required": false,
+    "notes": "Curing monitor active."
+  },
+  "crane": {
+    "wind_speed": 8,
+    "status": "GO"
+  }
+}
+```

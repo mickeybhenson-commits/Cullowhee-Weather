@@ -1,3 +1,6 @@
+Here is the full code:
+
+```python
 import streamlit as st
 import requests
 import json
@@ -107,19 +110,19 @@ def fetch_ambient():
         if devices:
             last = devices[0].get("lastData", {})
             return {
-                "temp":       last.get("tempf"),
-                "humidity":   last.get("humidity"),
-                "wind_speed": last.get("windspeedmph", 0),
-                "wind_dir":   last.get("winddir", 0),
-                "wind_gust":  last.get("windgustmph", 0),
-                "rain_today": last.get("dailyrainin", 0.0),
-                "rain_1hr":   last.get("hourlyrainin", 0.0),
-                "rain_week":  last.get("weeklyrainin", 0.0),
-                "rain_month": last.get("monthlyrainin", 0.0),
-                "pressure":   last.get("baromrelin"),
-                "uv":         last.get("uv", 0),
-                "solar":      last.get("solarradiation", 0),
-                "name":       devices[0].get("info", {}).get("name", "Local AWN Station"),
+                "temp":         last.get("tempf"),
+                "humidity":     last.get("humidity"),
+                "wind_speed":   last.get("windspeedmph", 0),
+                "wind_dir":     last.get("winddir", 0),
+                "wind_gust":    last.get("windgustmph", 0),
+                "rain_today":   last.get("dailyrainin", 0.0),
+                "rain_1hr":     last.get("hourlyrainin", 0.0),
+                "rain_week":    last.get("weeklyrainin", 0.0),
+                "rain_month":   last.get("monthlyrainin", 0.0),
+                "pressure":     last.get("baromrelin"),
+                "uv":           last.get("uv", 0),
+                "solar":        last.get("solarradiation", 0),
+                "name":         devices[0].get("info", {}).get("name", "Local AWN Station"),
                 "ok": True
             }
     except:
@@ -463,61 +466,68 @@ for i, day in enumerate(forecast):
         """, unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ── DATA SOURCES ──
-r1, r2, r3 = st.columns(3)
+# ── DATA SOURCES (only show live panels) ──
+live_panels = []
+if ambient.get("ok"):
+    live_panels.append("ambient")
+if airport.get("ok"):
+    live_panels.append("airport")
+usgs_live = {k: v for k, v in usgs.items() if v["ok"]}
+if usgs_live:
+    live_panels.append("usgs")
+live_panels.append("soil")  # always show soil model
 
-with r1:
-    st.markdown('<div class="panel"><div class="panel-title">📡 Ambient Weather Network</div>', unsafe_allow_html=True)
-    if ambient.get("ok"):
-        st.caption(f"Station: {ambient['name']}")
-        c1, c2 = st.columns(2)
-        c1.metric("Temperature",  f"{ambient['temp']}°F")
-        c2.metric("Humidity",     f"{ambient['humidity']}%")
-        c1.metric("Rain Today",   f"{ambient['rain_today']}\"")
-        c2.metric("Rain/Hour",    f"{ambient['rain_1hr']}\"")
-        c1.metric("Rain 7-Day",   f"{ambient['rain_week']}\"")
-        c2.metric("Rain 30-Day",  f"{ambient['rain_month']}\"")
-        c1.metric("Pressure",     f"{ambient['pressure']} inHg")
-        c2.metric("Solar Rad",    f"{ambient['solar']} W/m²")
-    else:
-        st.warning("AWN station offline or API key not yet active.")
-    st.markdown('</div>', unsafe_allow_html=True)
+if live_panels:
+    panel_cols = st.columns(len(live_panels))
+    for idx, panel_key in enumerate(live_panels):
+        with panel_cols[idx]:
+            if panel_key == "ambient":
+                st.markdown('<div class="panel"><div class="panel-title">📡 Ambient Weather Network</div>', unsafe_allow_html=True)
+                st.caption(f"Station: {ambient['name']}")
+                c1, c2 = st.columns(2)
+                c1.metric("Temperature",  f"{ambient['temp']}°F")
+                c2.metric("Humidity",     f"{ambient['humidity']}%")
+                c1.metric("Rain Today",   f"{ambient['rain_today']}\"")
+                c2.metric("Rain/Hour",    f"{ambient['rain_1hr']}\"")
+                c1.metric("Rain 7-Day",   f"{ambient['rain_week']}\"")
+                c2.metric("Rain 30-Day",  f"{ambient['rain_month']}\"")
+                c1.metric("Pressure",     f"{ambient['pressure']} inHg")
+                c2.metric("Solar Rad",    f"{ambient['solar']} W/m²")
+                st.markdown('</div>', unsafe_allow_html=True)
 
-with r2:
-    st.markdown('<div class="panel"><div class="panel-title">✈️ Jackson County Airport (24A)</div>', unsafe_allow_html=True)
-    if airport.get("ok"):
-        c1, c2 = st.columns(2)
-        c1.metric("Temperature",  f"{airport['temp_f']}°F" if airport.get('temp_f') else "--")
-        c2.metric("Wind",         f"{airport['wind_mph']} mph" if airport.get('wind_mph') else "--")
-        c1.metric("Wind Dir",     f"{airport['wind_dir']}°" if airport.get('wind_dir') else "--")
-        c2.metric("Altimeter",    f"{airport['altim']} inHg" if airport.get('altim') else "--")
-        c1.metric("Sky Cover",    airport.get("cover", "--"))
-        c2.metric("Precip",       f"{airport.get('precip', 0.0)}\"")
-        st.caption(f"Raw METAR: `{airport.get('raw','')}`")
-        st.caption(f"Obs Time: {airport.get('time','')}")
-    else:
-        st.warning("Airport METAR unavailable.")
-    st.markdown('</div>', unsafe_allow_html=True)
+            elif panel_key == "airport":
+                st.markdown('<div class="panel"><div class="panel-title">✈️ Jackson County Airport (24A)</div>', unsafe_allow_html=True)
+                c1, c2 = st.columns(2)
+                c1.metric("Temperature",  f"{airport['temp_f']}°F" if airport.get('temp_f') else "--")
+                c2.metric("Wind",         f"{airport['wind_mph']} mph" if airport.get('wind_mph') else "--")
+                c1.metric("Wind Dir",     f"{airport['wind_dir']}°" if airport.get('wind_dir') else "--")
+                c2.metric("Altimeter",    f"{airport['altim']} inHg" if airport.get('altim') else "--")
+                c1.metric("Sky Cover",    airport.get("cover", "--"))
+                c2.metric("Precip",       f"{airport.get('precip', 0.0)}\"")
+                st.caption(f"Raw METAR: `{airport.get('raw','')}`")
+                st.caption(f"Obs Time: {airport.get('time','')}")
+                st.markdown('</div>', unsafe_allow_html=True)
 
-with r3:
-    st.markdown('<div class="panel"><div class="panel-title">💧 USGS Stream Gauges</div>', unsafe_allow_html=True)
-    for site_id, info in usgs.items():
-        status = "🟢" if info["ok"] else "🔴"
-        val = f"{info['value']}\" precip" if info["ok"] else "Offline"
-        st.metric(f"{status} {info['name']}", val)
-    st.markdown('<div class="panel-title" style="margin-top:16px;">🌱 Soil Moisture Estimate</div>', unsafe_allow_html=True)
-    st.markdown(f"""
-    <div style="font-family:'Share Tech Mono';font-size:0.8em;color:#7AACCC;line-height:1.8;">
-    <b style="color:#FFFFFF">Model:</b> Water Balance Bucket<br>
-    <b style="color:#FFFFFF">Soil Type:</b> Mountain Clay Loam (Ultisol)<br>
-    <b style="color:#FFFFFF">Root Zone:</b> 12 inches<br>
-    <b style="color:#FFFFFF">Field Capacity:</b> 2.16 in storage<br>
-    <b style="color:#FFFFFF">Current Storage:</b> {soil_storage} in<br>
-    <b style="color:#FFFFFF">Saturation:</b> <span style="color:{soil_color};font-weight:700;">{soil_pct}% — {soil_status}</span><br>
-    <b style="color:#FFFFFF">30-Day Rain:</b> {round(sum(hist_rain),2)}"
-    </div>
-    """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+            elif panel_key == "usgs":
+                st.markdown('<div class="panel"><div class="panel-title">💧 USGS Stream Gauges</div>', unsafe_allow_html=True)
+                for site_id, info in usgs_live.items():
+                    st.metric(f"🟢 {info['name']}", f"{info['value']}\" precip")
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            elif panel_key == "soil":
+                st.markdown('<div class="panel"><div class="panel-title">🌱 Soil Moisture Estimate</div>', unsafe_allow_html=True)
+                st.markdown(f"""
+                <div style="font-family:'Share Tech Mono';font-size:0.8em;color:#7AACCC;line-height:1.8;">
+                <b style="color:#FFFFFF">Model:</b> Water Balance Bucket<br>
+                <b style="color:#FFFFFF">Soil Type:</b> Mountain Clay Loam (Ultisol)<br>
+                <b style="color:#FFFFFF">Root Zone:</b> 12 inches<br>
+                <b style="color:#FFFFFF">Field Capacity:</b> 2.16 in storage<br>
+                <b style="color:#FFFFFF">Current Storage:</b> {soil_storage} in<br>
+                <b style="color:#FFFFFF">Saturation:</b> <span style="color:{soil_color};font-weight:700;">{soil_pct}% — {soil_status}</span><br>
+                <b style="color:#FFFFFF">30-Day Rain:</b> {round(sum(hist_rain),2)}"
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
 # ── RADAR ──
 st.markdown('<div class="panel"><div class="panel-title">🛰️ Live Radar — Jackson County / Cullowhee, NC</div>', unsafe_allow_html=True)
@@ -534,3 +544,4 @@ NCCAT WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
 Sources: AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/ECMWF/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
 """, unsafe_allow_html=True)
+```

@@ -207,8 +207,6 @@ def fetch_multimodel_forecast():
         date = today + timedelta(days=i)
         if i <= 1:
             primary, secondary = "hrrr", "gfs"
-        elif i <= 4:
-            primary, secondary = "ecmwf", "gfs"
         else:
             primary, secondary = "gfs", "ecmwf"
 

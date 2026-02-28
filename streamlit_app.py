@@ -5,15 +5,12 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from streamlit_autorefresh import st_autorefresh
 
-# ─────────────────────────────────────────────
-#  CONFIG
-# ─────────────────────────────────────────────
 st.set_page_config(
     page_title="Cullowhee Weather Intelligence",
-    layout="wide",
-    page_icon="NT"
+    layout="wide"
 )
 st_autorefresh(interval=300000, key="refresh")
 
@@ -24,13 +21,9 @@ SITE = "NCCAT — Cullowhee, NC"
 AMBIENT_API_KEY = st.secrets.get("AMBIENT_API_KEY", "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334")
 AMBIENT_APP_KEY = st.secrets.get("AMBIENT_APP_KEY", "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334")
 
-# ─────────────────────────────────────────────
-#  STYLING
-# ─────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
-
 html, body, .stApp {
     background-color: #060C14;
     color: #E0E8F0;
@@ -90,10 +83,6 @@ section.main > div { position: relative; z-index: 1; }
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-#  DATA FETCHERS
-# ─────────────────────────────────────────────
-
 @st.cache_data(ttl=300)
 def fetch_ambient():
     try:
@@ -105,21 +94,25 @@ def fetch_ambient():
         r.raise_for_status()
         devices = r.json()
         if devices:
-            last = devices[0].get("lastData", {})
+            target = next(
+                (d for d in devices if d.get("macAddress","").replace(":","").replace("-","").lower() == "35c7b0accb75a84d7891d82f125001a8"),
+                devices[0]
+            )
+            last = target.get("lastData", {})
             return {
-                "temp":         last.get("tempf"),
-                "humidity":     last.get("humidity"),
-                "wind_speed":   last.get("windspeedmph", 0),
-                "wind_dir":     last.get("winddir", 0),
-                "wind_gust":    last.get("windgustmph", 0),
-                "rain_today":   last.get("dailyrainin", 0.0),
-                "rain_1hr":     last.get("hourlyrainin", 0.0),
-                "rain_week":    last.get("weeklyrainin", 0.0),
-                "rain_month":   last.get("monthlyrainin", 0.0),
-                "pressure":     last.get("baromrelin"),
-                "uv":           last.get("uv", 0),
-                "solar":        last.get("solarradiation", 0),
-                "name":         devices[0].get("info", {}).get("name", "Local AWN Station"),
+                "temp":       last.get("tempf"),
+                "humidity":   last.get("humidity"),
+                "wind_speed": last.get("windspeedmph", 0),
+                "wind_dir":   last.get("winddir", 0),
+                "wind_gust":  last.get("windgustmph", 0),
+                "rain_today": last.get("dailyrainin", 0.0),
+                "rain_1hr":   last.get("hourlyrainin", 0.0),
+                "rain_week":  last.get("weeklyrainin", 0.0),
+                "rain_month": last.get("monthlyrainin", 0.0),
+                "pressure":   last.get("baromrelin"),
+                "uv":         last.get("uv", 0),
+                "solar":      last.get("solarradiation", 0),
+                "name":       target.get("info", {}).get("name", "Riverbend on the Tuckasegee"),
                 "ok": True
             }
     except:
@@ -178,9 +171,8 @@ def fetch_usgs_rain():
 @st.cache_data(ttl=600)
 def fetch_multimodel_forecast():
     model_params = {
-        "hrrr":  "hrrr_conus",
-        "ecmwf": "ecmwf_ifs04",
-        "gfs":   "gfs_seamless",
+        "hrrr": "hrrr_conus",
+        "gfs":  "gfs_seamless",
     }
     base_params = {
         "latitude": LAT, "longitude": LON,
@@ -205,14 +197,10 @@ def fetch_multimodel_forecast():
     today = datetime.now()
     for i in range(7):
         date = today + timedelta(days=i)
-        if i <= 1:
-            primary, secondary = "hrrr", "gfs"
-        else:
-            primary, secondary = "gfs", "ecmwf"
-
+        primary = "hrrr" if i <= 1 else "gfs"
+        secondary = "gfs" if i <= 1 else "hrrr"
         src = forecasts.get(primary) or forecasts.get(secondary)
         model_label = primary.upper() if forecasts.get(primary) else secondary.upper()
-
         if src and i < len(src.get("time", [])):
             days.append({
                 "date":   date.strftime("%a %m/%d"),
@@ -227,11 +215,9 @@ def fetch_multimodel_forecast():
                 "desc":   weather_desc(src["weathercode"][i] or 0)
             })
         else:
-            days.append({
-                "date": date.strftime("%a %m/%d"), "day": date.strftime("%a"),
-                "hi": 60, "lo": 40, "precip": 0.0, "pop": 10, "wind": 10,
-                "code": 0, "model": "N/A", "desc": "Unknown"
-            })
+            days.append({"date": date.strftime("%a %m/%d"), "day": date.strftime("%a"),
+                         "hi": 60, "lo": 40, "precip": 0.0, "pop": 10, "wind": 10,
+                         "code": 0, "model": "N/A", "desc": "Unknown"})
     return days
 
 @st.cache_data(ttl=3600)
@@ -275,9 +261,6 @@ def pop_color(pop):
     if pop < 80: return "#FF8C00"
     return "#FF3333"
 
-# ─────────────────────────────────────────────
-#  SOIL MOISTURE MODEL
-# ─────────────────────────────────────────────
 def estimate_soil_moisture(rain_30d, today_rain=0.0):
     FIELD_CAPACITY = 2.16
     WILTING_POINT  = 1.80
@@ -303,9 +286,6 @@ def estimate_soil_moisture(rain_30d, today_rain=0.0):
     else:           status, color = "DRY",         "#5AC8FA"
     return round(pct, 1), status, color, round(storage, 2)
 
-# ─────────────────────────────────────────────
-#  GAUGE CHART
-# ─────────────────────────────────────────────
 def make_gauge(value, title, min_val=0, max_val=100, unit="%", thresholds=None, color=None):
     if thresholds is None:
         thresholds = [
@@ -341,9 +321,6 @@ def make_gauge(value, title, min_val=0, max_val=100, unit="%", thresholds=None, 
     )
     return fig
 
-# ─────────────────────────────────────────────
-#  COMPOSITE RISK SCORE
-# ─────────────────────────────────────────────
 def compute_risk(soil_pct, rain_today, rain_forecast_3d, wind_speed, pop_today):
     score = 0
     score += min(40, soil_pct * 0.4)
@@ -358,9 +335,6 @@ def compute_risk(soil_pct, rain_today, rain_forecast_3d, wind_speed, pop_today):
     else:            label, color = "CRITICAL", "#FF3333"
     return round(score, 1), label, color
 
-# ─────────────────────────────────────────────
-#  FETCH ALL DATA
-# ─────────────────────────────────────────────
 with st.spinner("Syncing all data sources..."):
     ambient   = fetch_ambient()
     airport   = fetch_airport_metar()
@@ -381,17 +355,13 @@ pop_today = forecast[0]["pop"] if forecast else 0
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture(hist_rain, rain_today)
 risk_score, risk_label, risk_color = compute_risk(soil_pct, rain_today, rain_3d_forecast, wind_now, pop_today)
 
-from zoneinfo import ZoneInfo
 now = datetime.now(ZoneInfo("America/New_York"))
 
-# ─────────────────────────────────────────────
-#  RENDER
-# ─────────────────────────────────────────────
 st.markdown(f"""
 <div class="site-header">
     <div class="site-title">CULLOWHEE WEATHER INTELLIGENCE</div>
     <div class="site-sub">North Carolina Center for the Advancement of Teaching — Cullowhee, NC &nbsp;|&nbsp;
-    {now.strftime('%A, %B %d, %Y  %I:%M %p')}</div>
+    {now.strftime('%A, %B %d, %Y  %I:%M %p')} EST</div>
     <div style="margin-top:8px;">
         <span class="source-badge">📡 AWN: {'LIVE' if ambient.get('ok') else 'OFFLINE'}</span>
         <span class="source-badge">✈️ AIRPORT 24A: {'LIVE' if airport.get('ok') else 'OFFLINE'}</span>
@@ -401,7 +371,6 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── GAUGES ──
 st.markdown('<div class="panel"><div class="panel-title">⚡ Site Condition Gauges</div>', unsafe_allow_html=True)
 g1, g2, g3, g4 = st.columns(4)
 
@@ -437,7 +406,6 @@ with g4:
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ── 7-DAY FORECAST ──
 st.markdown('<div class="panel"><div class="panel-title">📅 7-Day Multi-Model Forecast</div>', unsafe_allow_html=True)
 cols = st.columns(7)
 for i, day in enumerate(forecast):
@@ -462,7 +430,6 @@ for i, day in enumerate(forecast):
         """, unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ── DATA SOURCES (only show live panels) ──
 live_panels = []
 if ambient.get("ok"):
     live_panels.append("ambient")
@@ -471,14 +438,14 @@ if airport.get("ok"):
 usgs_live = {k: v for k, v in usgs.items() if v["ok"]}
 if usgs_live:
     live_panels.append("usgs")
-live_panels.append("soil")  # always show soil model
+live_panels.append("soil")
 
 if live_panels:
     panel_cols = st.columns(len(live_panels))
     for idx, panel_key in enumerate(live_panels):
         with panel_cols[idx]:
             if panel_key == "ambient":
-                st.markdown('<div class="panel"><div class="panel-title">📡 Ambient Weather Network</div>', unsafe_allow_html=True)
+                st.markdown('<div class="panel"><div class="panel-title">📡 Riverbend on the Tuckasegee (AWN)</div>', unsafe_allow_html=True)
                 st.caption(f"Station: {ambient['name']}")
                 c1, c2 = st.columns(2)
                 c1.metric("Temperature",  f"{ambient['temp']}°F")
@@ -525,7 +492,6 @@ if live_panels:
                 """, unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
 
-# ── RADAR ──
 st.markdown('<div class="panel"><div class="panel-title">🛰️ Live Radar — Jackson County / Cullowhee, NC</div>', unsafe_allow_html=True)
 st.components.v1.html(
     '<iframe width="100%" height="500" src="https://embed.windy.com/embed2.html?lat=35.308&lon=-83.175&zoom=9&overlay=radar&product=radar&level=surface" frameborder="0" style="border-radius:8px;"></iframe>',
@@ -533,10 +499,9 @@ st.components.v1.html(
 )
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Footer
 st.markdown(f"""
 <div style="text-align:center;font-family:'Share Tech Mono';font-size:0.7em;color:#2A4060;margin-top:20px;">
-NCCAT WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
-Sources: AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/ECMWF/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
+CULLOWHEE WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
+Sources: Riverbend AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
 """, unsafe_allow_html=True)

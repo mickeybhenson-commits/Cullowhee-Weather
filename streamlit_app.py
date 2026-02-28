@@ -390,8 +390,8 @@ now = datetime.now()
 # ─────────────────────────────────────────────
 st.markdown(f"""
 <div class="site-header">
-    <div class="site-title">🏔️ NCCAT WEATHER INTELLIGENCE</div>
-    <div class="site-sub">National Center for the Advancement of Teaching — Cullowhee, NC &nbsp;|&nbsp;
+    <div class="site-title">CULLOWHEE WEATHER INTELLIGENCE</div>
+    <div class="site-sub">North Carolina Center for the Advancement of Teaching — Cullowhee, NC &nbsp;|&nbsp;
     {now.strftime('%A, %B %d, %Y  %I:%M %p')}</div>
     <div style="margin-top:8px;">
         <span class="source-badge">📡 AWN: {'LIVE' if ambient.get('ok') else 'OFFLINE'}</span>

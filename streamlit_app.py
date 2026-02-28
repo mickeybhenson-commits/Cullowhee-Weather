@@ -1,6 +1,3 @@
-Here is the full code:
-
-```python
 import streamlit as st
 import requests
 import json
@@ -544,4 +541,3 @@ NCCAT WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
 Sources: AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/ECMWF/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
 """, unsafe_allow_html=True)
-```

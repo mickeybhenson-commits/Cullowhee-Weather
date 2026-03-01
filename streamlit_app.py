@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import requests
 import json
@@ -519,4 +518,3 @@ CULLOWHEE WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
 Sources: Riverbend AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
 """, unsafe_allow_html=True)
-```

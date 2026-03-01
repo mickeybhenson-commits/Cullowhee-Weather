@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import requests
 import json
@@ -356,7 +357,6 @@ wind_now  = ambient.get("wind_speed", 0) or (airport.get("wind_mph") or 0)
 pop_today = forecast[0]["pop"] if forecast else 0
 
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture(hist_rain, rain_today)
-risk_score, risk_label, risk_color = compute_risk(soil_pct, rain_today, rain_3d_forecast, wind_now, pop_today)
 
 now = datetime.now(ZoneInfo("America/New_York"))
 
@@ -378,25 +378,29 @@ st.markdown('<div class="panel"><div class="panel-title">⚡ Site Condition Gaug
 g1, g2, g3, g4 = st.columns(4)
 
 with g1:
-    fig = make_gauge(risk_score, "OVERALL SITE RISK", color=risk_color,
-        thresholds=[{"range":[0,25],"color":"rgba(0,255,156,0.12)"},{"range":[25,50],"color":"rgba(255,215,0,0.12)"},
-                    {"range":[50,75],"color":"rgba(255,140,0,0.12)"},{"range":[75,100],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{risk_color};'>{risk_label}</div>", unsafe_allow_html=True)
-
-with g2:
     l_dist = ambient.get("lightning_dist") if ambient.get("ok") else None
     l_val = float(l_dist) if l_dist is not None else 25
     l_color = "#FF3333" if l_val < 5 else "#FF8C00" if l_val < 10 else "#FFD700" if l_val < 15 else "#00FF9C"
     l_label = "CRITICAL" if l_val < 5 else "NEARBY" if l_val < 10 else "MODERATE" if l_val < 15 else "CLEAR"
     display_val = min(l_val, 25)
-    fig = make_gauge(display_val, "LIGHTNING PROXIMITY", min_val=0, max_val=25, unit=" mi", color=l_color,
+    fig = make_gauge(display_val, "LIGHTNING STRIKE PROXIMITY", min_val=0, max_val=25, unit=" mi", color=l_color,
         thresholds=[{"range":[0,5],"color":"rgba(255,51,51,0.12)"},{"range":[5,10],"color":"rgba(255,140,0,0.12)"},
                     {"range":[10,15],"color":"rgba(255,215,0,0.12)"},{"range":[15,25],"color":"rgba(0,255,156,0.12)"}])
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     strikes = ambient.get("lightning_day", 0) if ambient.get("ok") else "--"
     st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{l_color};'>{l_label}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.0em;color:#7AACCC;'>Strikes Today: <b style='color:#00FFCC'>{strikes}</b></div>", unsafe_allow_html=True)
+
+with g2:
+    l_dist2 = ambient.get("lightning_dist") if ambient.get("ok") else None
+    l_val2 = float(l_dist2) if l_dist2 is not None else 25
+    l_color2 = "#FF3333" if l_val2 < 5 else "#FF8C00" if l_val2 < 10 else "#FFD700" if l_val2 < 15 else "#00FF9C"
+    l_label2 = "CRITICAL" if l_val2 < 5 else "NEARBY" if l_val2 < 10 else "MODERATE" if l_val2 < 15 else "CLEAR"
+    fig = make_gauge(soil_pct, "SOIL MOISTURE SATURATION", color=soil_color,
+        thresholds=[{"range":[0,25],"color":"rgba(90,200,250,0.12)"},{"range":[25,50],"color":"rgba(0,255,156,0.12)"},
+                    {"range":[50,75],"color":"rgba(255,215,0,0.12)"},{"range":[75,100],"color":"rgba(255,51,51,0.12)"}])
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{soil_color};'>{soil_status}</div>", unsafe_allow_html=True)
 
 with g3:
     p_color = pop_color(pop_today)
@@ -515,3 +519,4 @@ CULLOWHEE WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
 Sources: Riverbend AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
 """, unsafe_allow_html=True)
+```

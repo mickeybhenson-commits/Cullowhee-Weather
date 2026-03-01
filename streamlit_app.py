@@ -100,19 +100,22 @@ def fetch_ambient():
             )
             last = target.get("lastData", {})
             return {
-                "temp":       last.get("tempf"),
-                "humidity":   last.get("humidity"),
-                "wind_speed": last.get("windspeedmph", 0),
-                "wind_dir":   last.get("winddir", 0),
-                "wind_gust":  last.get("windgustmph", 0),
-                "rain_today": last.get("dailyrainin", 0.0),
-                "rain_1hr":   last.get("hourlyrainin", 0.0),
-                "rain_week":  last.get("weeklyrainin", 0.0),
-                "rain_month": last.get("monthlyrainin", 0.0),
-                "pressure":   last.get("baromrelin"),
-                "uv":         last.get("uv", 0),
-                "solar":      last.get("solarradiation", 0),
-                "name":       target.get("info", {}).get("name", "Riverbend on the Tuckasegee"),
+                "temp":           last.get("tempf"),
+                "humidity":       last.get("humidity"),
+                "wind_speed":     last.get("windspeedmph", 0),
+                "wind_dir":       last.get("winddir", 0),
+                "wind_gust":      last.get("windgustmph", 0),
+                "rain_today":     last.get("dailyrainin", 0.0),
+                "rain_1hr":       last.get("hourlyrainin", 0.0),
+                "rain_week":      last.get("weeklyrainin", 0.0),
+                "rain_month":     last.get("monthlyrainin", 0.0),
+                "pressure":       last.get("baromrelin"),
+                "uv":             last.get("uv", 0),
+                "solar":          last.get("solarradiation", 0),
+                "lightning_dist": last.get("lightning_distance"),
+                "lightning_day":  last.get("lightning_day", 0),
+                "lightning_hour": last.get("lightning_hour", 0),
+                "name":           target.get("info", {}).get("name", "Riverbend on the Tuckasegee"),
                 "ok": True
             }
     except:
@@ -382,11 +385,18 @@ with g1:
     st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{risk_color};'>{risk_label}</div>", unsafe_allow_html=True)
 
 with g2:
-    fig = make_gauge(soil_pct, "SOIL MOISTURE SATURATION", color=soil_color,
-        thresholds=[{"range":[0,25],"color":"rgba(90,200,250,0.12)"},{"range":[25,50],"color":"rgba(0,255,156,0.12)"},
-                    {"range":[50,75],"color":"rgba(255,215,0,0.12)"},{"range":[75,100],"color":"rgba(255,51,51,0.12)"}])
+    l_dist = ambient.get("lightning_dist") if ambient.get("ok") else None
+    l_val = float(l_dist) if l_dist is not None else 25
+    l_color = "#FF3333" if l_val < 5 else "#FF8C00" if l_val < 10 else "#FFD700" if l_val < 15 else "#00FF9C"
+    l_label = "CRITICAL" if l_val < 5 else "NEARBY" if l_val < 10 else "MODERATE" if l_val < 15 else "CLEAR"
+    display_val = min(l_val, 25)
+    fig = make_gauge(display_val, "LIGHTNING PROXIMITY", min_val=0, max_val=25, unit=" mi", color=l_color,
+        thresholds=[{"range":[0,5],"color":"rgba(255,51,51,0.12)"},{"range":[5,10],"color":"rgba(255,140,0,0.12)"},
+                    {"range":[10,15],"color":"rgba(255,215,0,0.12)"},{"range":[15,25],"color":"rgba(0,255,156,0.12)"}])
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{soil_color};'>{soil_status}</div>", unsafe_allow_html=True)
+    strikes = ambient.get("lightning_day", 0) if ambient.get("ok") else "--"
+    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{l_color};'>{l_label}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.0em;color:#7AACCC;'>Strikes Today: <b style='color:#00FFCC'>{strikes}</b></div>", unsafe_allow_html=True)
 
 with g3:
     p_color = pop_color(pop_today)

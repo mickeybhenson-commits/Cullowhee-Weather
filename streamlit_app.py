@@ -566,6 +566,7 @@ if live_panels:
 
             elif panel_key == "soil":
                 st.markdown('<div class="panel"><div class="panel-title">🌱 Soil Moisture Estimate</div>', unsafe_allow_html=True)
+                rain_30d_total = round(sum(hist_rain), 2)
                 st.markdown(f"""
                 <div style="font-family:'Share Tech Mono';font-size:0.8em;color:#7AACCC;line-height:1.8;">
                 <b style="color:#FFFFFF">Model:</b> Water Balance Bucket<br>
@@ -573,8 +574,8 @@ if live_panels:
                 <b style="color:#FFFFFF">Root Zone:</b> 12 inches<br>
                 <b style="color:#FFFFFF">Field Capacity:</b> 2.16 in storage<br>
                 <b style="color:#FFFFFF">Current Storage:</b> {soil_storage} in<br>
-                <b style="color:#FFFFFF">Saturation:</b> <span style="color:{soil_color};font-weight:700;">{soil_pct}% — {soil_status}</span><br>
-                <b style="color:#FFFFFF">30-Day Rain:</b> {round(sum(hist_rain),2)}"
+                <b style="color:#FFFFFF">Saturation:</b> <span style="color:{soil_color};font-weight:700;">{soil_pct}% &mdash; {soil_status}</span><br>
+                <b style="color:#FFFFFF">30-Day Rain:</b> {rain_30d_total}&quot;
                 </div>
                 """, unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -591,3 +592,4 @@ st.markdown(f"""
 CULLOWHEE WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
 Sources: Riverbend AWN · Blitzortung · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
+""", unsafe_allow_html=True)

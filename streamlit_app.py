@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+import math
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -83,6 +84,21 @@ section.main > div { position: relative; z-index: 1; }
 </style>
 """, unsafe_allow_html=True)
 
+# ─────────────────────────────────────────────
+#  HAVERSINE DISTANCE
+# ─────────────────────────────────────────────
+def haversine_miles(lat1, lon1, lat2, lon2):
+    R = 3958.8
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    return R * 2 * math.asin(math.sqrt(a))
+
+# ─────────────────────────────────────────────
+#  DATA FETCHERS
+# ─────────────────────────────────────────────
+
 @st.cache_data(ttl=300)
 def fetch_ambient():
     try:
@@ -121,6 +137,60 @@ def fetch_ambient():
     except:
         pass
     return {"ok": False}
+
+@st.cache_data(ttl=60)
+def fetch_blitzortung_lightning():
+    try:
+        now = datetime.utcnow()
+        closest_dist = None
+        for minutes_back in range(0, 31):
+            t = now - timedelta(minutes=minutes_back)
+            url = (
+                f"https://data.blitzortung.org/Data/Protected/By_Location/"
+                f"By_Region/America/Strokes/"
+                f"{t.year}/{t.month:02d}/{t.day:02d}/"
+                f"{t.hour:02d}/{t.minute:02d}.json"
+            )
+            try:
+                r = requests.get(url, timeout=4)
+                if r.status_code == 200 and r.text.strip():
+                    strokes = r.json()
+                    for stroke in strokes:
+                        slat = stroke.get("lat") or stroke.get("y")
+                        slon = stroke.get("lon") or stroke.get("x")
+                        if slat is not None and slon is not None:
+                            dist = haversine_miles(LAT, LON, float(slat), float(slon))
+                            if closest_dist is None or dist < closest_dist:
+                                closest_dist = dist
+            except:
+                continue
+        if closest_dist is not None:
+            return {"dist": round(closest_dist, 1), "ok": True}
+    except:
+        pass
+    return {"ok": False}
+
+def resolve_lightning(ambient, blitz):
+    awn_dist = None
+    blitz_dist = None
+    if ambient.get("ok") and ambient.get("lightning_dist") is not None:
+        awn_dist = float(ambient["lightning_dist"])
+    if blitz.get("ok") and blitz.get("dist") is not None:
+        blitz_dist = float(blitz["dist"])
+    if awn_dist is not None and blitz_dist is not None:
+        final_dist = min(awn_dist, blitz_dist)
+        source_tag = "AWN + BLITZ"
+    elif awn_dist is not None:
+        final_dist = awn_dist
+        source_tag = "AWN ONLY"
+    elif blitz_dist is not None:
+        final_dist = blitz_dist
+        source_tag = "BLITZ ONLY"
+    else:
+        final_dist = 25.0
+        source_tag = "NO DATA"
+    strikes = ambient.get("lightning_day", 0) if ambient.get("ok") else "--"
+    return round(final_dist, 1), source_tag, strikes
 
 @st.cache_data(ttl=300)
 def fetch_airport_metar():
@@ -338,8 +408,12 @@ def compute_risk(soil_pct, rain_today, rain_forecast_3d, wind_speed, pop_today):
     else:            label, color = "CRITICAL", "#FF3333"
     return round(score, 1), label, color
 
+# ─────────────────────────────────────────────
+#  FETCH ALL DATA
+# ─────────────────────────────────────────────
 with st.spinner("Syncing all data sources..."):
     ambient   = fetch_ambient()
+    blitz     = fetch_blitzortung_lightning()
     airport   = fetch_airport_metar()
     usgs      = fetch_usgs_rain()
     forecast  = fetch_multimodel_forecast()
@@ -357,8 +431,16 @@ pop_today = forecast[0]["pop"] if forecast else 0
 
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture(hist_rain, rain_today)
 
+l_dist, l_source, l_strikes = resolve_lightning(ambient, blitz)
+l_display = min(l_dist, 25)
+l_color = "#FF3333" if l_dist < 5 else "#FF8C00" if l_dist < 10 else "#FFD700" if l_dist < 15 else "#00FF9C"
+l_label  = "CRITICAL" if l_dist < 5 else "NEARBY" if l_dist < 10 else "MODERATE" if l_dist < 15 else "CLEAR"
+
 now = datetime.now(ZoneInfo("America/New_York"))
 
+# ─────────────────────────────────────────────
+#  RENDER
+# ─────────────────────────────────────────────
 st.markdown(f"""
 <div class="site-header">
     <div class="site-title">CULLOWHEE WEATHER INTELLIGENCE</div>
@@ -366,6 +448,7 @@ st.markdown(f"""
     {now.strftime('%A, %B %d, %Y  %I:%M %p')} EST</div>
     <div style="margin-top:8px;">
         <span class="source-badge">📡 AWN: {'LIVE' if ambient.get('ok') else 'OFFLINE'}</span>
+        <span class="source-badge">⚡ BLITZORTUNG: {'LIVE' if blitz.get('ok') else 'OFFLINE'}</span>
         <span class="source-badge">✈️ AIRPORT 24A: {'LIVE' if airport.get('ok') else 'OFFLINE'}</span>
         <span class="source-badge">💧 USGS: {'LIVE' if any(v['ok'] for v in usgs.values()) else 'OFFLINE'}</span>
         <span class="source-badge">🌐 OPEN-METEO: LIVE</span>
@@ -377,24 +460,15 @@ st.markdown('<div class="panel"><div class="panel-title">⚡ Site Condition Gaug
 g1, g2, g3, g4 = st.columns(4)
 
 with g1:
-    l_dist = ambient.get("lightning_dist") if ambient.get("ok") else None
-    l_val = float(l_dist) if l_dist is not None else 25
-    l_color = "#FF3333" if l_val < 5 else "#FF8C00" if l_val < 10 else "#FFD700" if l_val < 15 else "#00FF9C"
-    l_label = "CRITICAL" if l_val < 5 else "NEARBY" if l_val < 10 else "MODERATE" if l_val < 15 else "CLEAR"
-    display_val = min(l_val, 25)
-    fig = make_gauge(display_val, "LIGHTNING STRIKE PROXIMITY", min_val=0, max_val=25, unit=" mi", color=l_color,
+    fig = make_gauge(l_display, "LIGHTNING STRIKE PROXIMITY", min_val=0, max_val=25, unit=" mi", color=l_color,
         thresholds=[{"range":[0,5],"color":"rgba(255,51,51,0.12)"},{"range":[5,10],"color":"rgba(255,140,0,0.12)"},
                     {"range":[10,15],"color":"rgba(255,215,0,0.12)"},{"range":[15,25],"color":"rgba(0,255,156,0.12)"}])
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    strikes = ambient.get("lightning_day", 0) if ambient.get("ok") else "--"
     st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.4em;font-weight:700;color:{l_color};'>{l_label}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:1.0em;color:#7AACCC;'>Strikes Today: <b style='color:#00FFCC'>{strikes}</b></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center;font-family:Rajdhani;font-size:0.95em;color:#7AACCC;'>Strikes Today: <b style='color:#00FFCC'>{l_strikes}</b></div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align:center;font-family:Share Tech Mono,monospace;font-size:0.65em;color:#2A6080;margin-top:2px;'>SRC: {l_source}</div>", unsafe_allow_html=True)
 
 with g2:
-    l_dist2 = ambient.get("lightning_dist") if ambient.get("ok") else None
-    l_val2 = float(l_dist2) if l_dist2 is not None else 25
-    l_color2 = "#FF3333" if l_val2 < 5 else "#FF8C00" if l_val2 < 10 else "#FFD700" if l_val2 < 15 else "#00FF9C"
-    l_label2 = "CRITICAL" if l_val2 < 5 else "NEARBY" if l_val2 < 10 else "MODERATE" if l_val2 < 15 else "CLEAR"
     fig = make_gauge(soil_pct, "SOIL MOISTURE SATURATION", color=soil_color,
         thresholds=[{"range":[0,25],"color":"rgba(90,200,250,0.12)"},{"range":[25,50],"color":"rgba(0,255,156,0.12)"},
                     {"range":[50,75],"color":"rgba(255,215,0,0.12)"},{"range":[75,100],"color":"rgba(255,51,51,0.12)"}])
@@ -515,6 +589,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 st.markdown(f"""
 <div style="text-align:center;font-family:'Share Tech Mono';font-size:0.7em;color:#2A4060;margin-top:20px;">
 CULLOWHEE WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
-Sources: Riverbend AWN · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
+Sources: Riverbend AWN · Blitzortung · NOAA/24A · USGS 03439000/03460000 · Open-Meteo (HRRR/GFS) &nbsp;|&nbsp; Auto-refresh: 5 min
 </div>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) Sonnet 4.6Extended

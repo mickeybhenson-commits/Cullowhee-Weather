@@ -1,36 +1,156 @@
-import streamlit as st
-import requests
-import json
 import math
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+
+import plotly.graph_objects as go
+import requests
+import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+
+# ============================================================
+# PAGE CONFIG
+# ============================================================
 
 st.set_page_config(
     page_title="Cullowhee Weather Intelligence",
-    layout="wide"
+    layout="wide",
 )
+
 st_autorefresh(interval=300000, key="refresh")
+
+# ============================================================
+# CONSTANTS / CONFIG
+# ============================================================
 
 LAT = 35.3079
 LON = -83.1746
 SITE = "NCCAT — Cullowhee, NC"
+TIMEZONE = ZoneInfo("America/New_York")
 
-AMBIENT_API_KEY = st.secrets.get("AMBIENT_API_KEY", "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334")
-AMBIENT_APP_KEY = st.secrets.get("AMBIENT_APP_KEY", "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334")
+AMBIENT_API_KEY = st.secrets.get(
+    "AMBIENT_API_KEY",
+    "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334",
+)
+AMBIENT_APP_KEY = st.secrets.get(
+    "AMBIENT_APP_KEY",
+    "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334",
+)
 
-st.markdown("""
+AMBIENT_DEVICE_MAC = "35c7b0accb75a84d7891d82f125001a8"
+AIRPORT_ID = "K24A"
+
+USGS_GAUGES = {
+    "03439000": "Tuckasegee @ Cullowhee",
+    "03460000": "Tuckasegee @ Bryson City",
+}
+
+MODEL_PARAMS = {
+    "hrrr": "hrrr_conus",
+    "gfs": "gfs_seamless",
+}
+
+COLORS = {
+    "cyan": "#00FFFF",
+    "blue": "#5AC8FA",
+    "green": "#00FF9C",
+    "lime": "#AAFF00",
+    "yellow": "#FFD700",
+    "orange": "#FF8C00",
+    "red": "#FF3333",
+    "white": "#FFFFFF",
+    "muted": "#7AACCC",
+    "deep": "#060C14",
+    "panel": "rgba(10,20,35,0.85)",
+}
+
+GAUGE_THRESHOLDS = {
+    "lightning": [
+        {"range": [0, 5], "color": "rgba(255,51,51,0.12)"},
+        {"range": [5, 10], "color": "rgba(255,140,0,0.12)"},
+        {"range": [10, 15], "color": "rgba(255,215,0,0.12)"},
+        {"range": [15, 25], "color": "rgba(0,255,156,0.12)"},
+    ],
+    "uv": [
+        {"range": [0, 3], "color": "rgba(0,255,156,0.12)"},
+        {"range": [3, 6], "color": "rgba(255,215,0,0.12)"},
+        {"range": [6, 8], "color": "rgba(255,140,0,0.12)"},
+        {"range": [8, 12], "color": "rgba(255,51,51,0.12)"},
+    ],
+    "feels_like": [
+        {"range": [0, 32], "color": "rgba(90,200,250,0.12)"},
+        {"range": [32, 60], "color": "rgba(0,255,255,0.12)"},
+        {"range": [60, 85], "color": "rgba(0,255,156,0.12)"},
+        {"range": [85, 105], "color": "rgba(255,140,0,0.12)"},
+        {"range": [105, 120], "color": "rgba(255,51,51,0.12)"},
+    ],
+    "humidity": [
+        {"range": [0, 30], "color": "rgba(90,200,250,0.12)"},
+        {"range": [30, 60], "color": "rgba(0,255,156,0.12)"},
+        {"range": [60, 80], "color": "rgba(255,215,0,0.12)"},
+        {"range": [80, 100], "color": "rgba(255,140,0,0.12)"},
+    ],
+    "wind": [
+        {"range": [0, 15], "color": "rgba(0,255,156,0.12)"},
+        {"range": [15, 25], "color": "rgba(255,215,0,0.12)"},
+        {"range": [25, 35], "color": "rgba(255,140,0,0.12)"},
+        {"range": [35, 60], "color": "rgba(255,51,51,0.12)"},
+    ],
+    "soil": [
+        {"range": [0, 25], "color": "rgba(90,200,250,0.12)"},
+        {"range": [25, 50], "color": "rgba(0,255,156,0.12)"},
+        {"range": [50, 75], "color": "rgba(255,215,0,0.12)"},
+        {"range": [75, 100], "color": "rgba(255,51,51,0.12)"},
+    ],
+    "precip_prob": [
+        {"range": [0, 20], "color": "rgba(0,255,156,0.12)"},
+        {"range": [20, 50], "color": "rgba(255,215,0,0.12)"},
+        {"range": [50, 80], "color": "rgba(255,140,0,0.12)"},
+        {"range": [80, 100], "color": "rgba(255,51,51,0.12)"},
+    ],
+    "freeze": [
+        {"range": [0, 28], "color": "rgba(255,51,51,0.12)"},
+        {"range": [28, 32], "color": "rgba(255,140,0,0.12)"},
+        {"range": [32, 45], "color": "rgba(255,215,0,0.12)"},
+        {"range": [45, 80], "color": "rgba(0,255,156,0.12)"},
+    ],
+    "fog": [
+        {"range": [0, 3], "color": "rgba(255,51,51,0.12)"},
+        {"range": [3, 9], "color": "rgba(255,140,0,0.12)"},
+        {"range": [9, 18], "color": "rgba(255,215,0,0.12)"},
+        {"range": [18, 30], "color": "rgba(0,255,156,0.12)"},
+    ],
+    "aqi": [
+        {"range": [0, 50], "color": "rgba(0,255,156,0.12)"},
+        {"range": [50, 100], "color": "rgba(170,255,0,0.12)"},
+        {"range": [100, 150], "color": "rgba(255,215,0,0.12)"},
+        {"range": [150, 200], "color": "rgba(255,140,0,0.12)"},
+    ],
+    "rain3d": [
+        {"range": [0, 0.5], "color": "rgba(0,255,156,0.12)"},
+        {"range": [0.5, 1.5], "color": "rgba(255,215,0,0.12)"},
+        {"range": [1.5, 3.0], "color": "rgba(255,140,0,0.12)"},
+        {"range": [3.0, 5.0], "color": "rgba(255,51,51,0.12)"},
+    ],
+}
+
+# ============================================================
+# STYLING
+# ============================================================
+
+st.markdown(
+    """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+
 html, body, .stApp {
     background-color: #060C14;
     color: #E0E8F0;
     font-family: 'Rajdhani', sans-serif;
 }
-h1, h2, h3 { font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; }
+h1, h2, h3 {
+    font-family: 'Rajdhani', sans-serif;
+    letter-spacing: 2px;
+}
 .stApp:before {
     content: "";
     position: fixed;
@@ -41,7 +161,10 @@ h1, h2, h3 { font-family: 'Rajdhani', sans-serif; letter-spacing: 2px; }
     z-index: 0;
     pointer-events: none;
 }
-section.main > div { position: relative; z-index: 1; }
+section.main > div {
+    position: relative;
+    z-index: 1;
+}
 .site-header {
     border-left: 6px solid #0088FF;
     padding: 12px 20px;
@@ -49,8 +172,19 @@ section.main > div { position: relative; z-index: 1; }
     background: rgba(0,136,255,0.06);
     border-radius: 0 8px 8px 0;
 }
-.site-title { font-size: 2.8em; font-weight: 700; color: #FFFFFF; margin: 0; letter-spacing: 3px; }
-.site-sub { font-size: 1.1em; color: #7AACCC; text-transform: uppercase; font-family: 'Share Tech Mono', monospace; }
+.site-title {
+    font-size: 2.8em;
+    font-weight: 700;
+    color: #FFFFFF;
+    margin: 0;
+    letter-spacing: 3px;
+}
+.site-sub {
+    font-size: 1.1em;
+    color: #7AACCC;
+    text-transform: uppercase;
+    font-family: 'Share Tech Mono', monospace;
+}
 .panel {
     background: rgba(10,20,35,0.85);
     border: 1px solid rgba(0,136,255,0.2);
@@ -79,679 +213,1153 @@ section.main > div { position: relative; z-index: 1; }
     font-family: 'Share Tech Mono', monospace;
     margin: 2px;
 }
-.stMetric label { font-family: 'Share Tech Mono', monospace !important; font-size: 0.75em !important; color: #7AACCC !important; }
-.stMetric [data-testid="metric-container"] { background: rgba(0,136,255,0.05); border-radius: 8px; padding: 8px; border: 1px solid rgba(0,136,255,0.15); }
+.data-card {
+    background: rgba(0,136,255,0.04);
+    border: 1px solid rgba(0,136,255,0.14);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+}
+.data-card-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72em;
+    color: #7AACCC;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+}
+.data-card-value {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+.small-muted {
+    color: #7AACCC;
+    font-size: 0.85em;
+}
+.forecast-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+}
+.forecast-tile {
+    background: rgba(0,136,255,0.05);
+    border: 1px solid rgba(0,136,255,0.16);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+}
+.forecast-day {
+    font-family: 'Share Tech Mono', monospace;
+    color: #7AACCC;
+    font-size: 0.75em;
+    margin-bottom: 6px;
+}
+.forecast-hi {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: #FFFFFF;
+}
+.forecast-lo {
+    font-size: 0.95em;
+    color: #7AACCC;
+}
+hr.soft {
+    border: none;
+    border-top: 1px solid rgba(0,136,255,0.15);
+    margin: 10px 0;
+}
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# ─────────────────────────────────────────────
-#  HELPER FUNCTIONS
-# ─────────────────────────────────────────────
+# ============================================================
+# GENERIC HELPERS
+# ============================================================
+
+def now_local() -> datetime:
+    return datetime.now(TIMEZONE)
+
+
+def safe_get(url: str, *, params=None, timeout=10):
+    return requests.get(url, params=params, timeout=timeout)
+
+
+def ok_payload(data=None, source=None, error=None):
+    return {
+        "ok": error is None,
+        "data": data if data is not None else {},
+        "source": source,
+        "error": error,
+    }
+
+
+def first_non_none(*values):
+    for value in values:
+        if value is not None:
+            return value
+    return None
+
+
+def clamp(value, low, high):
+    return max(low, min(high, value))
+
+
+def format_num(value, digits=1, suffix=""):
+    if value is None:
+        return "--"
+    return f"{round(value, digits)}{suffix}"
+
+
+# ============================================================
+# SCIENCE / CALC HELPERS
+# ============================================================
+
 def haversine_miles(lat1, lon1, lat2, lon2):
-    R = 3958.8
+    r = 3958.8
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
     dlon = lon2 - lon1
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    return R * 2 * math.asin(math.sqrt(a))
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return r * 2 * math.asin(math.sqrt(a))
+
 
 def calc_feels_like(temp_f, humidity, wind_mph):
-    if temp_f is None: return None
+    if temp_f is None:
+        return None
     humidity = humidity or 0
     wind_mph = wind_mph or 0
+
     if temp_f >= 80 and humidity >= 40:
-        hi = (-42.379 + 2.04901523*temp_f + 10.14333127*humidity
-              - 0.22475541*temp_f*humidity - 0.00683783*temp_f**2
-              - 0.05481717*humidity**2 + 0.00122874*temp_f**2*humidity
-              + 0.00085282*temp_f*humidity**2 - 0.00000199*temp_f**2*humidity**2)
+        hi = (
+            -42.379
+            + 2.04901523 * temp_f
+            + 10.14333127 * humidity
+            - 0.22475541 * temp_f * humidity
+            - 0.00683783 * temp_f ** 2
+            - 0.05481717 * humidity ** 2
+            + 0.00122874 * temp_f ** 2 * humidity
+            + 0.00085282 * temp_f * humidity ** 2
+            - 0.00000199 * temp_f ** 2 * humidity ** 2
+        )
         return round(hi, 1)
-    elif temp_f <= 50 and wind_mph > 3:
-        wc = 35.74 + 0.6215*temp_f - 35.75*(wind_mph**0.16) + 0.4275*temp_f*(wind_mph**0.16)
+
+    if temp_f <= 50 and wind_mph > 3:
+        wc = 35.74 + 0.6215 * temp_f - 35.75 * (wind_mph ** 0.16) + 0.4275 * temp_f * (wind_mph ** 0.16)
         return round(wc, 1)
+
     return round(temp_f, 1)
 
+
 def calc_dewpoint_f(temp_f, humidity):
-    if temp_f is None or humidity is None or humidity <= 0: return None
-    temp_c = (temp_f - 32) * 5/9
+    if temp_f is None or humidity is None or humidity <= 0:
+        return None
+    temp_c = (temp_f - 32) * 5 / 9
     a, b = 17.625, 243.04
     try:
         alpha = math.log(humidity / 100.0) + (a * temp_c) / (b + temp_c)
         dp_c = (b * alpha) / (a - alpha)
-        return round(dp_c * 9/5 + 32, 1)
-    except:
+        return round(dp_c * 9 / 5 + 32, 1)
+    except Exception:
         return None
 
+
 def calc_fog_spread(temp_f, dewpoint_f):
-    if temp_f is None or dewpoint_f is None: return None
+    if temp_f is None or dewpoint_f is None:
+        return None
     return round(temp_f - dewpoint_f, 1)
 
-# ─────────────────────────────────────────────
-#  DATA FETCHERS
-# ─────────────────────────────────────────────
+
+def weather_desc(code):
+    codes = {
+        0: "Clear",
+        1: "Mainly Clear",
+        2: "Partly Cloudy",
+        3: "Overcast",
+        45: "Foggy",
+        48: "Rime Fog",
+        51: "Lt Drizzle",
+        53: "Drizzle",
+        55: "Heavy Drizzle",
+        61: "Lt Rain",
+        63: "Rain",
+        65: "Heavy Rain",
+        71: "Lt Snow",
+        73: "Snow",
+        75: "Heavy Snow",
+        80: "Rain Showers",
+        81: "Mod Showers",
+        82: "Heavy Showers",
+        95: "Thunderstorm",
+        96: "Tstm+Hail",
+        99: "Tstm+Heavy Hail",
+    }
+    return codes.get(code, "Unknown")
+
+
+def pop_color(pop):
+    if pop < 20:
+        return COLORS["green"]
+    if pop < 40:
+        return COLORS["lime"]
+    if pop < 60:
+        return COLORS["yellow"]
+    if pop < 80:
+        return COLORS["orange"]
+    return COLORS["red"]
+
+
+def estimate_soil_moisture(rain_30d, today_rain=0.0):
+    field_capacity = 2.16
+    wilting_point = 1.80
+    max_storage = field_capacity + 0.5
+
+    monthly_et = {
+        1: 0.04, 2: 0.06, 3: 0.10, 4: 0.14, 5: 0.17, 6: 0.20,
+        7: 0.21, 8: 0.19, 9: 0.14, 10: 0.09, 11: 0.05, 12: 0.03,
+    }
+
+    storage = field_capacity * 0.6
+    today_month = now_local().month
+    start_month = (today_month - 1) or 12
+
+    for i, rain in enumerate(rain_30d):
+        month = start_month if i < 15 else today_month
+        et_daily = monthly_et.get(month, 0.10)
+        storage = storage + (rain or 0.0) - et_daily
+        storage = max(wilting_point, min(max_storage, storage))
+
+    storage = min(max_storage, storage + (today_rain or 0.0))
+    pct = ((storage - wilting_point) / (max_storage - wilting_point)) * 100
+    pct = clamp(pct, 0, 100)
+
+    if pct >= 90:
+        return round(pct, 1), "SATURATED", COLORS["red"], round(storage, 2)
+    if pct >= 75:
+        return round(pct, 1), "WET", COLORS["orange"], round(storage, 2)
+    if pct >= 50:
+        return round(pct, 1), "MOIST", COLORS["yellow"], round(storage, 2)
+    if pct >= 25:
+        return round(pct, 1), "ADEQUATE", COLORS["green"], round(storage, 2)
+    return round(pct, 1), "DRY", COLORS["blue"], round(storage, 2)
+
+
+# ============================================================
+# DATA FETCHERS
+# ============================================================
 
 @st.cache_data(ttl=300)
 def fetch_ambient():
     try:
-        r = requests.get(
+        r = safe_get(
             "https://api.ambientweather.net/v1/devices",
             params={"apiKey": AMBIENT_API_KEY, "applicationKey": AMBIENT_APP_KEY},
-            timeout=10
+            timeout=10,
         )
         r.raise_for_status()
-        devices = r.json()
-        if devices:
-            target = next(
-                (d for d in devices if d.get("macAddress","").replace(":","").replace("-","").lower() == "35c7b0accb75a84d7891d82f125001a8"),
-                devices[0]
-            )
-            last = target.get("lastData", {})
-            return {
-                "temp":           last.get("tempf"),
-                "humidity":       last.get("humidity"),
-                "wind_speed":     last.get("windspeedmph", 0),
-                "wind_dir":       last.get("winddir", 0),
-                "wind_gust":      last.get("windgustmph", 0),
-                "rain_today":     last.get("dailyrainin", 0.0),
-                "rain_1hr":       last.get("hourlyrainin", 0.0),
-                "rain_week":      last.get("weeklyrainin", 0.0),
-                "rain_month":     last.get("monthlyrainin", 0.0),
-                "pressure":       last.get("baromrelin"),
-                "uv":             last.get("uv", 0),
-                "solar":          last.get("solarradiation", 0),
-                "lightning_dist": last.get("lightning_distance"),
-                "lightning_day":  last.get("lightning_day", 0),
-                "lightning_hour": last.get("lightning_hour", 0),
-                "name":           target.get("info", {}).get("name", "Riverbend on the Tuckasegee"),
-                "ok": True
-            }
-    except:
-        pass
-    return {"ok": False}
+        devices = r.json() or []
+
+        if not devices:
+            return ok_payload(source="AMBIENT", error="No devices returned")
+
+        target = next(
+            (
+                d for d in devices
+                if d.get("macAddress", "").replace(":", "").replace("-", "").lower() == AMBIENT_DEVICE_MAC
+            ),
+            devices[0],
+        )
+
+        last = target.get("lastData", {})
+        data = {
+            "temp": last.get("tempf"),
+            "humidity": last.get("humidity"),
+            "wind_speed": last.get("windspeedmph", 0),
+            "wind_dir": last.get("winddir", 0),
+            "wind_gust": last.get("windgustmph", 0),
+            "rain_today": last.get("dailyrainin", 0.0),
+            "rain_1hr": last.get("hourlyrainin", 0.0),
+            "rain_week": last.get("weeklyrainin", 0.0),
+            "rain_month": last.get("monthlyrainin", 0.0),
+            "pressure": last.get("baromrelin"),
+            "uv": last.get("uv", 0),
+            "solar": last.get("solarradiation", 0),
+            "lightning_dist": last.get("lightning_distance"),
+            "lightning_day": last.get("lightning_day", 0),
+            "lightning_hour": last.get("lightning_hour", 0),
+            "name": target.get("info", {}).get("name", "Riverbend on the Tuckasegee"),
+        }
+        return ok_payload(data=data, source="AMBIENT")
+    except Exception as e:
+        return ok_payload(source="AMBIENT", error=str(e))
+
 
 @st.cache_data(ttl=60)
 def fetch_blitzortung_lightning():
     try:
-        now = datetime.utcnow()
+        utc_now = datetime.utcnow()
         closest_dist = None
+
         for minutes_back in range(0, 31):
-            t = now - timedelta(minutes=minutes_back)
+            t = utc_now - timedelta(minutes=minutes_back)
             url = (
-                f"https://data.blitzortung.org/Data/Protected/By_Location/"
-                f"By_Region/America/Strokes/"
-                f"{t.year}/{t.month:02d}/{t.day:02d}/"
-                f"{t.hour:02d}/{t.minute:02d}.json"
+                "https://data.blitzortung.org/Data/Protected/By_Location/"
+                "By_Region/America/Strokes/"
+                f"{t.year}/{t.month:02d}/{t.day:02d}/{t.hour:02d}/{t.minute:02d}.json"
             )
             try:
-                r = requests.get(url, timeout=4)
-                if r.status_code == 200 and r.text.strip():
-                    strokes = r.json()
-                    for stroke in strokes:
-                        slat = stroke.get("lat") or stroke.get("y")
-                        slon = stroke.get("lon") or stroke.get("x")
-                        if slat is not None and slon is not None:
-                            dist = haversine_miles(LAT, LON, float(slat), float(slon))
-                            if closest_dist is None or dist < closest_dist:
-                                closest_dist = dist
-            except:
-                continue
-        if closest_dist is not None:
-            return {"dist": round(closest_dist, 1), "ok": True}
-    except:
-        pass
-    return {"ok": False}
+                r = safe_get(url, timeout=4)
+                if r.status_code != 200 or not r.text.strip():
+                    continue
 
-def resolve_lightning(ambient, blitz):
-    awn_dist = None
-    blitz_dist = None
-    if ambient.get("ok") and ambient.get("lightning_dist") is not None:
-        awn_dist = float(ambient["lightning_dist"])
-    if blitz.get("ok") and blitz.get("dist") is not None:
-        blitz_dist = float(blitz["dist"])
+                strokes = r.json()
+                for stroke in strokes:
+                    slat = stroke.get("lat") or stroke.get("y")
+                    slon = stroke.get("lon") or stroke.get("x")
+                    if slat is None or slon is None:
+                        continue
+                    dist = haversine_miles(LAT, LON, float(slat), float(slon))
+                    if closest_dist is None or dist < closest_dist:
+                        closest_dist = dist
+            except Exception:
+                continue
+
+        if closest_dist is None:
+            return ok_payload(source="BLITZORTUNG", error="No strokes found")
+
+        return ok_payload(
+            data={"dist": round(closest_dist, 1)},
+            source="BLITZORTUNG",
+        )
+    except Exception as e:
+        return ok_payload(source="BLITZORTUNG", error=str(e))
+
+
+def resolve_lightning(ambient_payload, blitz_payload):
+    ambient = ambient_payload.get("data", {})
+    blitz = blitz_payload.get("data", {})
+
+    awn_dist = ambient.get("lightning_dist")
+    blitz_dist = blitz.get("dist")
+
     if awn_dist is not None and blitz_dist is not None:
-        final_dist = min(awn_dist, blitz_dist)
+        final_dist = min(float(awn_dist), float(blitz_dist))
         source_tag = "AWN + BLITZ"
     elif awn_dist is not None:
-        final_dist = awn_dist
+        final_dist = float(awn_dist)
         source_tag = "AWN ONLY"
     elif blitz_dist is not None:
-        final_dist = blitz_dist
+        final_dist = float(blitz_dist)
         source_tag = "BLITZ ONLY"
     else:
         final_dist = 25.0
         source_tag = "NO DATA"
-    strikes = ambient.get("lightning_day", 0) if ambient.get("ok") else "--"
+
+    strikes = ambient.get("lightning_day", "--")
     return round(final_dist, 1), source_tag, strikes
+
 
 @st.cache_data(ttl=1800)
 def fetch_aqi():
     try:
-        r = requests.get(
+        r = safe_get(
             "https://air-quality-api.open-meteo.com/v1/air-quality",
             params={
-                "latitude": LAT, "longitude": LON,
+                "latitude": LAT,
+                "longitude": LON,
                 "hourly": "us_aqi",
                 "timezone": "America/New_York",
-                "forecast_days": 1
+                "forecast_days": 1,
             },
-            timeout=10
+            timeout=10,
         )
         r.raise_for_status()
         data = r.json()
-        aqi_vals = data["hourly"]["us_aqi"]
-        now_hour = datetime.now().hour
-        aqi = next((v for v in [aqi_vals[now_hour] if now_hour < len(aqi_vals) else None] + aqi_vals if v is not None), 0)
-        return {"aqi": int(aqi), "ok": True}
-    except:
-        return {"ok": False}
+        aqi_vals = data.get("hourly", {}).get("us_aqi", [])
+        current_hour = now_local().hour
+
+        candidate_values = []
+        if current_hour < len(aqi_vals):
+            candidate_values.append(aqi_vals[current_hour])
+        candidate_values.extend(aqi_vals)
+
+        aqi = next((v for v in candidate_values if v is not None), 0)
+        return ok_payload(data={"aqi": int(aqi)}, source="OPEN-METEO AQI")
+    except Exception as e:
+        return ok_payload(source="OPEN-METEO AQI", error=str(e))
+
 
 @st.cache_data(ttl=300)
 def fetch_airport_metar():
     try:
-        r = requests.get(
+        r = safe_get(
             "https://aviationweather.gov/api/data/metar",
-            params={"ids": "K24A", "format": "json"},
-            timeout=8
+            params={"ids": AIRPORT_ID, "format": "json"},
+            timeout=8,
         )
         r.raise_for_status()
-        data = r.json()
-        if data:
-            obs = data[0]
-            return {
-                "temp_f":   round(obs.get("temp", 0) * 9/5 + 32, 1) if obs.get("temp") is not None else None,
-                "wind_mph": round(obs.get("wspd", 0) * 1.15078, 1) if obs.get("wspd") else None,
-                "wind_dir": obs.get("wdir"),
-                "altim":    obs.get("altim"),
-                "precip":   obs.get("precip", 0.0),
-                "cover":    obs.get("skyCondition", [{}])[0].get("skyCover", "CLR") if obs.get("skyCondition") else "CLR",
-                "raw":      obs.get("rawOb", ""),
-                "time":     obs.get("obsTime", ""),
-                "ok": True
-            }
-    except:
-        pass
-    return {"ok": False}
+        data = r.json() or []
+
+        if not data:
+            return ok_payload(source="AVIATION WEATHER", error="No METAR returned")
+
+        obs = data[0]
+        payload = {
+            "temp_f": round(obs.get("temp", 0) * 9 / 5 + 32, 1) if obs.get("temp") is not None else None,
+            "wind_mph": round(obs.get("wspd", 0) * 1.15078, 1) if obs.get("wspd") else None,
+            "wind_dir": obs.get("wdir"),
+            "altim": obs.get("altim"),
+            "precip": obs.get("precip", 0.0),
+            "cover": obs.get("skyCondition", [{}])[0].get("skyCover", "CLR") if obs.get("skyCondition") else "CLR",
+            "raw": obs.get("rawOb", ""),
+            "time": obs.get("obsTime", ""),
+        }
+        return ok_payload(data=payload, source="AVIATION WEATHER")
+    except Exception as e:
+        return ok_payload(source="AVIATION WEATHER", error=str(e))
+
 
 @st.cache_data(ttl=300)
 def fetch_usgs_rain():
     results = {}
-    gauges = {
-        "03439000": "Tuckasegee @ Cullowhee",
-        "03460000": "Tuckasegee @ Bryson City"
-    }
-    for site_id, name in gauges.items():
+    for site_id, name in USGS_GAUGES.items():
         try:
-            r = requests.get(
+            r = safe_get(
                 "https://waterservices.usgs.gov/nwis/iv/",
                 params={"format": "json", "sites": site_id, "parameterCd": "00045"},
-                timeout=8
+                timeout=8,
             )
             r.raise_for_status()
             data = r.json()
-            val = float(data['value']['timeSeries'][0]['values'][0]['value'][0]['value'])
-            results[site_id] = {"name": name, "value": val, "ok": True}
-        except:
-            results[site_id] = {"name": name, "value": 0.0, "ok": False}
+            val = float(data["value"]["timeSeries"][0]["values"][0]["value"][0]["value"])
+            results[site_id] = {"name": name, "value": val, "ok": True, "error": None}
+        except Exception as e:
+            results[site_id] = {"name": name, "value": 0.0, "ok": False, "error": str(e)}
     return results
+
 
 @st.cache_data(ttl=600)
 def fetch_multimodel_forecast():
-    model_params = {"hrrr": "hrrr_conus", "gfs": "gfs_seamless"}
     base_params = {
-        "latitude": LAT, "longitude": LON,
+        "latitude": LAT,
+        "longitude": LON,
         "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,weathercode,windspeed_10m_max",
         "temperature_unit": "fahrenheit",
         "precipitation_unit": "inch",
         "windspeed_unit": "mph",
         "timezone": "America/New_York",
-        "forecast_days": 7
+        "forecast_days": 7,
     }
+
     forecasts = {}
-    for model_key, model_str in model_params.items():
+    errors = {}
+
+    for model_key, model_str in MODEL_PARAMS.items():
         try:
-            p = {**base_params, "models": model_str}
-            r = requests.get("https://api.open-meteo.com/v1/forecast", params=p, timeout=12)
+            params = {**base_params, "models": model_str}
+            r = safe_get("https://api.open-meteo.com/v1/forecast", params=params, timeout=12)
             r.raise_for_status()
-            forecasts[model_key] = r.json()["daily"]
-        except:
+            forecasts[model_key] = r.json().get("daily")
+        except Exception as e:
             forecasts[model_key] = None
+            errors[model_key] = str(e)
 
     days = []
-    today = datetime.now()
+    today = now_local()
+
     for i in range(7):
         date = today + timedelta(days=i)
         primary = "hrrr" if i <= 1 else "gfs"
         secondary = "gfs" if i <= 1 else "hrrr"
         src = forecasts.get(primary) or forecasts.get(secondary)
         model_label = primary.upper() if forecasts.get(primary) else secondary.upper()
+
         if src and i < len(src.get("time", [])):
-            days.append({
-                "date":   date.strftime("%a %m/%d"),
-                "day":    date.strftime("%a"),
-                "hi":     round(src["temperature_2m_max"][i] or 0),
-                "lo":     round(src["temperature_2m_min"][i] or 0),
-                "precip": round(src["precipitation_sum"][i] or 0, 2),
-                "pop":    src["precipitation_probability_max"][i] or 0,
-                "wind":   round(src["windspeed_10m_max"][i] or 0),
-                "code":   src["weathercode"][i] or 0,
-                "model":  model_label,
-                "desc":   weather_desc(src["weathercode"][i] or 0)
-            })
+            days.append(
+                {
+                    "date": date.strftime("%a %m/%d"),
+                    "day": date.strftime("%a"),
+                    "hi": round(src["temperature_2m_max"][i] or 0),
+                    "lo": round(src["temperature_2m_min"][i] or 0),
+                    "precip": round(src["precipitation_sum"][i] or 0, 2),
+                    "pop": src["precipitation_probability_max"][i] or 0,
+                    "wind": round(src["windspeed_10m_max"][i] or 0),
+                    "code": src["weathercode"][i] or 0,
+                    "model": model_label,
+                    "desc": weather_desc(src["weathercode"][i] or 0),
+                }
+            )
         else:
-            days.append({"date": date.strftime("%a %m/%d"), "day": date.strftime("%a"),
-                         "hi": 60, "lo": 40, "precip": 0.0, "pop": 10, "wind": 10,
-                         "code": 0, "model": "N/A", "desc": "Unknown"})
-    return days
+            days.append(
+                {
+                    "date": date.strftime("%a %m/%d"),
+                    "day": date.strftime("%a"),
+                    "hi": 60,
+                    "lo": 40,
+                    "precip": 0.0,
+                    "pop": 10,
+                    "wind": 10,
+                    "code": 0,
+                    "model": "N/A",
+                    "desc": "Unknown",
+                }
+            )
+
+    return ok_payload(
+        data={"days": days, "errors": errors},
+        source="OPEN-METEO",
+        error=None if days else "Forecast unavailable",
+    )
+
 
 @st.cache_data(ttl=3600)
 def fetch_historical_rain_30d():
     try:
-        end = datetime.now()
+        end = now_local().date()
         start = end - timedelta(days=30)
-        r = requests.get(
+
+        r = safe_get(
             "https://api.open-meteo.com/v1/forecast",
             params={
-                "latitude": LAT, "longitude": LON,
+                "latitude": LAT,
+                "longitude": LON,
                 "daily": "precipitation_sum",
                 "precipitation_unit": "inch",
                 "timezone": "America/New_York",
                 "start_date": start.strftime("%Y-%m-%d"),
-                "end_date": end.strftime("%Y-%m-%d")
+                "end_date": end.strftime("%Y-%m-%d"),
             },
-            timeout=12
+            timeout=12,
         )
         r.raise_for_status()
-        vals = r.json()["daily"]["precipitation_sum"]
-        return [v or 0.0 for v in vals]
-    except:
-        return [0.05] * 30
+        vals = r.json().get("daily", {}).get("precipitation_sum", [])
+        return ok_payload(
+            data={"rain_30d": [v or 0.0 for v in vals]},
+            source="OPEN-METEO HIST",
+        )
+    except Exception as e:
+        return ok_payload(
+            data={"rain_30d": [0.05] * 30},
+            source="OPEN-METEO HIST",
+            error=str(e),
+        )
 
-def weather_desc(code):
-    codes = {
-        0:"Clear", 1:"Mainly Clear", 2:"Partly Cloudy", 3:"Overcast",
-        45:"Foggy", 48:"Rime Fog", 51:"Lt Drizzle", 53:"Drizzle",
-        55:"Heavy Drizzle", 61:"Lt Rain", 63:"Rain", 65:"Heavy Rain",
-        71:"Lt Snow", 73:"Snow", 75:"Heavy Snow", 80:"Rain Showers",
-        81:"Mod Showers", 82:"Heavy Showers", 95:"Thunderstorm",
-        96:"Tstm+Hail", 99:"Tstm+Heavy Hail"
-    }
-    return codes.get(code, "Unknown")
 
-def pop_color(pop):
-    if pop < 20: return "#00FF9C"
-    if pop < 40: return "#AAFF00"
-    if pop < 60: return "#FFD700"
-    if pop < 80: return "#FF8C00"
-    return "#FF3333"
-
-def estimate_soil_moisture(rain_30d, today_rain=0.0):
-    FIELD_CAPACITY = 2.16
-    WILTING_POINT  = 1.80
-    MAX_STORAGE    = FIELD_CAPACITY + 0.5
-    monthly_et = {1:0.04, 2:0.06, 3:0.10, 4:0.14, 5:0.17,
-                  6:0.20, 7:0.21, 8:0.19, 9:0.14, 10:0.09,
-                  11:0.05, 12:0.03}
-    storage = FIELD_CAPACITY * 0.6
-    today_month = datetime.now().month
-    start_month = (today_month - 1) or 12
-    for i, rain in enumerate(rain_30d):
-        month = start_month if i < 15 else today_month
-        et_daily = monthly_et.get(month, 0.10)
-        storage = storage + rain - et_daily
-        storage = max(WILTING_POINT, min(MAX_STORAGE, storage))
-    storage = min(MAX_STORAGE, storage + today_rain)
-    pct = ((storage - WILTING_POINT) / (MAX_STORAGE - WILTING_POINT)) * 100
-    pct = max(0, min(100, pct))
-    if pct >= 90:   status, color = "SATURATED", "#FF3333"
-    elif pct >= 75: status, color = "WET",        "#FF8C00"
-    elif pct >= 50: status, color = "MOIST",      "#FFD700"
-    elif pct >= 25: status, color = "ADEQUATE",   "#00FF9C"
-    else:           status, color = "DRY",         "#5AC8FA"
-    return round(pct, 1), status, color, round(storage, 2)
+# ============================================================
+# UI HELPERS
+# ============================================================
 
 def make_gauge(value, title, min_val=0, max_val=100, unit="%", thresholds=None, color=None):
-    if thresholds is None:
-        thresholds = [
-            {"range":[0,25],  "color":"rgba(0,255,156,0.15)"},
-            {"range":[25,50], "color":"rgba(255,215,0,0.15)"},
-            {"range":[50,75], "color":"rgba(255,140,0,0.15)"},
-            {"range":[75,100],"color":"rgba(255,51,51,0.15)"},
-        ]
+    thresholds = thresholds or [
+        {"range": [0, 25], "color": "rgba(0,255,156,0.15)"},
+        {"range": [25, 50], "color": "rgba(255,215,0,0.15)"},
+        {"range": [50, 75], "color": "rgba(255,140,0,0.15)"},
+        {"range": [75, 100], "color": "rgba(255,51,51,0.15)"},
+    ]
+
     if color is None:
-        if value < 30:   color = "#00FF9C"
-        elif value < 55: color = "#FFD700"
-        elif value < 75: color = "#FF8C00"
-        else:            color = "#FF3333"
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=value,
-        number={"suffix": unit, "font": {"size": 26, "color": "#FFFFFF", "family": "Rajdhani"}},
-        title={"text": title, "font": {"size": 11, "color": "#7AACCC", "family": "Share Tech Mono"}},
-        gauge={
-            "axis": {"range": [min_val, max_val], "tickwidth": 1, "tickcolor": "#2A4060",
-                     "tickfont": {"color": "#5A7A9A", "size": 8}},
-            "bar": {"color": color, "thickness": 0.25},
-            "bgcolor": "rgba(0,0,0,0)",
-            "borderwidth": 0,
-            "steps": thresholds,
-            "threshold": {"line": {"color": color, "width": 3}, "thickness": 0.85, "value": value}
-        }
-    ))
+        if value < 30:
+            color = COLORS["green"]
+        elif value < 55:
+            color = COLORS["yellow"]
+        elif value < 75:
+            color = COLORS["orange"]
+        else:
+            color = COLORS["red"]
+
+    fig = go.Figure(
+        go.Indicator(
+            mode="gauge+number",
+            value=value,
+            number={
+                "suffix": unit,
+                "font": {"size": 26, "color": COLORS["white"], "family": "Rajdhani"},
+            },
+            title={
+                "text": title,
+                "font": {"size": 11, "color": COLORS["muted"], "family": "Share Tech Mono"},
+            },
+            gauge={
+                "axis": {
+                    "range": [min_val, max_val],
+                    "tickwidth": 1,
+                    "tickcolor": "#2A4060",
+                    "tickfont": {"color": "#5A7A9A", "size": 8},
+                },
+                "bar": {"color": color, "thickness": 0.25},
+                "bgcolor": "rgba(0,0,0,0)",
+                "borderwidth": 0,
+                "steps": thresholds,
+                "threshold": {
+                    "line": {"color": color, "width": 3},
+                    "thickness": 0.85,
+                    "value": value,
+                },
+            },
+        )
+    )
     fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        margin=dict(t=35, b=5, l=15, r=15), height=185,
-        font={"color": "#E0E8F0"}
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        margin=dict(t=35, b=5, l=15, r=15),
+        height=185,
+        font={"color": "#E0E8F0"},
     )
     return fig
 
-def sublabel(text, color="#7AACCC"):
-    return f"<div style='text-align:center;font-family:Rajdhani;font-size:1.2em;font-weight:700;color:{color};margin-top:2px;'>{text}</div>"
 
-def subsub(text, color="#7AACCC"):
-    return f"<div style='text-align:center;font-family:Rajdhani;font-size:0.85em;color:{color};'>{text}</div>"
+def sublabel(text, color=COLORS["muted"]):
+    return (
+        f"<div style='text-align:center;font-family:Rajdhani;font-size:1.2em;"
+        f"font-weight:700;color:{color};margin-top:2px;'>{text}</div>"
+    )
+
+
+def subsub(text, color=COLORS["muted"]):
+    return (
+        f"<div style='text-align:center;font-family:Rajdhani;font-size:0.85em;"
+        f"color:{color};'>{text}</div>"
+    )
+
 
 def srctag(text):
-    return f"<div style='text-align:center;font-family:Share Tech Mono,monospace;font-size:0.62em;color:#2A6080;margin-top:1px;'>SRC: {text}</div>"
+    return (
+        "<div style='text-align:center;font-family:Share Tech Mono,monospace;"
+        f"font-size:0.62em;color:#2A6080;margin-top:1px;'>SRC: {text}</div>"
+    )
 
-# ─────────────────────────────────────────────
-#  FETCH ALL DATA
-# ─────────────────────────────────────────────
+
+def render_gauge_card(column, config):
+    with column:
+        fig = make_gauge(
+            config["value"],
+            config["title"],
+            min_val=config.get("min_val", 0),
+            max_val=config.get("max_val", 100),
+            unit=config.get("unit", "%"),
+            thresholds=config.get("thresholds"),
+            color=config.get("color"),
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.markdown(sublabel(config["label"], config["color"]), unsafe_allow_html=True)
+        st.markdown(subsub(config["detail"]), unsafe_allow_html=True)
+        st.markdown(srctag(config["source"]), unsafe_allow_html=True)
+
+
+def render_source_status_badge(label, is_live):
+    return f"<span class='source-badge'>{label}: {'LIVE' if is_live else 'OFFLINE'}</span>"
+
+
+def render_data_card(title, value, detail=None):
+    st.markdown(
+        f"""
+        <div class="data-card">
+            <div class="data-card-title">{title}</div>
+            <div class="data-card-value">{value}</div>
+            <div class="small-muted">{detail or ''}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+# ============================================================
+# LOAD ALL DATA
+# ============================================================
+
 with st.spinner("Syncing all data sources..."):
-    ambient   = fetch_ambient()
-    blitz     = fetch_blitzortung_lightning()
-    aqi_data  = fetch_aqi()
-    airport   = fetch_airport_metar()
-    usgs      = fetch_usgs_rain()
-    forecast  = fetch_multimodel_forecast()
-    hist_rain = fetch_historical_rain_30d()
+    ambient_payload = fetch_ambient()
+    blitz_payload = fetch_blitzortung_lightning()
+    aqi_payload = fetch_aqi()
+    airport_payload = fetch_airport_metar()
+    usgs_data = fetch_usgs_rain()
+    forecast_payload = fetch_multimodel_forecast()
+    hist_payload = fetch_historical_rain_30d()
+
+ambient = ambient_payload.get("data", {})
+blitz = blitz_payload.get("data", {})
+aqi_data = aqi_payload.get("data", {})
+airport = airport_payload.get("data", {})
+forecast = forecast_payload.get("data", {}).get("days", [])
+hist_rain = hist_payload.get("data", {}).get("rain_30d", [0.05] * 30)
+
+# ============================================================
+# DERIVED METRICS
+# ============================================================
 
 rain_today = 0.0
-if ambient.get("ok"):
+if ambient_payload["ok"]:
     rain_today = ambient.get("rain_today", 0.0) or 0.0
-elif airport.get("ok") and airport.get("precip"):
-    rain_today = airport["precip"]
+elif airport_payload["ok"]:
+    rain_today = airport.get("precip", 0.0) or 0.0
 
-rain_3d_forecast = sum(d["precip"] for d in forecast[:3])
-wind_now  = ambient.get("wind_speed", 0) or (airport.get("wind_mph") or 0)
+rain_3d_forecast = sum(day["precip"] for day in forecast[:3]) if forecast else 0.0
+wind_now = first_non_none(ambient.get("wind_speed"), airport.get("wind_mph"), 0) or 0
 pop_today = forecast[0]["pop"] if forecast else 0
 
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture(hist_rain, rain_today)
 
-# Lightning
-l_dist, l_source, l_strikes = resolve_lightning(ambient, blitz)
+l_dist, l_source, l_strikes = resolve_lightning(ambient_payload, blitz_payload)
 l_display = min(l_dist, 25)
-l_color = "#FF3333" if l_dist < 5 else "#FF8C00" if l_dist < 10 else "#FFD700" if l_dist < 15 else "#00FF9C"
-l_label  = "CRITICAL" if l_dist < 5 else "NEARBY" if l_dist < 10 else "MODERATE" if l_dist < 15 else "CLEAR"
+l_color = (
+    COLORS["red"] if l_dist < 5 else
+    COLORS["orange"] if l_dist < 10 else
+    COLORS["yellow"] if l_dist < 15 else
+    COLORS["green"]
+)
+l_label = (
+    "CRITICAL" if l_dist < 5 else
+    "NEARBY" if l_dist < 10 else
+    "MODERATE" if l_dist < 15 else
+    "CLEAR"
+)
 
-# UV Index
-uv_val = ambient.get("uv", 0) if ambient.get("ok") else 0
+uv_val = ambient.get("uv", 0) if ambient_payload["ok"] else 0
 uv_val = uv_val or 0
-uv_color = "#00FF9C" if uv_val <= 2 else "#AAFF00" if uv_val <= 5 else "#FFD700" if uv_val <= 7 else "#FF8C00" if uv_val <= 10 else "#FF3333"
-uv_label = "LOW" if uv_val <= 2 else "MODERATE" if uv_val <= 5 else "HIGH" if uv_val <= 7 else "VERY HIGH" if uv_val <= 10 else "EXTREME"
+uv_color = (
+    COLORS["green"] if uv_val <= 2 else
+    COLORS["lime"] if uv_val <= 5 else
+    COLORS["yellow"] if uv_val <= 7 else
+    COLORS["orange"] if uv_val <= 10 else
+    COLORS["red"]
+)
+uv_label = (
+    "LOW" if uv_val <= 2 else
+    "MODERATE" if uv_val <= 5 else
+    "HIGH" if uv_val <= 7 else
+    "VERY HIGH" if uv_val <= 10 else
+    "EXTREME"
+)
 
-# Feels Like
-temp_now = ambient.get("temp") if ambient.get("ok") else None
-hum_now  = ambient.get("humidity") if ambient.get("ok") else None
-fl_val   = calc_feels_like(temp_now, hum_now, wind_now)
-fl_display = max(0, min(120, fl_val)) if fl_val is not None else 70
-fl_color = "#5AC8FA" if (fl_val or 70) < 32 else "#00FFFF" if (fl_val or 70) < 50 else "#00FF9C" if (fl_val or 70) < 80 else "#FFD700" if (fl_val or 70) < 95 else "#FF8C00" if (fl_val or 70) < 105 else "#FF3333"
-fl_label = "FREEZING" if (fl_val or 70) < 32 else "COLD" if (fl_val or 70) < 50 else "COMFORTABLE" if (fl_val or 70) < 80 else "HOT" if (fl_val or 70) < 95 else "VERY HOT" if (fl_val or 70) < 105 else "DANGEROUS"
+temp_now = ambient.get("temp") if ambient_payload["ok"] else None
+hum_now = ambient.get("humidity") if ambient_payload["ok"] else None
+fl_val = calc_feels_like(temp_now, hum_now, wind_now)
+fl_display = clamp(fl_val if fl_val is not None else 70, 0, 120)
+fl_color = (
+    COLORS["blue"] if fl_display < 32 else
+    COLORS["cyan"] if fl_display < 50 else
+    COLORS["green"] if fl_display < 80 else
+    COLORS["yellow"] if fl_display < 95 else
+    COLORS["orange"] if fl_display < 105 else
+    COLORS["red"]
+)
+fl_label = (
+    "FREEZING" if fl_display < 32 else
+    "COLD" if fl_display < 50 else
+    "COMFORTABLE" if fl_display < 80 else
+    "HOT" if fl_display < 95 else
+    "VERY HOT" if fl_display < 105 else
+    "DANGEROUS"
+)
 
-# Humidity
 hum_val = hum_now or 0
-hum_color = "#5AC8FA" if hum_val < 30 else "#00FF9C" if hum_val < 60 else "#FFD700" if hum_val < 80 else "#FF8C00"
-hum_label = "DRY" if hum_val < 30 else "COMFORTABLE" if hum_val < 60 else "HUMID" if hum_val < 80 else "VERY HUMID"
+hum_color = (
+    COLORS["blue"] if hum_val < 30 else
+    COLORS["green"] if hum_val < 60 else
+    COLORS["yellow"] if hum_val < 80 else
+    COLORS["orange"]
+)
+hum_label = (
+    "DRY" if hum_val < 30 else
+    "COMFORTABLE" if hum_val < 60 else
+    "HUMID" if hum_val < 80 else
+    "VERY HUMID"
+)
 
-# Freeze Risk
 tonight_low = forecast[0]["lo"] if forecast else 50
-freeze_color = "#00FF9C" if tonight_low > 45 else "#FFD700" if tonight_low > 32 else "#FF8C00" if tonight_low > 28 else "#FF3333"
-freeze_label = "NO RISK" if tonight_low > 45 else "WATCH" if tonight_low > 32 else "FREEZE" if tonight_low > 28 else "HARD FREEZE"
-freeze_display = max(0, min(80, tonight_low))
+freeze_display = clamp(tonight_low, 0, 80)
+freeze_color = (
+    COLORS["green"] if tonight_low > 45 else
+    COLORS["yellow"] if tonight_low > 32 else
+    COLORS["orange"] if tonight_low > 28 else
+    COLORS["red"]
+)
+freeze_label = (
+    "NO RISK" if tonight_low > 45 else
+    "WATCH" if tonight_low > 32 else
+    "FREEZE" if tonight_low > 28 else
+    "HARD FREEZE"
+)
 
-# Fog Index
-dp_val     = calc_dewpoint_f(temp_now, hum_now)
+dp_val = calc_dewpoint_f(temp_now, hum_now)
 fog_spread = calc_fog_spread(temp_now, dp_val)
-fog_spread = fog_spread if fog_spread is not None else 20
-fog_spread = max(0, min(30, fog_spread))
-fog_color  = "#FF3333" if fog_spread < 3 else "#FF8C00" if fog_spread < 9 else "#FFD700" if fog_spread < 18 else "#00FF9C"
-fog_label  = "FOG IMMINENT" if fog_spread < 3 else "HIGH RISK" if fog_spread < 9 else "MODERATE" if fog_spread < 18 else "CLEAR"
+fog_display = clamp(fog_spread if fog_spread is not None else 20, 0, 30)
+fog_color = (
+    COLORS["red"] if fog_display < 3 else
+    COLORS["orange"] if fog_display < 9 else
+    COLORS["yellow"] if fog_display < 18 else
+    COLORS["green"]
+)
+fog_label = (
+    "FOG IMMINENT" if fog_display < 3 else
+    "HIGH RISK" if fog_display < 9 else
+    "MODERATE" if fog_display < 18 else
+    "CLEAR"
+)
 
-# AQI
-aqi_val     = aqi_data.get("aqi", 0) if aqi_data.get("ok") else 0
+aqi_val = aqi_data.get("aqi", 0) if aqi_payload["ok"] else 0
 aqi_display = min(aqi_val, 200)
-aqi_color   = "#00FF9C" if aqi_val <= 50 else "#AAFF00" if aqi_val <= 100 else "#FFD700" if aqi_val <= 150 else "#FF8C00" if aqi_val <= 200 else "#FF3333"
-aqi_label   = "GOOD" if aqi_val <= 50 else "MODERATE" if aqi_val <= 100 else "SENSITIVE" if aqi_val <= 150 else "UNHEALTHY" if aqi_val <= 200 else "HAZARDOUS"
+aqi_color = (
+    COLORS["green"] if aqi_val <= 50 else
+    COLORS["lime"] if aqi_val <= 100 else
+    COLORS["yellow"] if aqi_val <= 150 else
+    COLORS["orange"] if aqi_val <= 200 else
+    COLORS["red"]
+)
+aqi_label = (
+    "GOOD" if aqi_val <= 50 else
+    "MODERATE" if aqi_val <= 100 else
+    "SENSITIVE" if aqi_val <= 150 else
+    "UNHEALTHY" if aqi_val <= 200 else
+    "HAZARDOUS"
+)
 
-now = datetime.now(ZoneInfo("America/New_York"))
+rain3d_display = clamp(rain_3d_forecast, 0, 5)
+rain3d_color = (
+    COLORS["green"] if rain_3d_forecast < 0.5 else
+    COLORS["yellow"] if rain_3d_forecast < 1.5 else
+    COLORS["orange"] if rain_3d_forecast < 3.0 else
+    COLORS["red"]
+)
+rain3d_label = (
+    "LIGHT" if rain_3d_forecast < 0.5 else
+    "ELEVATED" if rain_3d_forecast < 1.5 else
+    "HEAVY" if rain_3d_forecast < 3.0 else
+    "SIGNIFICANT"
+)
 
-# ─────────────────────────────────────────────
-#  RENDER
-# ─────────────────────────────────────────────
-st.markdown(f"""
+current_time = now_local()
+tz_label = current_time.tzname() or "ET"
+
+# ============================================================
+# HEADER
+# ============================================================
+
+st.markdown(
+    f"""
 <div class="site-header">
     <div class="site-title">CULLOWHEE WEATHER INTELLIGENCE</div>
-    <div class="site-sub">North Carolina Center for the Advancement of Teaching — Cullowhee, NC &nbsp;|&nbsp;
-    {now.strftime('%A, %B %d, %Y  %I:%M %p')} EST</div>
+    <div class="site-sub">
+        {SITE} &nbsp;|&nbsp; {current_time.strftime('%A, %B %d, %Y %I:%M %p')} {tz_label}
+    </div>
     <div style="margin-top:8px;">
-        <span class="source-badge">📡 AWN: {'LIVE' if ambient.get('ok') else 'OFFLINE'}</span>
-        <span class="source-badge">⚡ BLITZORTUNG: {'LIVE' if blitz.get('ok') else 'OFFLINE'}</span>
-        <span class="source-badge">✈️ AIRPORT 24A: {'LIVE' if airport.get('ok') else 'OFFLINE'}</span>
-        <span class="source-badge">💧 USGS: {'LIVE' if any(v['ok'] for v in usgs.values()) else 'OFFLINE'}</span>
-        <span class="source-badge">🌬️ AQI: {'LIVE' if aqi_data.get('ok') else 'OFFLINE'}</span>
-        <span class="source-badge">🌐 OPEN-METEO: LIVE</span>
+        {render_source_status_badge("📡 AWN", ambient_payload["ok"])}
+        {render_source_status_badge("⚡ BLITZORTUNG", blitz_payload["ok"])}
+        {render_source_status_badge("✈️ AIRPORT 24A", airport_payload["ok"])}
+        {render_source_status_badge("💧 USGS", any(v["ok"] for v in usgs_data.values()))}
+        {render_source_status_badge("🌬️ AQI", aqi_payload["ok"])}
+        {render_source_status_badge("🌐 OPEN-METEO", True)}
     </div>
 </div>
-""", unsafe_allow_html=True)
-
-# ── GAUGE ROW 1 ──
-st.markdown('<div class="panel"><div class="panel-title">⚡ Hazard & Atmospheric Gauges</div>', unsafe_allow_html=True)
-r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
-
-with r1c1:
-    fig = make_gauge(l_display, "LIGHTNING PROXIMITY", min_val=0, max_val=25, unit=" mi", color=l_color,
-        thresholds=[{"range":[0,5],"color":"rgba(255,51,51,0.12)"},{"range":[5,10],"color":"rgba(255,140,0,0.12)"},
-                    {"range":[10,15],"color":"rgba(255,215,0,0.12)"},{"range":[15,25],"color":"rgba(0,255,156,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(l_label, l_color), unsafe_allow_html=True)
-    st.markdown(subsub(f"Strikes Today: <b style='color:#00FFCC'>{l_strikes}</b>"), unsafe_allow_html=True)
-    st.markdown(srctag(l_source), unsafe_allow_html=True)
-
-with r1c2:
-    fig = make_gauge(uv_val, "UV INDEX", min_val=0, max_val=12, unit="", color=uv_color,
-        thresholds=[{"range":[0,3],"color":"rgba(0,255,156,0.12)"},{"range":[3,6],"color":"rgba(255,215,0,0.12)"},
-                    {"range":[6,8],"color":"rgba(255,140,0,0.12)"},{"range":[8,12],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(uv_label, uv_color), unsafe_allow_html=True)
-    st.markdown(subsub("Protect skin &gt;3 | Seek shade &gt;6"), unsafe_allow_html=True)
-    st.markdown(srctag("AWN SENSOR"), unsafe_allow_html=True)
-
-with r1c3:
-    fig = make_gauge(fl_display, "FEELS LIKE", min_val=0, max_val=120, unit="&deg;F", color=fl_color,
-        thresholds=[{"range":[0,32],"color":"rgba(90,200,250,0.12)"},{"range":[32,60],"color":"rgba(0,255,255,0.12)"},
-                    {"range":[60,85],"color":"rgba(0,255,156,0.12)"},{"range":[85,105],"color":"rgba(255,140,0,0.12)"},
-                    {"range":[105,120],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(fl_label, fl_color), unsafe_allow_html=True)
-    actual_str = f"Actual: <b style='color:#00FFCC'>{temp_now}&deg;F</b>" if temp_now else "Actual: --"
-    st.markdown(subsub(actual_str), unsafe_allow_html=True)
-    st.markdown(srctag("AWN + CALC"), unsafe_allow_html=True)
-
-with r1c4:
-    fig = make_gauge(hum_val, "HUMIDITY", min_val=0, max_val=100, unit="%", color=hum_color,
-        thresholds=[{"range":[0,30],"color":"rgba(90,200,250,0.12)"},{"range":[30,60],"color":"rgba(0,255,156,0.12)"},
-                    {"range":[60,80],"color":"rgba(255,215,0,0.12)"},{"range":[80,100],"color":"rgba(255,140,0,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(hum_label, hum_color), unsafe_allow_html=True)
-    dp_str = f"Dewpoint: <b style='color:#00FFCC'>{dp_val}&deg;F</b>" if dp_val else "Dewpoint: --"
-    st.markdown(subsub(dp_str), unsafe_allow_html=True)
-    st.markdown(srctag("AWN SENSOR"), unsafe_allow_html=True)
-
-with r1c5:
-    w_color = "#00FF9C" if wind_now < 15 else "#FFD700" if wind_now < 25 else "#FF8C00" if wind_now < 35 else "#FF3333"
-    w_label = "CALM" if wind_now < 15 else "BREEZY" if wind_now < 25 else "STRONG" if wind_now < 35 else "DANGEROUS"
-    fig = make_gauge(wind_now, "WIND SPEED", min_val=0, max_val=60, unit=" mph", color=w_color,
-        thresholds=[{"range":[0,15],"color":"rgba(0,255,156,0.12)"},{"range":[15,25],"color":"rgba(255,215,0,0.12)"},
-                    {"range":[25,35],"color":"rgba(255,140,0,0.12)"},{"range":[35,60],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(w_label, w_color), unsafe_allow_html=True)
-    st.markdown(subsub(f"Gust: <b style='color:#00FFCC'>{ambient.get('wind_gust','--')} mph</b>"), unsafe_allow_html=True)
-    st.markdown(srctag("AWN SENSOR"), unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ── GAUGE ROW 2 ──
-st.markdown('<div class="panel"><div class="panel-title">🌱 Site Condition Gauges</div>', unsafe_allow_html=True)
-r2c1, r2c2, r2c3, r2c4, r2c5 = st.columns(5)
-
-with r2c1:
-    fig = make_gauge(soil_pct, "SOIL MOISTURE", color=soil_color,
-        thresholds=[{"range":[0,25],"color":"rgba(90,200,250,0.12)"},{"range":[25,50],"color":"rgba(0,255,156,0.12)"},
-                    {"range":[50,75],"color":"rgba(255,215,0,0.12)"},{"range":[75,100],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(soil_status, soil_color), unsafe_allow_html=True)
-    st.markdown(subsub(f"Storage: <b style='color:#00FFCC'>{soil_storage} in</b>"), unsafe_allow_html=True)
-    st.markdown(srctag("WATER BALANCE MODEL"), unsafe_allow_html=True)
-
-with r2c2:
-    p_color = pop_color(pop_today)
-    p_label = "DRY" if pop_today < 20 else "SLIGHT" if pop_today < 40 else "CHANCE" if pop_today < 60 else "LIKELY" if pop_today < 80 else "CERTAIN"
-    fig = make_gauge(pop_today, "PRECIP PROBABILITY", unit="%", color=p_color,
-        thresholds=[{"range":[0,20],"color":"rgba(0,255,156,0.12)"},{"range":[20,50],"color":"rgba(255,215,0,0.12)"},
-                    {"range":[50,80],"color":"rgba(255,140,0,0.12)"},{"range":[80,100],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(p_label, p_color), unsafe_allow_html=True)
-    st.markdown(subsub(f"Rain Today: <b style='color:#00FFCC'>{rain_today}&quot;</b>"), unsafe_allow_html=True)
-    st.markdown(srctag("OPEN-METEO HRRR/GFS"), unsafe_allow_html=True)
-
-with r2c3:
-    fig = make_gauge(freeze_display, "TONIGHT'S LOW / FREEZE RISK", min_val=0, max_val=80, unit="&deg;F", color=freeze_color,
-        thresholds=[{"range":[0,28],"color":"rgba(255,51,51,0.12)"},{"range":[28,32],"color":"rgba(255,140,0,0.12)"},
-                    {"range":[32,45],"color":"rgba(255,215,0,0.12)"},{"range":[45,80],"color":"rgba(0,255,156,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(freeze_label, freeze_color), unsafe_allow_html=True)
-    st.markdown(subsub(f"Tonight Low: <b style='color:#00FFCC'>{tonight_low}&deg;F</b>"), unsafe_allow_html=True)
-    st.markdown(srctag("OPEN-METEO HRRR/GFS"), unsafe_allow_html=True)
-
-with r2c4:
-    fig = make_gauge(fog_spread, "FOG RISK (DEW SPREAD)", min_val=0, max_val=30, unit="&deg;F", color=fog_color,
-        thresholds=[{"range":[0,3],"color":"rgba(255,51,51,0.12)"},{"range":[3,9],"color":"rgba(255,140,0,0.12)"},
-                    {"range":[9,18],"color":"rgba(255,215,0,0.12)"},{"range":[18,30],"color":"rgba(0,255,156,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(fog_label, fog_color), unsafe_allow_html=True)
-    st.markdown(subsub("Lower spread = higher fog risk"), unsafe_allow_html=True)
-    st.markdown(srctag("AWN + CALC"), unsafe_allow_html=True)
-
-with r2c5:
-    fig = make_gauge(aqi_display, "AIR QUALITY INDEX", min_val=0, max_val=200, unit="", color=aqi_color,
-        thresholds=[{"range":[0,50],"color":"rgba(0,255,156,0.12)"},{"range":[50,100],"color":"rgba(255,215,0,0.12)"},
-                    {"range":[100,150],"color":"rgba(255,140,0,0.12)"},{"range":[150,200],"color":"rgba(255,51,51,0.12)"}])
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-    st.markdown(sublabel(aqi_label, aqi_color), unsafe_allow_html=True)
-    aqi_display_val = aqi_val if aqi_data.get("ok") else "--"
-    st.markdown(subsub(f"AQI: <b style='color:#00FFCC'>{aqi_display_val}</b> (US EPA Scale)"), unsafe_allow_html=True)
-    st.markdown(srctag("OPEN-METEO AQ API"), unsafe_allow_html=True)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ── 7-DAY FORECAST ──
-st.markdown('<div class="panel"><div class="panel-title">📅 7-Day Multi-Model Forecast</div>', unsafe_allow_html=True)
-cols = st.columns(7)
-for i, day in enumerate(forecast):
-    pc = pop_color(day["pop"])
-    with cols[i]:
-        st.markdown(f"""
-        <div style="background:rgba(0,136,255,0.05);border:1px solid rgba(0,136,255,0.2);
-                    border-top:3px solid {pc};border-radius:8px;padding:10px 6px;text-align:center;">
-            <div style="font-family:'Rajdhani';font-weight:700;color:#FFFFFF;font-size:1.1em;">{day['day']}</div>
-            <div style="font-family:'Share Tech Mono';font-size:0.68em;color:#7AACCC;">{day['date'].split()[1]}</div>
-            <div style="margin:6px 0;">
-                <span style="color:#FF6B35;font-weight:700;font-size:1.2em;">{day['hi']}&deg;</span>
-                <span style="color:#5AC8FA;font-size:0.95em;"> / {day['lo']}&deg;</span>
-            </div>
-            <div style="color:{pc};font-weight:700;font-size:0.95em;">{day['pop']}%</div>
-            <div style="color:#00FFCC;font-size:0.82em;">{day['precip']}&quot;</div>
-            <div style="font-size:0.65em;color:#7AACCC;margin-top:2px;">{day['desc']}</div>
-            <div style="margin-top:6px;background:rgba(0,255,180,0.08);border:1px solid rgba(0,255,180,0.2);
-                        border-radius:3px;padding:1px 4px;font-size:0.62em;color:#00FFB4;
-                        font-family:'Share Tech Mono';">{day['model']}</div>
-        </div>
-        """, unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
-
-# ── DATA SOURCE PANELS ──
-live_panels = []
-if ambient.get("ok"):
-    live_panels.append("ambient")
-if airport.get("ok"):
-    live_panels.append("airport")
-usgs_live = {k: v for k, v in usgs.items() if v["ok"]}
-if usgs_live:
-    live_panels.append("usgs")
-live_panels.append("soil")
-
-if live_panels:
-    panel_cols = st.columns(len(live_panels))
-    for idx, panel_key in enumerate(live_panels):
-        with panel_cols[idx]:
-            if panel_key == "ambient":
-                st.markdown('<div class="panel"><div class="panel-title">📡 Riverbend on the Tuckasegee (AWN)</div>', unsafe_allow_html=True)
-                st.caption(f"Station: {ambient['name']}")
-                c1, c2 = st.columns(2)
-                c1.metric("Temperature",  f"{ambient['temp']}°F")
-                c2.metric("Humidity",     f"{ambient['humidity']}%")
-                c1.metric("Rain Today",   f"{ambient['rain_today']}\"")
-                c2.metric("Rain/Hour",    f"{ambient['rain_1hr']}\"")
-                c1.metric("Rain 7-Day",   f"{ambient['rain_week']}\"")
-                c2.metric("Rain 30-Day",  f"{ambient['rain_month']}\"")
-                c1.metric("Pressure",     f"{ambient['pressure']} inHg")
-                c2.metric("Solar Rad",    f"{ambient['solar']} W/m²")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            elif panel_key == "airport":
-                st.markdown('<div class="panel"><div class="panel-title">✈️ Jackson County Airport (24A)</div>', unsafe_allow_html=True)
-                c1, c2 = st.columns(2)
-                c1.metric("Temperature",  f"{airport['temp_f']}°F" if airport.get('temp_f') else "--")
-                c2.metric("Wind",         f"{airport['wind_mph']} mph" if airport.get('wind_mph') else "--")
-                c1.metric("Wind Dir",     f"{airport['wind_dir']}°" if airport.get('wind_dir') else "--")
-                c2.metric("Altimeter",    f"{airport['altim']} inHg" if airport.get('altim') else "--")
-                c1.metric("Sky Cover",    airport.get("cover", "--"))
-                c2.metric("Precip",       f"{airport.get('precip', 0.0)}\"")
-                st.caption(f"Raw METAR: `{airport.get('raw','')}`")
-                st.caption(f"Obs Time: {airport.get('time','')}")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            elif panel_key == "usgs":
-                st.markdown('<div class="panel"><div class="panel-title">💧 USGS Stream Gauges</div>', unsafe_allow_html=True)
-                for site_id, info in usgs_live.items():
-                    st.metric(f"🟢 {info['name']}", f"{info['value']}\" precip")
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            elif panel_key == "soil":
-                st.markdown('<div class="panel"><div class="panel-title">🌱 Soil Moisture Estimate</div>', unsafe_allow_html=True)
-                rain_30d_total = round(sum(hist_rain), 2)
-                st.markdown(f"""
-                <div style="font-family:'Share Tech Mono';font-size:0.8em;color:#7AACCC;line-height:1.8;">
-                <b style="color:#FFFFFF">Model:</b> Water Balance Bucket<br>
-                <b style="color:#FFFFFF">Soil Type:</b> Mountain Clay Loam (Ultisol)<br>
-                <b style="color:#FFFFFF">Root Zone:</b> 12 inches<br>
-                <b style="color:#FFFFFF">Field Capacity:</b> 2.16 in storage<br>
-                <b style="color:#FFFFFF">Current Storage:</b> {soil_storage} in<br>
-                <b style="color:#FFFFFF">Saturation:</b> <span style="color:{soil_color};font-weight:700;">{soil_pct}% &mdash; {soil_status}</span><br>
-                <b style="color:#FFFFFF">30-Day Rain:</b> {rain_30d_total}&quot;
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-
-# ── RADAR ──
-st.markdown('<div class="panel"><div class="panel-title">🛰️ Live Radar — Jackson County / Cullowhee, NC</div>', unsafe_allow_html=True)
-st.components.v1.html(
-    '<iframe width="100%" height="500" src="https://embed.windy.com/embed2.html?lat=35.308&lon=-83.175&zoom=9&overlay=radar&product=radar&level=surface" frameborder="0" style="border-radius:8px;"></iframe>',
-    height=510
+""",
+    unsafe_allow_html=True,
 )
-st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown(f"""
-<div style="text-align:center;font-family:'Share Tech Mono';font-size:0.7em;color:#2A4060;margin-top:20px;">
-CULLOWHEE WEATHER INTELLIGENCE &nbsp;|&nbsp; {SITE} &nbsp;|&nbsp;
-Sources: Riverbend AWN &middot; Blitzortung &middot; NOAA/24A &middot; USGS 03439000/03460000 &middot; Open-Meteo (HRRR/GFS/AQ) &nbsp;|&nbsp; Auto-refresh: 5 min
-</div>
-""", unsafe_allow_html=True)
+# ============================================================
+# GAUGE ROW 1
+# ============================================================
+
+st.markdown('<div class="panel"><div class="panel-title">⚡ Hazard & Atmospheric Gauges</div>', unsafe_allow_html=True)
+cols = st.columns(5)
+
+row1 = [
+    {
+        "title": "LIGHTNING PROXIMITY",
+        "value": l_display,
+        "min_val": 0,
+        "max_val": 25,
+        "unit": " mi",
+        "thresholds": GAUGE_THRESHOLDS["lightning"],
+        "color": l_color,
+        "label": l_label,
+        "detail": f"Strikes Today: <b style='color:#00FFCC'>{l_strikes}</b>",
+        "source": l_source,
+    },
+    {
+        "title": "UV INDEX",
+        "value": uv_val,
+        "min_val": 0,
+        "max_val": 12,
+        "unit": "",
+        "thresholds": GAUGE_THRESHOLDS["uv"],
+        "color": uv_color,
+        "label": uv_label,
+        "detail": "Protect skin &gt;3 | Seek shade &gt;6",
+        "source": "AWN SENSOR",
+    },
+    {
+        "title": "FEELS LIKE",
+        "value": fl_display,
+        "min_val": 0,
+        "max_val": 120,
+        "unit": "°F",
+        "thresholds": GAUGE_THRESHOLDS["feels_like"],
+        "color": fl_color,
+        "label": fl_label,
+        "detail": f"Actual: <b style='color:#00FFCC'>{format_num(temp_now, 1, '°F')}</b>",
+        "source": "AWN + CALC",
+    },
+    {
+        "title": "HUMIDITY",
+        "value": hum_val,
+        "min_val": 0,
+        "max_val": 100,
+        "unit": "%",
+        "thresholds": GAUGE_THRESHOLDS["humidity"],
+        "color": hum_color,
+        "label": hum_label,
+        "detail": f"Dewpoint: <b style='color:#00FFCC'>{format_num(dp_val, 1, '°F')}</b>",
+        "source": "AWN SENSOR",
+    },
+    {
+        "title": "WIND SPEED",
+        "value": wind_now,
+        "min_val": 0,
+        "max_val": 60,
+        "unit": " mph",
+        "thresholds": GAUGE_THRESHOLDS["wind"],
+        "color": (
+            COLORS["green"] if wind_now < 15 else
+            COLORS["yellow"] if wind_now < 25 else
+            COLORS["orange"] if wind_now < 35 else
+            COLORS["red"]
+        ),
+        "label": (
+            "CALM" if wind_now < 15 else
+            "BREEZY" if wind_now < 25 else
+            "STRONG" if wind_now < 35 else
+            "DANGEROUS"
+        ),
+        "detail": f"Gust: <b style='color:#00FFCC'>{format_num(ambient.get('wind_gust'), 1, ' mph')}</b>",
+        "source": "AWN SENSOR" if ambient_payload["ok"] else "AIRPORT METAR",
+    },
+]
+
+for col, config in zip(cols, row1):
+    render_gauge_card(col, config)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# GAUGE ROW 2
+# ============================================================
+
+st.markdown('<div class="panel"><div class="panel-title">🌱 Site Condition Gauges</div>', unsafe_allow_html=True)
+cols = st.columns(5)
+
+row2 = [
+    {
+        "title": "SOIL MOISTURE",
+        "value": soil_pct,
+        "min_val": 0,
+        "max_val": 100,
+        "unit": "%",
+        "thresholds": GAUGE_THRESHOLDS["soil"],
+        "color": soil_color,
+        "label": soil_status,
+        "detail": f"Storage: <b style='color:#00FFCC'>{soil_storage} in</b>",
+        "source": "WATER BALANCE MODEL",
+    },
+    {
+        "title": "PRECIP PROBABILITY",
+        "value": pop_today,
+        "min_val": 0,
+        "max_val": 100,
+        "unit": "%",
+        "thresholds": GAUGE_THRESHOLDS["precip_prob"],
+        "color": pop_color(pop_today),
+        "label": (
+            "DRY" if pop_today < 20 else
+            "SLIGHT" if pop_today < 40 else
+            "CHANCE" if pop_today < 60 else
+            "LIKELY" if pop_today < 80 else
+            "CERTAIN"
+        ),
+        "detail": f"Today forecast model: <b style='color:#00FFCC'>{forecast[0]['model'] if forecast else 'N/A'}</b>",
+        "source": "OPEN-METEO",
+    },
+    {
+        "title": "FREEZE RISK",
+        "value": freeze_display,
+        "min_val": 0,
+        "max_val": 80,
+        "unit": "°F",
+        "thresholds": GAUGE_THRESHOLDS["freeze"],
+        "color": freeze_color,
+        "label": freeze_label,
+        "detail": "Based on forecast low",
+        "source": "OPEN-METEO",
+    },
+    {
+        "title": "FOG SPREAD",
+        "value": fog_display,
+        "min_val": 0,
+        "max_val": 30,
+        "unit": "°F",
+        "thresholds": GAUGE_THRESHOLDS["fog"],
+        "color": fog_color,
+        "label": fog_label,
+        "detail": f"T - Td spread: <b style='color:#00FFCC'>{format_num(fog_spread, 1, '°F')}</b>",
+        "source": "AWN + CALC",
+    },
+    {
+        "title": "AIR QUALITY",
+        "value": aqi_display,
+        "min_val": 0,
+        "max_val": 200,
+        "unit": "",
+        "thresholds": GAUGE_THRESHOLDS["aqi"],
+        "color": aqi_color,
+        "label": aqi_label,
+        "detail": "US AQI scale",
+        "source": "OPEN-METEO AQI",
+    },
+]
+
+for col, config in zip(cols, row2):
+    render_gauge_card(col, config)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# GAUGE ROW 3
+# ============================================================
+
+st.markdown('<div class="panel"><div class="panel-title">🌧️ Rain & Short-Term Impact</div>', unsafe_allow_html=True)
+cols = st.columns(3)
+
+row3 = [
+    {
+        "title": "TODAY RAIN",
+        "value": clamp(rain_today, 0, 5),
+        "min_val": 0,
+        "max_val": 5,
+        "unit": " in",
+        "thresholds": GAUGE_THRESHOLDS["rain3d"],
+        "color": (
+            COLORS["green"] if rain_today < 0.25 else
+            COLORS["yellow"] if rain_today < 1.0 else
+            COLORS["orange"] if rain_today < 2.0 else
+            COLORS["red"]
+        ),
+        "label": (
+            "LIGHT" if rain_today < 0.25 else
+            "MODERATE" if rain_today < 1.0 else
+            "HEAVY" if rain_today < 2.0 else
+            "SIGNIFICANT"
+        ),
+        "detail": f"1 hr rain: <b style='color:#00FFCC'>{format_num(ambient.get('rain_1hr'), 2, ' in')}</b>",
+        "source": "AWN SENSOR" if ambient_payload["ok"] else "AIRPORT METAR",
+    },
+    {
+        "title": "3-DAY RAIN",
+        "value": rain3d_display,
+        "min_val": 0,
+        "max_val": 5,
+        "unit": " in",
+        "thresholds": GAUGE_THRESHOLDS["rain3d"],
+        "color": rain3d_color,
+        "label": rain3d_label,
+        "detail": "Sum of next 3 forecast days",
+        "source": "OPEN-METEO",
+    },
+    {
+        "title": "PRESSURE",
+        "value": clamp(first_non_none(ambient.get("pressure"), 29.92) or 29.92, 28, 32),
+        "min_val": 28,
+        "max_val": 32,
+        "unit": " inHg",
+        "thresholds": [
+            {"range": [28, 29], "color": "rgba(255,51,51,0.12)"},
+            {"range": [29, 29.8], "color": "rgba(255,140,0,0.12)"},
+            {"range": [29.8, 30.3], "color": "rgba(0,255,156,0.12)"},
+            {"range": [30.3, 32], "color": "rgba(90,200,250,0.12)"},
+        ],
+        "color": COLORS["cyan"],
+        "label": "BAROMETRIC",
+        "detail": f"Solar: <b style='color:#00FFCC'>{format_num(ambient.get('solar'), 0, ' W/m²')}</b>",
+        "source": "AWN SENSOR",
+    },
+]
+
+for col, config in zip(cols, row3):
+    render_gauge_card(col, config)
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# FORECAST
+# ============================================================
+
+st.markdown('<div class="panel"><div class="panel-title">📅 Seven-Day Forecast</div>', unsafe_allow_html=True)
+
+forecast_html = ['<div class="forecast-row">']
+for day in forecast:
+    forecast_html.append(
+        f"""
+        <div class="forecast-tile">
+            <div class="forecast-day">{day['date']}</div>
+            <div class="forecast-hi">{day['hi']}°</div>
+            <div class="forecast-lo">Low {day['lo']}°</div>
+            <div class="small-muted">{day['desc']}</div>
+            <hr class="soft">
+            <div class="small-muted">Rain: {day['precip']} in</div>
+            <div class="small-muted">PoP: {day['pop']}%</div>
+            <div class="small-muted">Wind: {day['wind']} mph</div>
+            <div class="small-muted">Model: {day['model']}</div>
+        </div>
+        """
+    )
+forecast_html.append("</div>")
+st.markdown("".join(forecast_html), unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# DATA STATUS / SOURCE DETAIL
+# ============================================================
+
+left, right = st.columns([1.2, 1.0])
+
+with left:
+    st.markdown('<div class="panel"><div class="panel-title">📡 Sensor & Observation Snapshot</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+
+    with c1:
+        render_data_card("Air Temperature", format_num(temp_now, 1, "°F"), "Ambient station")
+        render_data_card("Humidity", format_num(hum_now, 0, "%"), "Ambient station")
+        render_data_card("Wind Gust", format_num(ambient.get("wind_gust"), 1, " mph"), "Ambient station")
+        render_data_card("Rain Today", format_num(rain_today, 2, " in"), "Ambient/Airport fallback")
+
+    with c2:
+        render_data_card("Dew Point", format_num(dp_val, 1, "°F"), "Calculated")
+        render_data_card("Fog Spread", format_num(fog_spread, 1, "°F"), "Calculated")
+        render_data_card("Lightning Distance", format_num(l_dist, 1, " mi"), l_source)
+        render_data_card("AQI", format_num(aqi_val, 0, ""), "Open-Meteo AQI")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+with right:
+    st.markdown('<div class="panel"><div class="panel-title">💧 USGS / Aviation / Diagnostics</div>', unsafe_allow_html=True)
+
+    for site_id, item in usgs_data.items():
+        status = "LIVE" if item["ok"] else "OFFLINE"
+        render_data_card(
+            f"USGS {item['name']}",
+            format_num(item["value"], 2, " in"),
+            f"Gauge {site_id} • {status}",
+        )
+
+    render_data_card("Airport METAR", AIRPORT_ID, airport.get("raw", "No raw observation"))
+    render_data_card("Forecast Source", "Open-Meteo", "HRRR for near term, GFS farther out")
+
+    if ambient_payload["error"] or blitz_payload["error"] or aqi_payload["error"] or airport_payload["error"]:
+        st.markdown("<hr class='soft'>", unsafe_allow_html=True)
+        st.markdown("<div class='data-card-title'>Diagnostics</div>", unsafe_allow_html=True)
+        for payload in [ambient_payload, blitz_payload, aqi_payload, airport_payload, hist_payload]:
+            if payload.get("error"):
+                st.markdown(
+                    f"<div class='small-muted'><b>{payload.get('source')}:</b> {payload.get('error')}</div>",
+                    unsafe_allow_html=True,
+                )
+
+    st.markdown("</div>", unsafe_allow_html=True)

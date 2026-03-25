@@ -239,8 +239,9 @@ section.main > div {
 }
 .forecast-row {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 10px;
+    width: 100%;
 }
 .forecast-tile {
     background: rgba(0,136,255,0.05);
@@ -248,6 +249,7 @@ section.main > div {
     border-radius: 10px;
     padding: 12px;
     text-align: center;
+    min-width: 0;
 }
 .forecast-day {
     font-family: 'Share Tech Mono', monospace;
@@ -465,12 +467,6 @@ def estimate_soil_moisture_belk(rain_30d, today_rain=0.0, profile="belk_compacte
 
 
 def moon_phase_info(target_dt=None):
-    """
-    Returns:
-      illumination_pct (0-100),
-      phase_name,
-      moon_age_days (0-29.53)
-    """
     if target_dt is None:
         target_dt = now_local()
 
@@ -519,7 +515,6 @@ def moon_phase_info(target_dt=None):
         phase_name = "NEW MOON"
 
     return illumination_pct, phase_name, round(moon_age, 1)
-
 
 # ============================================================
 # DATA FETCHERS
@@ -822,7 +817,6 @@ def fetch_historical_rain_30d():
     except Exception as e:
         return ok_payload(data={"rain_30d": [0.05] * 30}, source="OPEN-METEO HIST", error=str(e))
 
-
 # ============================================================
 # UI HELPERS
 # ============================================================
@@ -939,7 +933,6 @@ def render_data_card(title, value, detail=None):
         """,
         unsafe_allow_html=True,
     )
-
 
 # ============================================================
 # LOAD DATA
@@ -1376,10 +1369,11 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown('<div class="panel"><div class="panel-title">📅 Seven-Day Forecast</div>', unsafe_allow_html=True)
 
-forecast_html = ['<div class="forecast-row">']
-for day in forecast:
-    forecast_html.append(
-        f"""
+if forecast:
+    forecast_html = ['<div class="forecast-row">']
+
+    for day in forecast:
+        forecast_html.append(f"""
         <div class="forecast-tile">
             <div class="forecast-day">{day['date']}</div>
             <div class="forecast-hi">{day['hi']}°</div>
@@ -1391,10 +1385,13 @@ for day in forecast:
             <div class="small-muted">Wind: {day['wind']} mph</div>
             <div class="small-muted">Model: {day['model']}</div>
         </div>
-        """
-    )
-forecast_html.append("</div>")
-st.markdown("".join(forecast_html), unsafe_allow_html=True)
+        """)
+
+    forecast_html.append("</div>")
+    st.markdown("".join(forecast_html), unsafe_allow_html=True)
+else:
+    st.warning("Forecast data unavailable.")
+
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================

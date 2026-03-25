@@ -113,11 +113,12 @@ GAUGE_THRESHOLDS = {
         {"range": [32, 45], "color": "rgba(255,215,0,0.12)"},
         {"range": [45, 80], "color": "rgba(0,255,156,0.12)"},
     ],
-    "fog": [
-        {"range": [0, 3], "color": "rgba(255,51,51,0.12)"},
-        {"range": [3, 9], "color": "rgba(255,140,0,0.12)"},
-        {"range": [9, 18], "color": "rgba(255,215,0,0.12)"},
-        {"range": [18, 30], "color": "rgba(0,255,156,0.12)"},
+    "moon": [
+        {"range": [0, 12.5], "color": "rgba(90,200,250,0.12)"},
+        {"range": [12.5, 37.5], "color": "rgba(0,255,156,0.12)"},
+        {"range": [37.5, 62.5], "color": "rgba(255,215,0,0.12)"},
+        {"range": [62.5, 87.5], "color": "rgba(255,140,0,0.12)"},
+        {"range": [87.5, 100], "color": "rgba(255,255,255,0.16)"},
     ],
     "aqi": [
         {"range": [0, 50], "color": "rgba(0,255,156,0.12)"},
@@ -337,12 +338,6 @@ def calc_dewpoint_f(temp_f, humidity):
         return None
 
 
-def calc_fog_spread(temp_f, dewpoint_f):
-    if temp_f is None or dewpoint_f is None:
-        return None
-    return round(temp_f - dewpoint_f, 1)
-
-
 def weather_desc(code):
     codes = {
         0: "Clear",
@@ -383,11 +378,6 @@ def pop_color(pop):
 
 
 def estimate_soil_moisture_belk(rain_30d, today_rain=0.0, profile="belk_compacted"):
-    """
-    Relative wetness model for Belk Building area.
-    This is a dashboard index, not a direct in-ground soil sensor.
-    """
-
     profiles = {
         "belk_compacted": {
             "field_capacity": 2.40,
@@ -452,7 +442,6 @@ def estimate_soil_moisture_belk(rain_30d, today_rain=0.0, profile="belk_compacte
             )
 
         effective_rain *= weight
-
         drainage = max(0.0, (storage - field_capacity) * drainage_coeff)
 
         storage = storage + effective_rain - et_daily - drainage
@@ -473,6 +462,63 @@ def estimate_soil_moisture_belk(rain_30d, today_rain=0.0, profile="belk_compacte
         return round(pct, 1), "ADEQUATE", COLORS["green"], round(storage, 2)
     else:
         return round(pct, 1), "DRY", COLORS["blue"], round(storage, 2)
+
+
+def moon_phase_info(target_dt=None):
+    """
+    Returns:
+      illumination_pct (0-100),
+      phase_name,
+      moon_age_days (0-29.53)
+    """
+    if target_dt is None:
+        target_dt = now_local()
+
+    year = target_dt.year
+    month = target_dt.month
+    day = target_dt.day + (
+        target_dt.hour / 24.0
+        + target_dt.minute / 1440.0
+        + target_dt.second / 86400.0
+    )
+
+    if month < 3:
+        year -= 1
+        month += 12
+
+    month += 1
+    c = 365.25 * year
+    e = 30.6 * month
+    jd = c + e + day - 694039.09
+    jd /= 29.5305882
+    frac = jd - int(jd)
+    if frac < 0:
+        frac += 1
+
+    moon_age = frac * 29.5305882
+    illumination = (1 - math.cos(2 * math.pi * frac)) / 2
+    illumination_pct = round(illumination * 100, 1)
+
+    if moon_age < 1.84566:
+        phase_name = "NEW MOON"
+    elif moon_age < 5.53699:
+        phase_name = "WAXING CRESCENT"
+    elif moon_age < 9.22831:
+        phase_name = "FIRST QUARTER"
+    elif moon_age < 12.91963:
+        phase_name = "WAXING GIBBOUS"
+    elif moon_age < 16.61096:
+        phase_name = "FULL MOON"
+    elif moon_age < 20.30228:
+        phase_name = "WANING GIBBOUS"
+    elif moon_age < 23.99361:
+        phase_name = "LAST QUARTER"
+    elif moon_age < 27.68493:
+        phase_name = "WANING CRESCENT"
+    else:
+        phase_name = "NEW MOON"
+
+    return illumination_pct, phase_name, round(moon_age, 1)
 
 
 # ============================================================
@@ -1023,19 +1069,14 @@ freeze_label = (
 )
 
 dp_val = calc_dewpoint_f(temp_now, hum_now)
-fog_spread = calc_fog_spread(temp_now, dp_val)
-fog_display = clamp(fog_spread if fog_spread is not None else 20, 0, 30)
-fog_color = (
-    COLORS["red"] if fog_display < 3 else
-    COLORS["orange"] if fog_display < 9 else
-    COLORS["yellow"] if fog_display < 18 else
-    COLORS["green"]
-)
-fog_label = (
-    "FOG IMMINENT" if fog_display < 3 else
-    "HIGH RISK" if fog_display < 9 else
-    "MODERATE" if fog_display < 18 else
-    "CLEAR"
+
+moon_pct, moon_name, moon_age = moon_phase_info(now_local())
+moon_color = (
+    COLORS["white"] if moon_pct >= 90 else
+    COLORS["orange"] if moon_pct >= 65 else
+    COLORS["yellow"] if moon_pct >= 40 else
+    COLORS["green"] if moon_pct >= 15 else
+    COLORS["blue"]
 )
 
 aqi_val = aqi_data.get("aqi", 0) if aqi_payload["ok"] else 0
@@ -1233,16 +1274,16 @@ row2 = [
         "source": "OPEN-METEO",
     },
     {
-        "title": "FOG SPREAD",
-        "value": fog_display,
+        "title": "MOON PHASE",
+        "value": moon_pct,
         "min_val": 0,
-        "max_val": 30,
-        "unit": "°F",
-        "thresholds": GAUGE_THRESHOLDS["fog"],
-        "color": fog_color,
-        "label": fog_label,
-        "detail": f"T - Td spread: <b style='color:#00FFCC'>{format_num(fog_spread, 1, '°F')}</b>",
-        "source": "AWN + CALC",
+        "max_val": 100,
+        "unit": "%",
+        "thresholds": GAUGE_THRESHOLDS["moon"],
+        "color": moon_color,
+        "label": moon_name,
+        "detail": f"Moon age: <b style='color:#00FFCC'>{moon_age} days</b>",
+        "source": "ASTRONOMICAL CALC",
     },
     {
         "title": "AIR QUALITY",
@@ -1374,7 +1415,7 @@ with left:
 
     with c2:
         render_data_card("Dew Point", format_num(dp_val, 1, "°F"), "Calculated")
-        render_data_card("Fog Spread", format_num(fog_spread, 1, "°F"), "Calculated")
+        render_data_card("Moon Phase", moon_name, f"Illumination: {moon_pct}%")
         render_data_card("Lightning Distance", format_num(l_dist, 1, " mi"), l_source)
         render_data_card("AQI", format_num(aqi_val, 0, ""), "Open-Meteo AQI")
 

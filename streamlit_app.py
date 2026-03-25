@@ -12,7 +12,7 @@ from streamlit_autorefresh import st_autorefresh
 # ============================================================
 
 st.set_page_config(
-    page_title="Cullowhee Weather Intelligence",
+    page_title="WCU Belk Weather Intelligence",
     layout="wide",
 )
 
@@ -22,9 +22,9 @@ st_autorefresh(interval=300000, key="refresh")
 # CONSTANTS / CONFIG
 # ============================================================
 
-LAT = 35.3079
-LON = -83.1746
-SITE = "NCCAT — Cullowhee, NC"
+LAT = 35.307205
+LON = -83.182899
+SITE = "Belk Building — Western Carolina University, Cullowhee, NC"
 TIMEZONE = ZoneInfo("America/New_York")
 
 AMBIENT_API_KEY = st.secrets.get(
@@ -59,29 +59,29 @@ COLORS = {
     "red": "#FF3333",
     "white": "#FFFFFF",
     "muted": "#7AACCC",
-    "deep": "#060C14",
-    "panel": "rgba(10,20,35,0.85)",
 }
 
 GAUGE_THRESHOLDS = {
     "lightning": [
-        {"range": [0, 5], "color": "rgba(255,51,51,0.12)"},
+        {"range": [0, 1], "color": "rgba(0,255,156,0.12)"},
+        {"range": [1, 5], "color": "rgba(255,51,51,0.12)"},
         {"range": [5, 10], "color": "rgba(255,140,0,0.12)"},
         {"range": [10, 15], "color": "rgba(255,215,0,0.12)"},
         {"range": [15, 25], "color": "rgba(0,255,156,0.12)"},
+    ],
+    "temp": [
+        {"range": [0, 32], "color": "rgba(90,200,250,0.12)"},
+        {"range": [32, 50], "color": "rgba(0,255,255,0.12)"},
+        {"range": [50, 80], "color": "rgba(0,255,156,0.12)"},
+        {"range": [80, 95], "color": "rgba(255,215,0,0.12)"},
+        {"range": [95, 105], "color": "rgba(255,140,0,0.12)"},
+        {"range": [105, 120], "color": "rgba(255,51,51,0.12)"},
     ],
     "uv": [
         {"range": [0, 3], "color": "rgba(0,255,156,0.12)"},
         {"range": [3, 6], "color": "rgba(255,215,0,0.12)"},
         {"range": [6, 8], "color": "rgba(255,140,0,0.12)"},
         {"range": [8, 12], "color": "rgba(255,51,51,0.12)"},
-    ],
-    "feels_like": [
-        {"range": [0, 32], "color": "rgba(90,200,250,0.12)"},
-        {"range": [32, 60], "color": "rgba(0,255,255,0.12)"},
-        {"range": [60, 85], "color": "rgba(0,255,156,0.12)"},
-        {"range": [85, 105], "color": "rgba(255,140,0,0.12)"},
-        {"range": [105, 120], "color": "rgba(255,51,51,0.12)"},
     ],
     "humidity": [
         {"range": [0, 30], "color": "rgba(90,200,250,0.12)"},
@@ -274,7 +274,7 @@ hr.soft {
 )
 
 # ============================================================
-# GENERIC HELPERS
+# HELPERS
 # ============================================================
 
 def now_local() -> datetime:
@@ -312,7 +312,7 @@ def format_num(value, digits=1, suffix=""):
 
 
 # ============================================================
-# SCIENCE / CALC HELPERS
+# SCIENCE / CALCS
 # ============================================================
 
 def haversine_miles(lat1, lon1, lat2, lon2):
@@ -322,33 +322,6 @@ def haversine_miles(lat1, lon1, lat2, lon2):
     dlon = lon2 - lon1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     return r * 2 * math.asin(math.sqrt(a))
-
-
-def calc_feels_like(temp_f, humidity, wind_mph):
-    if temp_f is None:
-        return None
-    humidity = humidity or 0
-    wind_mph = wind_mph or 0
-
-    if temp_f >= 80 and humidity >= 40:
-        hi = (
-            -42.379
-            + 2.04901523 * temp_f
-            + 10.14333127 * humidity
-            - 0.22475541 * temp_f * humidity
-            - 0.00683783 * temp_f ** 2
-            - 0.05481717 * humidity ** 2
-            + 0.00122874 * temp_f ** 2 * humidity
-            + 0.00085282 * temp_f * humidity ** 2
-            - 0.00000199 * temp_f ** 2 * humidity ** 2
-        )
-        return round(hi, 1)
-
-    if temp_f <= 50 and wind_mph > 3:
-        wc = 35.74 + 0.6215 * temp_f - 35.75 * (wind_mph ** 0.16) + 0.4275 * temp_f * (wind_mph ** 0.16)
-        return round(wc, 1)
-
-    return round(temp_f, 1)
 
 
 def calc_dewpoint_f(temp_f, humidity):
@@ -409,39 +382,97 @@ def pop_color(pop):
     return COLORS["red"]
 
 
-def estimate_soil_moisture(rain_30d, today_rain=0.0):
-    field_capacity = 2.16
-    wilting_point = 1.80
-    max_storage = field_capacity + 0.5
+def estimate_soil_moisture_belk(rain_30d, today_rain=0.0, profile="belk_compacted"):
+    """
+    Relative wetness model for Belk Building area.
+    This is a dashboard index, not a direct in-ground soil sensor.
+    """
+
+    profiles = {
+        "belk_compacted": {
+            "field_capacity": 2.40,
+            "wilting_point": 1.55,
+            "max_storage": 3.10,
+            "base_infiltration_eff": 0.55,
+            "drainage_coeff": 0.030,
+            "recent_rain_boost": 1.20,
+        },
+        "cullowhee_alluvial": {
+            "field_capacity": 2.20,
+            "wilting_point": 1.60,
+            "max_storage": 2.90,
+            "base_infiltration_eff": 0.72,
+            "drainage_coeff": 0.045,
+            "recent_rain_boost": 1.10,
+        },
+        "urban_fill_clayey": {
+            "field_capacity": 2.60,
+            "wilting_point": 1.70,
+            "max_storage": 3.25,
+            "base_infiltration_eff": 0.45,
+            "drainage_coeff": 0.025,
+            "recent_rain_boost": 1.25,
+        },
+    }
+
+    p = profiles.get(profile, profiles["belk_compacted"])
 
     monthly_et = {
         1: 0.04, 2: 0.06, 3: 0.10, 4: 0.14, 5: 0.17, 6: 0.20,
         7: 0.21, 8: 0.19, 9: 0.14, 10: 0.09, 11: 0.05, 12: 0.03,
     }
 
-    storage = field_capacity * 0.6
-    today_month = now_local().month
-    start_month = (today_month - 1) or 12
+    field_capacity = p["field_capacity"]
+    wilting_point = p["wilting_point"]
+    max_storage = p["max_storage"]
+    infil_eff = p["base_infiltration_eff"]
+    drainage_coeff = p["drainage_coeff"]
+    recent_rain_boost = p["recent_rain_boost"]
 
-    for i, rain in enumerate(rain_30d):
-        month = start_month if i < 15 else today_month
-        et_daily = monthly_et.get(month, 0.10)
-        storage = storage + (rain or 0.0) - et_daily
+    storage = field_capacity
+    today = now_local().date()
+    dates = [today - timedelta(days=(len(rain_30d) - 1 - i)) for i in range(len(rain_30d))]
+
+    for i, (rain, d) in enumerate(zip(rain_30d, dates)):
+        rain = rain or 0.0
+        et_daily = monthly_et.get(d.month, 0.10)
+
+        days_ago = len(rain_30d) - 1 - i
+        weight = recent_rain_boost if days_ago <= 7 else 1.0
+
+        if rain <= 0.30:
+            effective_rain = rain * infil_eff
+        elif rain <= 1.00:
+            effective_rain = (0.30 * infil_eff) + ((rain - 0.30) * infil_eff * 0.80)
+        else:
+            effective_rain = (
+                (0.30 * infil_eff)
+                + (0.70 * infil_eff * 0.80)
+                + ((rain - 1.00) * infil_eff * 0.45)
+            )
+
+        effective_rain *= weight
+
+        drainage = max(0.0, (storage - field_capacity) * drainage_coeff)
+
+        storage = storage + effective_rain - et_daily - drainage
         storage = max(wilting_point, min(max_storage, storage))
 
-    storage = min(max_storage, storage + (today_rain or 0.0))
+    storage = min(max_storage, storage + (today_rain or 0.0) * infil_eff)
+
     pct = ((storage - wilting_point) / (max_storage - wilting_point)) * 100
     pct = clamp(pct, 0, 100)
 
     if pct >= 90:
         return round(pct, 1), "SATURATED", COLORS["red"], round(storage, 2)
-    if pct >= 75:
+    elif pct >= 75:
         return round(pct, 1), "WET", COLORS["orange"], round(storage, 2)
-    if pct >= 50:
+    elif pct >= 50:
         return round(pct, 1), "MOIST", COLORS["yellow"], round(storage, 2)
-    if pct >= 25:
+    elif pct >= 25:
         return round(pct, 1), "ADEQUATE", COLORS["green"], round(storage, 2)
-    return round(pct, 1), "DRY", COLORS["blue"], round(storage, 2)
+    else:
+        return round(pct, 1), "DRY", COLORS["blue"], round(storage, 2)
 
 
 # ============================================================
@@ -487,7 +518,7 @@ def fetch_ambient():
             "lightning_dist": last.get("lightning_distance"),
             "lightning_day": last.get("lightning_day", 0),
             "lightning_hour": last.get("lightning_hour", 0),
-            "name": target.get("info", {}).get("name", "Riverbend on the Tuckasegee"),
+            "name": target.get("info", {}).get("name", "Ambient Station"),
         }
         return ok_payload(data=data, source="AMBIENT")
     except Exception as e:
@@ -527,10 +558,7 @@ def fetch_blitzortung_lightning():
         if closest_dist is None:
             return ok_payload(source="BLITZORTUNG", error="No strokes found")
 
-        return ok_payload(
-            data={"dist": round(closest_dist, 1)},
-            source="BLITZORTUNG",
-        )
+        return ok_payload(data={"dist": round(closest_dist, 1)}, source="BLITZORTUNG")
     except Exception as e:
         return ok_payload(source="BLITZORTUNG", error=str(e))
 
@@ -542,21 +570,36 @@ def resolve_lightning(ambient_payload, blitz_payload):
     awn_dist = ambient.get("lightning_dist")
     blitz_dist = blitz.get("dist")
 
-    if awn_dist is not None and blitz_dist is not None:
-        final_dist = min(float(awn_dist), float(blitz_dist))
-        source_tag = "AWN + BLITZ"
-    elif awn_dist is not None:
-        final_dist = float(awn_dist)
-        source_tag = "AWN ONLY"
-    elif blitz_dist is not None:
-        final_dist = float(blitz_dist)
-        source_tag = "BLITZ ONLY"
-    else:
-        final_dist = 25.0
-        source_tag = "NO DATA"
+    detected_distances = []
 
-    strikes = ambient.get("lightning_day", "--")
-    return round(final_dist, 1), source_tag, strikes
+    if awn_dist is not None:
+        try:
+            detected_distances.append(float(awn_dist))
+        except Exception:
+            pass
+
+    if blitz_dist is not None:
+        try:
+            detected_distances.append(float(blitz_dist))
+        except Exception:
+            pass
+
+    if detected_distances:
+        final_dist = min(detected_distances)
+        if awn_dist is not None and blitz_dist is not None:
+            source_tag = "AWN + BLITZ"
+        elif awn_dist is not None:
+            source_tag = "AWN ONLY"
+        else:
+            source_tag = "BLITZ ONLY"
+        strike_detected = True
+    else:
+        final_dist = 0.0
+        source_tag = "NO STRIKES"
+        strike_detected = False
+
+    strikes = ambient.get("lightning_day", 0) or 0
+    return round(final_dist, 1), source_tag, strikes, strike_detected
 
 
 @st.cache_data(ttl=1800)
@@ -705,11 +748,7 @@ def fetch_multimodel_forecast():
                 }
             )
 
-    return ok_payload(
-        data={"days": days, "errors": errors},
-        source="OPEN-METEO",
-        error=None if days else "Forecast unavailable",
-    )
+    return ok_payload(data={"days": days, "errors": errors}, source="OPEN-METEO")
 
 
 @st.cache_data(ttl=3600)
@@ -733,16 +772,9 @@ def fetch_historical_rain_30d():
         )
         r.raise_for_status()
         vals = r.json().get("daily", {}).get("precipitation_sum", [])
-        return ok_payload(
-            data={"rain_30d": [v or 0.0 for v in vals]},
-            source="OPEN-METEO HIST",
-        )
+        return ok_payload(data={"rain_30d": [v or 0.0 for v in vals]}, source="OPEN-METEO HIST")
     except Exception as e:
-        return ok_payload(
-            data={"rain_30d": [0.05] * 30},
-            source="OPEN-METEO HIST",
-            error=str(e),
-        )
+        return ok_payload(data={"rain_30d": [0.05] * 30}, source="OPEN-METEO HIST", error=str(e))
 
 
 # ============================================================
@@ -864,7 +896,7 @@ def render_data_card(title, value, detail=None):
 
 
 # ============================================================
-# LOAD ALL DATA
+# LOAD DATA
 # ============================================================
 
 with st.spinner("Syncing all data sources..."):
@@ -877,7 +909,6 @@ with st.spinner("Syncing all data sources..."):
     hist_payload = fetch_historical_rain_30d()
 
 ambient = ambient_payload.get("data", {})
-blitz = blitz_payload.get("data", {})
 aqi_data = aqi_payload.get("data", {})
 airport = airport_payload.get("data", {})
 forecast = forecast_payload.get("data", {}).get("days", [])
@@ -897,22 +928,33 @@ rain_3d_forecast = sum(day["precip"] for day in forecast[:3]) if forecast else 0
 wind_now = first_non_none(ambient.get("wind_speed"), airport.get("wind_mph"), 0) or 0
 pop_today = forecast[0]["pop"] if forecast else 0
 
-soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture(hist_rain, rain_today)
+soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture_belk(
+    hist_rain,
+    rain_today,
+    profile="belk_compacted"
+)
 
-l_dist, l_source, l_strikes = resolve_lightning(ambient_payload, blitz_payload)
-l_display = min(l_dist, 25)
-l_color = (
-    COLORS["red"] if l_dist < 5 else
-    COLORS["orange"] if l_dist < 10 else
-    COLORS["yellow"] if l_dist < 15 else
-    COLORS["green"]
-)
-l_label = (
-    "CRITICAL" if l_dist < 5 else
-    "NEARBY" if l_dist < 10 else
-    "MODERATE" if l_dist < 15 else
-    "CLEAR"
-)
+l_dist, l_source, l_strikes, lightning_detected = resolve_lightning(ambient_payload, blitz_payload)
+if lightning_detected:
+    l_display = min(l_dist, 25)
+    l_color = (
+        COLORS["red"] if l_dist < 5 else
+        COLORS["orange"] if l_dist < 10 else
+        COLORS["yellow"] if l_dist < 15 else
+        COLORS["green"]
+    )
+    l_label = (
+        "CRITICAL" if l_dist < 5 else
+        "NEARBY" if l_dist < 10 else
+        "MODERATE" if l_dist < 15 else
+        "DISTANT"
+    )
+    l_detail = f"Nearest Strike: <b style='color:#00FFCC'>{l_dist:.1f} mi</b>"
+else:
+    l_display = 0.0
+    l_color = COLORS["green"]
+    l_label = "NO STRIKES"
+    l_detail = "No lightning detected nearby"
 
 uv_val = ambient.get("uv", 0) if ambient_payload["ok"] else 0
 uv_val = uv_val or 0
@@ -931,27 +973,26 @@ uv_label = (
     "EXTREME"
 )
 
-temp_now = ambient.get("temp") if ambient_payload["ok"] else None
-hum_now = ambient.get("humidity") if ambient_payload["ok"] else None
-fl_val = calc_feels_like(temp_now, hum_now, wind_now)
-fl_display = clamp(fl_val if fl_val is not None else 70, 0, 120)
-fl_color = (
-    COLORS["blue"] if fl_display < 32 else
-    COLORS["cyan"] if fl_display < 50 else
-    COLORS["green"] if fl_display < 80 else
-    COLORS["yellow"] if fl_display < 95 else
-    COLORS["orange"] if fl_display < 105 else
+temp_now = first_non_none(ambient.get("temp"), airport.get("temp_f"))
+temp_display = clamp(temp_now if temp_now is not None else 70, 0, 120)
+temp_color = (
+    COLORS["blue"] if temp_display < 32 else
+    COLORS["cyan"] if temp_display < 50 else
+    COLORS["green"] if temp_display < 80 else
+    COLORS["yellow"] if temp_display < 95 else
+    COLORS["orange"] if temp_display < 105 else
     COLORS["red"]
 )
-fl_label = (
-    "FREEZING" if fl_display < 32 else
-    "COLD" if fl_display < 50 else
-    "COMFORTABLE" if fl_display < 80 else
-    "HOT" if fl_display < 95 else
-    "VERY HOT" if fl_display < 105 else
-    "DANGEROUS"
+temp_label = (
+    "FREEZING" if temp_display < 32 else
+    "COLD" if temp_display < 50 else
+    "MILD" if temp_display < 80 else
+    "WARM" if temp_display < 95 else
+    "HOT" if temp_display < 105 else
+    "EXTREME"
 )
 
+hum_now = ambient.get("humidity") if ambient_payload["ok"] else None
 hum_val = hum_now or 0
 hum_color = (
     COLORS["blue"] if hum_val < 30 else
@@ -1028,6 +1069,7 @@ rain3d_label = (
     "SIGNIFICANT"
 )
 
+pressure_now = first_non_none(ambient.get("pressure"), 29.92)
 current_time = now_local()
 tz_label = current_time.tzname() or "ET"
 
@@ -1038,7 +1080,7 @@ tz_label = current_time.tzname() or "ET"
 st.markdown(
     f"""
 <div class="site-header">
-    <div class="site-title">CULLOWHEE WEATHER INTELLIGENCE</div>
+    <div class="site-title">WCU BELK WEATHER INTELLIGENCE</div>
     <div class="site-sub">
         {SITE} &nbsp;|&nbsp; {current_time.strftime('%A, %B %d, %Y %I:%M %p')} {tz_label}
     </div>
@@ -1072,7 +1114,7 @@ row1 = [
         "thresholds": GAUGE_THRESHOLDS["lightning"],
         "color": l_color,
         "label": l_label,
-        "detail": f"Strikes Today: <b style='color:#00FFCC'>{l_strikes}</b>",
+        "detail": l_detail,
         "source": l_source,
     },
     {
@@ -1084,20 +1126,20 @@ row1 = [
         "thresholds": GAUGE_THRESHOLDS["uv"],
         "color": uv_color,
         "label": uv_label,
-        "detail": "Protect skin &gt;3 | Seek shade &gt;6",
+        "detail": "Protect skin >3 | Seek shade >6",
         "source": "AWN SENSOR",
     },
     {
-        "title": "FEELS LIKE",
-        "value": fl_display,
+        "title": "AIR TEMPERATURE",
+        "value": temp_display,
         "min_val": 0,
         "max_val": 120,
         "unit": "°F",
-        "thresholds": GAUGE_THRESHOLDS["feels_like"],
-        "color": fl_color,
-        "label": fl_label,
-        "detail": f"Actual: <b style='color:#00FFCC'>{format_num(temp_now, 1, '°F')}</b>",
-        "source": "AWN + CALC",
+        "thresholds": GAUGE_THRESHOLDS["temp"],
+        "color": temp_color,
+        "label": temp_label,
+        "detail": f"Dewpoint: <b style='color:#00FFCC'>{format_num(dp_val, 1, '°F')}</b>",
+        "source": "AWN SENSOR" if ambient_payload["ok"] else "AIRPORT METAR",
     },
     {
         "title": "HUMIDITY",
@@ -1149,7 +1191,7 @@ cols = st.columns(5)
 
 row2 = [
     {
-        "title": "SOIL MOISTURE",
+        "title": "RELATIVE SOIL WETNESS",
         "value": soil_pct,
         "min_val": 0,
         "max_val": 100,
@@ -1157,8 +1199,8 @@ row2 = [
         "thresholds": GAUGE_THRESHOLDS["soil"],
         "color": soil_color,
         "label": soil_status,
-        "detail": f"Storage: <b style='color:#00FFCC'>{soil_storage} in</b>",
-        "source": "WATER BALANCE MODEL",
+        "detail": f"Belk profile storage: <b style='color:#00FFCC'>{soil_storage} in</b>",
+        "source": "BELK COMPACTED MODEL",
     },
     {
         "title": "PRECIP PROBABILITY",
@@ -1175,7 +1217,7 @@ row2 = [
             "LIKELY" if pop_today < 80 else
             "CERTAIN"
         ),
-        "detail": f"Today forecast model: <b style='color:#00FFCC'>{forecast[0]['model'] if forecast else 'N/A'}</b>",
+        "detail": f"Today model: <b style='color:#00FFCC'>{forecast[0]['model'] if forecast else 'N/A'}</b>",
         "source": "OPEN-METEO",
     },
     {
@@ -1265,7 +1307,7 @@ row3 = [
     },
     {
         "title": "PRESSURE",
-        "value": clamp(first_non_none(ambient.get("pressure"), 29.92) or 29.92, 28, 32),
+        "value": clamp(pressure_now or 29.92, 28, 32),
         "min_val": 28,
         "max_val": 32,
         "unit": " inHg",
@@ -1315,7 +1357,7 @@ st.markdown("".join(forecast_html), unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# DATA STATUS / SOURCE DETAIL
+# DETAIL PANELS
 # ============================================================
 
 left, right = st.columns([1.2, 1.0])
@@ -1325,10 +1367,10 @@ with left:
     c1, c2 = st.columns(2)
 
     with c1:
-        render_data_card("Air Temperature", format_num(temp_now, 1, "°F"), "Ambient station")
+        render_data_card("Air Temperature", format_num(temp_now, 1, "°F"), "Ambient / airport fallback")
         render_data_card("Humidity", format_num(hum_now, 0, "%"), "Ambient station")
         render_data_card("Wind Gust", format_num(ambient.get("wind_gust"), 1, " mph"), "Ambient station")
-        render_data_card("Rain Today", format_num(rain_today, 2, " in"), "Ambient/Airport fallback")
+        render_data_card("Rain Today", format_num(rain_today, 2, " in"), "Ambient / airport fallback")
 
     with c2:
         render_data_card("Dew Point", format_num(dp_val, 1, "°F"), "Calculated")
@@ -1350,9 +1392,10 @@ with right:
         )
 
     render_data_card("Airport METAR", AIRPORT_ID, airport.get("raw", "No raw observation"))
-    render_data_card("Forecast Source", "Open-Meteo", "HRRR for near term, GFS farther out")
+    render_data_card("Forecast Source", "Open-Meteo", "HRRR near term, GFS farther out")
+    render_data_card("Soil Wetness Profile", "belk_compacted", "Compacted campus-ground assumption")
 
-    if ambient_payload["error"] or blitz_payload["error"] or aqi_payload["error"] or airport_payload["error"]:
+    if ambient_payload["error"] or blitz_payload["error"] or aqi_payload["error"] or airport_payload["error"] or hist_payload["error"]:
         st.markdown("<hr class='soft'>", unsafe_allow_html=True)
         st.markdown("<div class='data-card-title'>Diagnostics</div>", unsafe_allow_html=True)
         for payload in [ambient_payload, blitz_payload, aqi_payload, airport_payload, hist_payload]:

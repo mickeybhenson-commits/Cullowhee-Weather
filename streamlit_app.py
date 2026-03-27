@@ -1351,20 +1351,21 @@ if forecast:
     forecast_html = ['<div class="forecast-row">']
 
     for day in forecast:
-        forecast_html.append(f"""
-        <div class="forecast-tile">
-            <div class="forecast-day">{day['label']}</div>
-            <div class="forecast-hi">{day['hi']}°</div>
-            <div class="forecast-lo">Low {day['lo']}°</div>
-            <div class="small-muted">{day['desc']}</div>
-            <hr class="soft">
-            <div class="small-muted">Rain: {day['precip']} in</div>
-            <div class="small-muted">PoP: {day['pop']}%</div>
-            <div class="small-muted">Wind: {day['wind']} mph</div>
-            <div class="small-muted">Gust: {day['gust']} mph</div>
-            <div class="small-muted">Src: ECMWF</div>
-        </div>
-        """)
+        tile = (
+            '<div class="forecast-tile">'
+            f'<div class="forecast-day">{day["label"]}</div>'
+            f'<div class="forecast-hi">{day["hi"]}°</div>'
+            f'<div class="forecast-lo">Low {day["lo"]}°</div>'
+            f'<div class="small-muted">{day["desc"]}</div>'
+            '<hr class="soft">'
+            f'<div class="small-muted">Rain: {day["precip"]} in</div>'
+            f'<div class="small-muted">PoP: {day["pop"]}%</div>'
+            f'<div class="small-muted">Wind: {day["wind"]} mph</div>'
+            f'<div class="small-muted">Gust: {day["gust"]} mph</div>'
+            '<div class="small-muted">Src: ECMWF</div>'
+            '</div>'
+        )
+        forecast_html.append(tile)
 
     forecast_html.append("</div>")
     st.markdown("".join(forecast_html), unsafe_allow_html=True)

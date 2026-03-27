@@ -1,4 +1,5 @@
 import math
+import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -38,6 +39,7 @@ AMBIENT_APP_KEY = st.secrets.get(
 
 AMBIENT_DEVICE_MAC = "35c7b0accb75a84d7891d82f125001a8"
 AIRPORT_ID = "K24A"
+NWS_USER_AGENT = "(WCU-Belk-Weather/1.0 mickey.b.henson@gmail.com)"
 
 USGS_GAUGES = {
     "03439000": "Tuckasegee @ Cullowhee",
@@ -246,11 +248,20 @@ section.main > div {
     text-align: center;
     min-width: 0;
 }
+.forecast-tile-today {
+    background: rgba(0,136,255,0.13);
+    border: 1px solid rgba(0,210,255,0.50);
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    min-width: 0;
+    box-shadow: 0 0 16px rgba(0,180,255,0.18);
+}
 .forecast-day {
     font-family: 'Share Tech Mono', monospace;
     color: #7AACCC;
     font-size: 0.75em;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
 }
 .forecast-hi {
     font-size: 1.2em;
@@ -279,8 +290,8 @@ def now_local() -> datetime:
     return datetime.now(TIMEZONE)
 
 
-def safe_get(url: str, *, params=None, timeout=10):
-    return requests.get(url, params=params, timeout=timeout)
+def safe_get(url: str, *, params=None, timeout=10, headers=None):
+    return requests.get(url, params=params, timeout=timeout, headers=headers)
 
 
 def ok_payload(data=None, source=None, error=None):
@@ -361,6 +372,66 @@ def weather_desc(code):
     return codes.get(code, "Unknown")
 
 
+def nws_desc_to_code(desc):
+    """Map NWS shortForecast text to a WMO-style weather code for emoji lookup."""
+    d = desc.lower()
+    if any(x in d for x in ["thunderstorm", "tstm", "lightning"]):
+        return 95
+    if any(x in d for x in ["blizzard", "heavy snow", "snow"]):
+        return 73
+    if any(x in d for x in ["sleet", "freezing rain", "wintry mix"]):
+        return 73
+    if any(x in d for x in ["shower", "showers"]):
+        return 80
+    if "rain" in d:
+        return 63
+    if "drizzle" in d:
+        return 51
+    if any(x in d for x in ["fog", "mist"]):
+        return 45
+    if any(x in d for x in ["overcast", "cloudy"]):
+        return 3
+    if any(x in d for x in ["mostly cloudy", "partly cloudy", "partly sunny"]):
+        return 2
+    if any(x in d for x in ["sunny", "clear", "fair", "mostly sunny", "mostly clear"]):
+        return 0
+    return 1
+
+
+def weather_emoji(code):
+    if code in [95, 96, 99]:
+        return "⛈️"
+    if code in [80, 81, 82]:
+        return "🌦️"
+    if code in [71, 73, 75]:
+        return "❄️"
+    if code in [61, 63, 65]:
+        return "🌧️"
+    if code in [51, 53, 55]:
+        return "🌦️"
+    if code in [45, 48]:
+        return "🌫️"
+    if code == 3:
+        return "☁️"
+    if code == 2:
+        return "⛅"
+    if code in [0, 1]:
+        return "☀️"
+    return "🌤️"
+
+
+def pop_bar_color(pop):
+    if pop < 20:
+        return "#00FF9C"
+    if pop < 40:
+        return "#AAFF00"
+    if pop < 60:
+        return "#FFD700"
+    if pop < 80:
+        return "#FF8C00"
+    return "#FF3333"
+
+
 def pop_color(pop):
     if pop < 20:
         return COLORS["green"]
@@ -371,6 +442,50 @@ def pop_color(pop):
     if pop < 80:
         return COLORS["orange"]
     return COLORS["red"]
+
+
+def build_forecast_tile(day, is_today=False):
+    """Build a single forecast tile HTML string with zero leading whitespace."""
+    tile_class = "forecast-tile-today" if is_today else "forecast-tile"
+    emoji = weather_emoji(day.get("code", 0))
+    hi = f"{day['hi']}°" if day.get("hi") is not None else "--"
+    lo = f"{day['lo']}°" if day.get("lo") is not None else "--"
+    precip_val = day.get("precip")
+    precip_str = f"{precip_val} in" if precip_val is not None else "--"
+    pop = day.get("pop", 0)
+    pbc = pop_bar_color(pop)
+    src = day.get("source", "--")
+
+    src_color_map = {
+        "HRRR": "#00CCAA",
+        "NWS":  "#5AC8FA",
+        "ECMWF": "#AA88FF",
+        "N/A":  "#2A6080",
+    }
+    src_color = src_color_map.get(src, "#2A6080")
+
+    today_badge = (
+        '<div style="font-family:Share Tech Mono,monospace;font-size:0.62em;'
+        'color:#00CCFF;font-weight:700;letter-spacing:2px;margin-bottom:3px;">▶ TODAY</div>'
+        if is_today else ""
+    )
+
+    return (
+        f'<div class="{tile_class}">'
+        + today_badge
+        + f'<div class="forecast-day">{day["label"]}</div>'
+        + f'<div style="font-size:1.9em;line-height:1.25;margin:4px 0;">{emoji}</div>'
+        + f'<div class="forecast-hi">{hi}</div>'
+        + f'<div class="forecast-lo">Low {lo}</div>'
+        + f'<div style="font-size:0.76em;color:#7AACCC;margin:4px 0 2px;">{day.get("desc","--")}</div>'
+        + f'<div style="background:rgba(255,255,255,0.07);border-radius:3px;height:5px;margin:5px 0;overflow:hidden;">'
+        + f'<div style="height:100%;width:{pop}%;background:{pbc};border-radius:3px;"></div></div>'
+        + f'<div class="small-muted">PoP {pop}%</div>'
+        + f'<div class="small-muted">Rain: {precip_str}</div>'
+        + f'<div class="small-muted">Wind: {day.get("wind",0)}/{day.get("gust",0)} mph</div>'
+        + f'<div style="font-family:Share Tech Mono,monospace;font-size:0.58em;color:{src_color};margin-top:5px;">{src}</div>'
+        + '</div>'
+    )
 
 
 def estimate_soil_moisture_belk(rain_30d, today_rain=0.0, profile="belk_compacted"):
@@ -510,7 +625,7 @@ def moon_phase_info(target_dt=None):
     return illumination_pct, phase_name, round(moon_age, 1)
 
 # ============================================================
-# DATA FETCHERS
+# DATA FETCHERS — OBSERVATIONS
 # ============================================================
 
 @st.cache_data(ttl=300)
@@ -715,12 +830,166 @@ def fetch_usgs_rain():
     return results
 
 
+@st.cache_data(ttl=3600)
+def fetch_historical_rain_30d():
+    try:
+        end = now_local().date()
+        start = end - timedelta(days=30)
+
+        r = safe_get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": LAT,
+                "longitude": LON,
+                "daily": "precipitation_sum",
+                "precipitation_unit": "inch",
+                "timezone": "America/New_York",
+                "start_date": start.strftime("%Y-%m-%d"),
+                "end_date": end.strftime("%Y-%m-%d"),
+            },
+            timeout=12,
+        )
+        r.raise_for_status()
+        vals = r.json().get("daily", {}).get("precipitation_sum", [])
+        return ok_payload(data={"rain_30d": [v or 0.0 for v in vals]}, source="OPEN-METEO HIST")
+    except Exception as e:
+        return ok_payload(data={"rain_30d": [0.05] * 30}, source="OPEN-METEO HIST", error=str(e))
+
+
 # ============================================================
-# FORECAST — ECMWF ONLY (via Open-Meteo)
+# DATA FETCHERS — FORECAST (3-SOURCE SMART CASCADE)
+# ============================================================
+# Priority logic:
+#   Days 0-1  → HRRR  (3 km, resolves Blue Ridge terrain, best near-term)
+#   Days 2-3  → NWS   (official, MOS bias-corrected to this point)
+#   Days 4-6  → ECMWF (best medium-range global skill)
+#   Each layer falls back to the next if unavailable.
+#   NWS PoP always blended in as a conservative max when available.
 # ============================================================
 
 @st.cache_data(ttl=900)
-def fetch_best_7day_forecast():
+def fetch_nws_forecast():
+    """Fetch official NWS point forecast via api.weather.gov."""
+    try:
+        pts = safe_get(
+            f"https://api.weather.gov/points/{LAT},{LON}",
+            headers={"User-Agent": NWS_USER_AGENT},
+            timeout=10,
+        )
+        pts.raise_for_status()
+        forecast_url = pts.json()["properties"]["forecast"]
+
+        fcast = safe_get(
+            forecast_url,
+            headers={"User-Agent": NWS_USER_AGENT},
+            timeout=10,
+        )
+        fcast.raise_for_status()
+        periods = fcast.json()["properties"]["periods"]
+
+        # Group daytime/nighttime periods by calendar date
+        date_periods = {}
+        for p in periods:
+            d = datetime.fromisoformat(p["startTime"]).date()
+            if d not in date_periods:
+                date_periods[d] = {}
+            key = "day" if p["isDaytime"] else "night"
+            date_periods[d][key] = p
+
+        days = []
+        for d in sorted(date_periods.keys())[:7]:
+            dp = date_periods[d]
+            day_p = dp.get("day")
+            night_p = dp.get("night")
+
+            if day_p is None and night_p is None:
+                continue
+
+            primary = day_p or night_p
+            hi = day_p["temperature"] if day_p else None
+            lo = night_p["temperature"] if night_p else None
+            desc = primary["shortForecast"]
+
+            day_pop = (day_p.get("probabilityOfPrecipitation") or {}).get("value") or 0 if day_p else 0
+            night_pop = (night_p.get("probabilityOfPrecipitation") or {}).get("value") or 0 if night_p else 0
+            pop = max(day_pop, night_pop)
+
+            wind_str = primary.get("windSpeed", "0 mph")
+            wind_nums = [int(x) for x in re.findall(r"\d+", wind_str)]
+            wind = max(wind_nums) if wind_nums else 0
+
+            dt = datetime.combine(d, datetime.min.time())
+            days.append({
+                "date": d.strftime("%Y-%m-%d"),
+                "label": dt.strftime("%a %m/%d"),
+                "hi": hi,
+                "lo": lo,
+                "precip": None,  # NWS /forecast does not give QPF sum
+                "pop": pop,
+                "wind": wind,
+                "gust": wind,
+                "code": nws_desc_to_code(desc),
+                "desc": desc[:22],
+                "source": "NWS",
+            })
+
+        return ok_payload(data={"days": days}, source="NWS")
+    except Exception as e:
+        return ok_payload(data={"days": []}, source="NWS", error=str(e))
+
+
+@st.cache_data(ttl=900)
+def fetch_hrrr_open_meteo():
+    """Fetch HRRR 3-day forecast via Open-Meteo (reliable to ~60 h)."""
+    try:
+        r = safe_get(
+            "https://api.open-meteo.com/v1/gfs",
+            params={
+                "latitude": LAT,
+                "longitude": LON,
+                "daily": (
+                    "weathercode,temperature_2m_max,temperature_2m_min,"
+                    "precipitation_sum,precipitation_probability_max,"
+                    "windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant"
+                ),
+                "models": "hrrr_conus",
+                "temperature_unit": "fahrenheit",
+                "precipitation_unit": "inch",
+                "windspeed_unit": "mph",
+                "timezone": "America/New_York",
+                "forecast_days": 3,
+            },
+            timeout=12,
+        )
+        r.raise_for_status()
+        d = r.json().get("daily", {})
+
+        days = []
+        for i in range(min(3, len(d.get("time", [])))):
+            dt = datetime.strptime(d["time"][i], "%Y-%m-%d")
+            days.append({
+                "date": d["time"][i],
+                "label": dt.strftime("%a %m/%d"),
+                "hi": round(d["temperature_2m_max"][i]) if d["temperature_2m_max"][i] is not None else None,
+                "lo": round(d["temperature_2m_min"][i]) if d["temperature_2m_min"][i] is not None else None,
+                "precip": round(d["precipitation_sum"][i] or 0, 2),
+                "pop": int(round(d["precipitation_probability_max"][i] or 0)),
+                "wind": round(d["windspeed_10m_max"][i] or 0),
+                "gust": round(d["windgusts_10m_max"][i] or 0),
+                "wind_dir": d["winddirection_10m_dominant"][i] or 0,
+                "code": d["weathercode"][i] or 0,
+                "desc": weather_desc(d["weathercode"][i] or 0),
+                "source": "HRRR",
+            })
+
+        return ok_payload(data={"days": days}, source="HRRR")
+    except Exception as e:
+        return ok_payload(data={"days": []}, source="HRRR", error=str(e))
+
+
+@st.cache_data(ttl=900)
+def fetch_ecmwf_open_meteo():
+    """Fetch ECMWF 7-day forecast via Open-Meteo (best medium-range skill)."""
     try:
         r = safe_get(
             "https://api.open-meteo.com/v1/ecmwf",
@@ -728,14 +997,9 @@ def fetch_best_7day_forecast():
                 "latitude": LAT,
                 "longitude": LON,
                 "daily": (
-                    "weathercode,"
-                    "temperature_2m_max,"
-                    "temperature_2m_min,"
-                    "precipitation_sum,"
-                    "precipitation_probability_max,"
-                    "windspeed_10m_max,"
-                    "windgusts_10m_max,"
-                    "winddirection_10m_dominant"
+                    "weathercode,temperature_2m_max,temperature_2m_min,"
+                    "precipitation_sum,precipitation_probability_max,"
+                    "windspeed_10m_max,windgusts_10m_max,winddirection_10m_dominant"
                 ),
                 "temperature_unit": "fahrenheit",
                 "precipitation_unit": "inch",
@@ -763,37 +1027,94 @@ def fetch_best_7day_forecast():
                 "wind_dir": d["winddirection_10m_dominant"][i] or 0,
                 "code": d["weathercode"][i] or 0,
                 "desc": weather_desc(d["weathercode"][i] or 0),
+                "source": "ECMWF",
             })
 
-        return ok_payload(data={"days": days, "errors": {}}, source="ECMWF")
+        return ok_payload(data={"days": days}, source="ECMWF")
     except Exception as e:
-        return ok_payload(data={"days": [], "errors": {"ECMWF": str(e)}}, source="ECMWF", error=str(e))
+        return ok_payload(data={"days": []}, source="ECMWF", error=str(e))
 
 
-@st.cache_data(ttl=3600)
-def fetch_historical_rain_30d():
-    try:
-        end = now_local().date()
-        start = end - timedelta(days=30)
+@st.cache_data(ttl=900)
+def fetch_best_7day_forecast():
+    """
+    Smart 3-source cascade:
+      Days 0-1  → HRRR  (3 km terrain-aware, best 0-48 h)
+      Days 2-3  → NWS   (official, bias-corrected via MOS)
+      Days 4-6  → ECMWF (best medium-range global skill)
+    NWS PoP is blended as a conservative max whenever available.
+    QPF falls back to ECMWF when NWS has no precip sum.
+    """
+    nws_p = fetch_nws_forecast()
+    hrrr_p = fetch_hrrr_open_meteo()
+    ecmwf_p = fetch_ecmwf_open_meteo()
 
-        r = safe_get(
-            "https://api.open-meteo.com/v1/forecast",
-            params={
-                "latitude": LAT,
-                "longitude": LON,
-                "daily": "precipitation_sum",
-                "precipitation_unit": "inch",
-                "timezone": "America/New_York",
-                "start_date": start.strftime("%Y-%m-%d"),
-                "end_date": end.strftime("%Y-%m-%d"),
-            },
-            timeout=12,
-        )
-        r.raise_for_status()
-        vals = r.json().get("daily", {}).get("precipitation_sum", [])
-        return ok_payload(data={"rain_30d": [v or 0.0 for v in vals]}, source="OPEN-METEO HIST")
-    except Exception as e:
-        return ok_payload(data={"rain_30d": [0.05] * 30}, source="OPEN-METEO HIST", error=str(e))
+    nws_by_date   = {d["date"]: d for d in nws_p["data"].get("days", [])}
+    hrrr_by_date  = {d["date"]: d for d in hrrr_p["data"].get("days", [])}
+    ecmwf_by_date = {d["date"]: d for d in ecmwf_p["data"].get("days", [])}
+
+    today = now_local().date()
+    final_days = []
+
+    for i in range(7):
+        date_key = (today + timedelta(days=i)).strftime("%Y-%m-%d")
+        dt = datetime.strptime(date_key, "%Y-%m-%d")
+        label = dt.strftime("%a %m/%d")
+
+        hrrr  = hrrr_by_date.get(date_key)
+        nws   = nws_by_date.get(date_key)
+        ecmwf = ecmwf_by_date.get(date_key)
+
+        if i <= 1 and hrrr:
+            # Days 0-1: HRRR leads — 3 km, explicit Blue Ridge terrain
+            day = dict(hrrr)
+            if nws:
+                day["pop"] = max(hrrr["pop"], nws.get("pop", 0))
+            day["source"] = "HRRR"
+
+        elif i >= 4 and ecmwf:
+            # Days 4-6: ECMWF leads — best medium-range skill
+            day = dict(ecmwf)
+            if nws:
+                day["pop"] = max(ecmwf["pop"], nws.get("pop", 0))
+            day["source"] = "ECMWF"
+
+        elif nws:
+            # Days 2-3 (or fallback): NWS official point forecast
+            day = dict(nws)
+            # Augment NWS with QPF from ECMWF/HRRR since /forecast has no sum
+            if day.get("precip") is None:
+                day["precip"] = (ecmwf or {}).get("precip") or (hrrr or {}).get("precip")
+            day["source"] = "NWS"
+
+        elif ecmwf:
+            day = dict(ecmwf)
+            day["source"] = "ECMWF"
+
+        elif hrrr:
+            day = dict(hrrr)
+            day["source"] = "HRRR"
+
+        else:
+            day = {
+                "date": date_key,
+                "hi": None, "lo": None,
+                "precip": None, "pop": 0,
+                "wind": 0, "gust": 0,
+                "code": 0, "desc": "Unavailable",
+                "source": "N/A",
+            }
+
+        day["label"] = label
+        final_days.append(day)
+
+    errors = {}
+    for p, name in [(nws_p, "NWS"), (hrrr_p, "HRRR"), (ecmwf_p, "ECMWF")]:
+        if p.get("error"):
+            errors[name] = p["error"]
+
+    return ok_payload(data={"days": final_days, "errors": errors}, source="NWS/HRRR/ECMWF")
+
 
 # ============================================================
 # UI HELPERS
@@ -941,9 +1262,10 @@ if ambient_payload["ok"]:
 elif airport_payload["ok"]:
     rain_today = airport.get("precip", 0.0) or 0.0
 
-rain_3d_forecast = sum(day["precip"] for day in forecast[:3]) if forecast else 0.0
+rain_3d_forecast = sum((day.get("precip") or 0.0) for day in forecast[:3]) if forecast else 0.0
 wind_now = first_non_none(ambient.get("wind_speed"), airport.get("wind_mph"), 0) or 0
 pop_today = forecast[0]["pop"] if forecast else 0
+today_src = forecast[0].get("source", "CASCADE") if forecast else "CASCADE"
 
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture_belk(
     hist_rain,
@@ -1024,7 +1346,7 @@ hum_label = (
     "VERY HUMID"
 )
 
-tonight_low = forecast[0]["lo"] if forecast else 50
+tonight_low = forecast[0]["lo"] if forecast and forecast[0].get("lo") is not None else 50
 freeze_display = clamp(tonight_low, 0, 80)
 freeze_color = (
     COLORS["green"] if tonight_low > 45 else
@@ -1229,8 +1551,8 @@ row2 = [
             "LIKELY" if pop_today < 80 else
             "CERTAIN"
         ),
-        "detail": "Source: <b style='color:#00FFCC'>ECMWF</b>",
-        "source": "ECMWF",
+        "detail": f"Source: <b style='color:#00FFCC'>{today_src}</b>",
+        "source": today_src,
     },
     {
         "title": "FREEZE RISK",
@@ -1242,7 +1564,7 @@ row2 = [
         "color": freeze_color,
         "label": freeze_label,
         "detail": "Based on forecast low",
-        "source": "ECMWF",
+        "source": "NWS/HRRR/ECMWF",
     },
     {
         "title": "MOON PHASE",
@@ -1315,7 +1637,7 @@ row3 = [
         "color": rain3d_color,
         "label": rain3d_label,
         "detail": "Sum of next 3 forecast days",
-        "source": "ECMWF",
+        "source": "HRRR→NWS→ECMWF",
     },
     {
         "title": "PRESSURE",
@@ -1342,33 +1664,22 @@ for col, config in zip(cols, row3):
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# FORECAST
+# FORECAST — SMART CASCADE PANEL
 # ============================================================
 
-st.markdown('<div class="panel"><div class="panel-title">📅 Seven-Day Forecast — ECMWF</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="panel"><div class="panel-title">'
+    '📅 Seven-Day Forecast — HRRR (0-1d) · NWS (2-3d) · ECMWF (4-6d)'
+    '</div>',
+    unsafe_allow_html=True,
+)
 
 if forecast:
-    forecast_html = ['<div class="forecast-row">']
-
-    for day in forecast:
-        tile = (
-            '<div class="forecast-tile">'
-            f'<div class="forecast-day">{day["label"]}</div>'
-            f'<div class="forecast-hi">{day["hi"]}°</div>'
-            f'<div class="forecast-lo">Low {day["lo"]}°</div>'
-            f'<div class="small-muted">{day["desc"]}</div>'
-            '<hr class="soft">'
-            f'<div class="small-muted">Rain: {day["precip"]} in</div>'
-            f'<div class="small-muted">PoP: {day["pop"]}%</div>'
-            f'<div class="small-muted">Wind: {day["wind"]} mph</div>'
-            f'<div class="small-muted">Gust: {day["gust"]} mph</div>'
-            '<div class="small-muted">Src: ECMWF</div>'
-            '</div>'
-        )
-        forecast_html.append(tile)
-
-    forecast_html.append("</div>")
-    st.markdown("".join(forecast_html), unsafe_allow_html=True)
+    tiles_html = '<div class="forecast-row">'
+    for i, day in enumerate(forecast):
+        tiles_html += build_forecast_tile(day, is_today=(i == 0))
+    tiles_html += '</div>'
+    st.markdown(tiles_html, unsafe_allow_html=True)
 else:
     st.warning("Forecast data unavailable.")
 
@@ -1410,10 +1721,17 @@ with right:
         )
 
     render_data_card("Airport METAR", AIRPORT_ID, airport.get("raw", "No raw observation"))
-    render_data_card("Forecast Source", "ECMWF", "Via Open-Meteo · 7-day")
+    render_data_card(
+        "Forecast Cascade",
+        "HRRR · NWS · ECMWF",
+        "Days 0-1 HRRR | Days 2-3 NWS | Days 4-6 ECMWF",
+    )
     render_data_card("Soil Wetness Profile", "belk_compacted", "Compacted campus-ground assumption")
 
-    if ambient_payload["error"] or blitz_payload["error"] or aqi_payload["error"] or airport_payload["error"] or hist_payload["error"]:
+    if (
+        ambient_payload["error"] or blitz_payload["error"] or
+        aqi_payload["error"] or airport_payload["error"] or hist_payload["error"]
+    ):
         st.markdown("<hr class='soft'>", unsafe_allow_html=True)
         st.markdown("<div class='data-card-title'>Diagnostics</div>", unsafe_allow_html=True)
         for payload in [ambient_payload, blitz_payload, aqi_payload, airport_payload, hist_payload]:

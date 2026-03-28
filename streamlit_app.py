@@ -1164,15 +1164,14 @@ def fetch_nws_alerts():
 # RADAR MAP BUILDER
 # ============================================================
 
-def build_radar_folium_map(rv_payload, alerts_payload, usgs_gauge_data=None):
+def build_radar_folium_map(rv_payload, alerts_payload):
     """
     Interactive folium map with:
       - CartoDB Dark basemap
       - Animated RainViewer NEXRAD radar (play/pause + scrubber)
       - NWS active alert polygons (storm cell / severe wx proxy)
-      - WCU site marker + USGS stream gauge markers
+      - WCU site marker
     """
-    usgs_gauge_data = usgs_gauge_data or {}
 
     past      = rv_payload.get("data", {}).get("past", [])
     nowcast   = rv_payload.get("data", {}).get("nowcast", [])
@@ -1218,44 +1217,6 @@ def build_radar_folium_map(rv_payload, alerts_payload, usgs_gauge_data=None):
             icon_size=(80, 16), icon_anchor=(40, 8),
         ),
     ).add_to(m)
-
-    # USGS stream gauge markers
-    gauge_loc = {
-        "03439000": (35.307, -83.182, "Tuckasegee @ Cullowhee"),
-        "03460000": (35.435, -83.452, "Tuckasegee @ Bryson City"),
-    }
-    for sid, (glat, glon, gname) in gauge_loc.items():
-        ginfo  = usgs_gauge_data.get(sid, {})
-        stage  = ginfo.get("stage_ft")
-        cfs    = ginfo.get("discharge_cfs")
-        ok_g   = ginfo.get("ok", False)
-        gc     = "#5AC8FA" if ok_g else "#FF3333"
-        s_str  = f"{stage} ft" if stage is not None else "N/A"
-        q_str  = f"{int(cfs):,} cfs" if cfs is not None else "N/A"
-
-        folium.CircleMarker(
-            location=[glat, glon],
-            radius=7, color=gc, weight=2,
-            fill=True, fill_color=gc, fill_opacity=0.78,
-            tooltip=f"<b>{gname}</b><br>Stage: {s_str} | Flow: {q_str}",
-            popup=folium.Popup(
-                f"<b>{gname}</b><br>Stage: {s_str}<br>Flow: {q_str}<br><small>USGS #{sid}</small>",
-                max_width=220,
-            ),
-        ).add_to(m)
-
-        folium.Marker(
-            location=[glat + 0.018, glon + 0.01],
-            icon=folium.DivIcon(
-                html=(
-                    f'<div style="font-family:Share Tech Mono,monospace;font-size:10px;'
-                    f'color:{gc};white-space:nowrap;'
-                    f'text-shadow:0 0 6px rgba(0,20,50,0.95);">'
-                    f'{gname.split("@")[-1].strip()[:14]}</div>'
-                ),
-                icon_size=(120, 14), icon_anchor=(60, 7),
-            ),
-        ).add_to(m)
 
     # NWS alert polygons
     sev_color = {
@@ -1996,7 +1957,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-radar_map = build_radar_folium_map(rv_payload, alerts_payload, usgs_data)
+radar_map = build_radar_folium_map(rv_payload, alerts_payload)
 st_folium(radar_map, use_container_width=True, height=540, returned_objects=[])
 
 st.markdown("</div>", unsafe_allow_html=True)

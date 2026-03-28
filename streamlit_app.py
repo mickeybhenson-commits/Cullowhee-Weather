@@ -28,16 +28,15 @@ LON = -83.182899
 SITE = "Belk Building — Western Carolina University, Cullowhee, NC"
 TIMEZONE = ZoneInfo("America/New_York")
 
-AMBIENT_API_KEY = st.secrets.get(
+_AWN_KEY = st.secrets.get(
     "AMBIENT_API_KEY",
-    "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334",
+    "4112bd1931ce4b7a9ba75da04c237db348c6f56e18dc4616966bd3e6474fac04",
 )
-AMBIENT_APP_KEY = st.secrets.get(
-    "AMBIENT_APP_KEY",
-    "9ed066cb260c42adbe8778e0afb09e747f8450a7dd20479791a18d692b722334",
-)
+AMBIENT_API_KEY = _AWN_KEY
+AMBIENT_APP_KEY = _AWN_KEY   # subscription accounts use same key for both fields
 
-AMBIENT_DEVICE_MAC = "35c7b0accb75a84d7891d82f125001a8"
+# Partial name match — case-insensitive, matches "RiverBend on the Tuckaseegee"
+AMBIENT_STATION_NAME = "riverbend"
 AIRPORT_ID = "K24A"
 NWS_USER_AGENT = "(WCU-Belk-Weather/1.0 mickey.b.henson@gmail.com)"
 
@@ -642,10 +641,14 @@ def fetch_ambient():
         if not devices:
             return ok_payload(source="AMBIENT", error="No devices returned")
 
+        # Match by station name (case-insensitive partial match)
+        # Falls back to first device if name not found
         target = next(
             (
                 d for d in devices
-                if d.get("macAddress", "").replace(":", "").replace("-", "").lower() == AMBIENT_DEVICE_MAC
+                if AMBIENT_STATION_NAME in (
+                    d.get("info", {}).get("name", "") or ""
+                ).lower()
             ),
             devices[0],
         )

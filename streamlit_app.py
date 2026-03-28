@@ -1,12 +1,15 @@
+import json
 import math
 import re
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import folium
 import plotly.graph_objects as go
 import requests
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
+from streamlit_folium import st_folium
 
 # ============================================================
 # PAGE CONFIG
@@ -35,12 +38,10 @@ _AWN_KEY = st.secrets.get(
 AMBIENT_API_KEY = _AWN_KEY
 AMBIENT_APP_KEY = _AWN_KEY   # subscription accounts use same key for both fields
 
-# Partial name match — case-insensitive, matches "RiverBend on the Tuckaseegee"
 AMBIENT_STATION_NAME = "riverbend"
 AIRPORT_ID = "K24A"
 NWS_USER_AGENT = "(WCU-Belk-Weather/1.0 mickey.b.henson@gmail.com)"
 
-# Tuckasegee stream gauges — report stage (ft) and discharge (cfs), NOT precipitation
 USGS_GAUGES = {
     "03439000": "Tuckasegee @ Cullowhee",
     "03460000": "Tuckasegee @ Bryson City",
@@ -347,33 +348,17 @@ def calc_dewpoint_f(temp_f, humidity):
 
 def weather_desc(code):
     codes = {
-        0: "Clear",
-        1: "Mainly Clear",
-        2: "Partly Cloudy",
-        3: "Overcast",
-        45: "Foggy",
-        48: "Rime Fog",
-        51: "Lt Drizzle",
-        53: "Drizzle",
-        55: "Heavy Drizzle",
-        61: "Lt Rain",
-        63: "Rain",
-        65: "Heavy Rain",
-        71: "Lt Snow",
-        73: "Snow",
-        75: "Heavy Snow",
-        80: "Rain Showers",
-        81: "Mod Showers",
-        82: "Heavy Showers",
-        95: "Thunderstorm",
-        96: "Tstm+Hail",
-        99: "Tstm+Heavy Hail",
+        0: "Clear", 1: "Mainly Clear", 2: "Partly Cloudy", 3: "Overcast",
+        45: "Foggy", 48: "Rime Fog", 51: "Lt Drizzle", 53: "Drizzle",
+        55: "Heavy Drizzle", 61: "Lt Rain", 63: "Rain", 65: "Heavy Rain",
+        71: "Lt Snow", 73: "Snow", 75: "Heavy Snow", 80: "Rain Showers",
+        81: "Mod Showers", 82: "Heavy Showers", 95: "Thunderstorm",
+        96: "Tstm+Hail", 99: "Tstm+Heavy Hail",
     }
     return codes.get(code, "Unknown")
 
 
 def nws_desc_to_code(desc):
-    """Map NWS shortForecast text to a WMO-style weather code for emoji lookup."""
     d = desc.lower()
     if any(x in d for x in ["thunderstorm", "tstm", "lightning"]):
         return 95
@@ -445,7 +430,6 @@ def pop_color(pop):
 
 
 def build_forecast_tile(day, is_today=False):
-    """Build a single forecast tile HTML string with zero leading whitespace."""
     tile_class = "forecast-tile-today" if is_today else "forecast-tile"
     emoji = weather_emoji(day.get("code", 0))
     hi = f"{day['hi']}°" if day.get("hi") is not None else "--"
@@ -642,8 +626,6 @@ def fetch_ambient():
         if not devices:
             return ok_payload(source="AMBIENT", error="No devices returned")
 
-        # Match by station name (case-insensitive partial match)
-        # Falls back to first device if name not found
         target = next(
             (
                 d for d in devices
@@ -817,12 +799,6 @@ def fetch_airport_metar():
 
 @st.cache_data(ttl=60)
 def fetch_usgs_gauges():
-    """
-    Fetch Tuckasegee River stage (ft) and discharge (cfs) from USGS.
-    parameterCd=00065 = gage height (ft)
-    parameterCd=00060 = discharge (cfs)
-    Both are returned for each site when available.
-    """
     results = {}
     for site_id, name in USGS_GAUGES.items():
         try:
@@ -902,21 +878,12 @@ def fetch_historical_rain_30d():
     except Exception as e:
         return ok_payload(data={"rain_30d": [0.05] * 30}, source="OPEN-METEO HIST", error=str(e))
 
-
 # ============================================================
 # DATA FETCHERS — FORECAST (3-SOURCE SMART CASCADE)
-# ============================================================
-# Priority logic:
-#   Days 0-1  → HRRR  (3 km, resolves Blue Ridge terrain, best near-term)
-#   Days 2-3  → NWS   (official, MOS bias-corrected to this point)
-#   Days 4-6  → ECMWF (best medium-range global skill)
-#   Each layer falls back to the next if unavailable.
-#   NWS PoP always blended in as a conservative max when available.
 # ============================================================
 
 @st.cache_data(ttl=900)
 def fetch_nws_forecast():
-    """Fetch official NWS point forecast via api.weather.gov."""
     try:
         pts = safe_get(
             f"https://api.weather.gov/points/{LAT},{LON}",
@@ -934,7 +901,6 @@ def fetch_nws_forecast():
         fcast.raise_for_status()
         periods = fcast.json()["properties"]["periods"]
 
-        # Group daytime/nighttime periods by calendar date
         date_periods = {}
         for p in periods:
             d = datetime.fromisoformat(p["startTime"]).date()
@@ -971,7 +937,7 @@ def fetch_nws_forecast():
                 "label": dt.strftime("%a %m/%d"),
                 "hi": hi,
                 "lo": lo,
-                "precip": None,  # NWS /forecast does not give QPF sum
+                "precip": None,
                 "pop": pop,
                 "wind": wind,
                 "gust": wind,
@@ -987,7 +953,6 @@ def fetch_nws_forecast():
 
 @st.cache_data(ttl=900)
 def fetch_hrrr_open_meteo():
-    """Fetch HRRR 3-day forecast via Open-Meteo (reliable to ~60 h)."""
     try:
         r = safe_get(
             "https://api.open-meteo.com/v1/gfs",
@@ -1036,7 +1001,6 @@ def fetch_hrrr_open_meteo():
 
 @st.cache_data(ttl=900)
 def fetch_ecmwf_open_meteo():
-    """Fetch ECMWF 7-day forecast via Open-Meteo (best medium-range skill)."""
     try:
         r = safe_get(
             "https://api.open-meteo.com/v1/ecmwf",
@@ -1084,14 +1048,6 @@ def fetch_ecmwf_open_meteo():
 
 @st.cache_data(ttl=900)
 def fetch_best_7day_forecast():
-    """
-    Smart 3-source cascade:
-      Days 0-1  → HRRR  (3 km terrain-aware, best 0-48 h)
-      Days 2-3  → NWS   (official, bias-corrected via MOS)
-      Days 4-6  → ECMWF (best medium-range global skill)
-    NWS PoP is blended as a conservative max whenever available.
-    QPF falls back to ECMWF when NWS has no precip sum.
-    """
     nws_p = fetch_nws_forecast()
     hrrr_p = fetch_hrrr_open_meteo()
     ecmwf_p = fetch_ecmwf_open_meteo()
@@ -1113,35 +1069,26 @@ def fetch_best_7day_forecast():
         ecmwf = ecmwf_by_date.get(date_key)
 
         if i <= 1 and hrrr:
-            # Days 0-1: HRRR leads — 3 km, explicit Blue Ridge terrain
             day = dict(hrrr)
             if nws:
                 day["pop"] = max(hrrr["pop"], nws.get("pop", 0))
             day["source"] = "HRRR"
-
         elif i >= 4 and ecmwf:
-            # Days 4-6: ECMWF leads — best medium-range skill
             day = dict(ecmwf)
             if nws:
                 day["pop"] = max(ecmwf["pop"], nws.get("pop", 0))
             day["source"] = "ECMWF"
-
         elif nws:
-            # Days 2-3 (or fallback): NWS official point forecast
             day = dict(nws)
-            # Augment NWS with QPF from ECMWF/HRRR since /forecast has no sum
             if day.get("precip") is None:
                 day["precip"] = (ecmwf or {}).get("precip") or (hrrr or {}).get("precip")
             day["source"] = "NWS"
-
         elif ecmwf:
             day = dict(ecmwf)
             day["source"] = "ECMWF"
-
         elif hrrr:
             day = dict(hrrr)
             day["source"] = "HRRR"
-
         else:
             day = {
                 "date": date_key,
@@ -1162,6 +1109,299 @@ def fetch_best_7day_forecast():
 
     return ok_payload(data={"days": final_days, "errors": errors}, source="NWS/HRRR/ECMWF")
 
+# ============================================================
+# DATA FETCHERS — RADAR & ALERTS
+# ============================================================
+
+@st.cache_data(ttl=180)
+def fetch_rainviewer_frames():
+    """Fetch RainViewer API frame list for animated NEXRAD-composite radar."""
+    try:
+        r = safe_get("https://api.rainviewer.com/public/weather-maps.json", timeout=8)
+        r.raise_for_status()
+        data = r.json()
+        return ok_payload(
+            data={
+                "past":    data.get("radar", {}).get("past", []),
+                "nowcast": data.get("radar", {}).get("nowcast", []),
+                "host":    data.get("host", "https://tilecache.rainviewer.com"),
+            },
+            source="RAINVIEWER",
+        )
+    except Exception as e:
+        return ok_payload(
+            data={"past": [], "nowcast": [], "host": "https://tilecache.rainviewer.com"},
+            source="RAINVIEWER", error=str(e),
+        )
+
+
+@st.cache_data(ttl=120)
+def fetch_nws_alerts():
+    """Fetch active NWS severe weather alerts near WCU."""
+    try:
+        r = safe_get(
+            "https://api.weather.gov/alerts/active",
+            params={"point": f"{LAT},{LON}"},
+            headers={"User-Agent": NWS_USER_AGENT},
+            timeout=8,
+        )
+        r.raise_for_status()
+        features = r.json().get("features", [])
+        alerts = []
+        for f in features[:8]:
+            props = f.get("properties", {})
+            alerts.append({
+                "event":    props.get("event", "Unknown"),
+                "severity": props.get("severity", "Unknown"),
+                "headline": (props.get("headline") or "")[:120],
+                "geometry": f.get("geometry"),
+            })
+        return ok_payload(data={"alerts": alerts}, source="NWS ALERTS")
+    except Exception as e:
+        return ok_payload(data={"alerts": []}, source="NWS ALERTS", error=str(e))
+
+# ============================================================
+# RADAR MAP BUILDER
+# ============================================================
+
+def build_radar_folium_map(rv_payload, alerts_payload, usgs_gauge_data=None):
+    """
+    Interactive folium map with:
+      - CartoDB Dark basemap
+      - Animated RainViewer NEXRAD radar (play/pause + scrubber)
+      - NWS active alert polygons (storm cell / severe wx proxy)
+      - WCU site marker + USGS stream gauge markers
+    """
+    usgs_gauge_data = usgs_gauge_data or {}
+
+    past      = rv_payload.get("data", {}).get("past", [])
+    nowcast   = rv_payload.get("data", {}).get("nowcast", [])
+    host      = rv_payload.get("data", {}).get("host", "https://tilecache.rainviewer.com")
+    all_frames = past + nowcast
+    len_past   = len(past)
+    alerts     = alerts_payload.get("data", {}).get("alerts", [])
+
+    m = folium.Map(
+        location=[LAT, LON],
+        zoom_start=8,
+        tiles=None,
+        control_scale=True,
+        prefer_canvas=True,
+    )
+
+    # CartoDB Dark basemap
+    folium.TileLayer(
+        tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        attr="© OpenStreetMap · © CARTO",
+        name="Dark",
+        max_zoom=19,
+    ).add_to(m)
+
+    # WCU site marker
+    folium.CircleMarker(
+        location=[LAT, LON],
+        radius=10,
+        color="#00FFFF", weight=2,
+        fill=True, fill_color="#00FFFF", fill_opacity=0.88,
+        tooltip="<b>WCU Belk Building</b><br>Cullowhee, NC · 35.307°N | 83.183°W",
+        popup=folium.Popup("<b>WCU Belk Building</b><br>Cullowhee, NC", max_width=200),
+    ).add_to(m)
+
+    folium.Marker(
+        location=[LAT + 0.025, LON + 0.01],
+        icon=folium.DivIcon(
+            html=(
+                '<div style="font-family:Share Tech Mono,monospace;font-size:11px;'
+                'color:#00FFFF;font-weight:700;white-space:nowrap;'
+                'text-shadow:0 0 8px rgba(0,50,100,0.95);">WCU BELK</div>'
+            ),
+            icon_size=(80, 16), icon_anchor=(40, 8),
+        ),
+    ).add_to(m)
+
+    # USGS stream gauge markers
+    gauge_loc = {
+        "03439000": (35.307, -83.182, "Tuckasegee @ Cullowhee"),
+        "03460000": (35.435, -83.452, "Tuckasegee @ Bryson City"),
+    }
+    for sid, (glat, glon, gname) in gauge_loc.items():
+        ginfo  = usgs_gauge_data.get(sid, {})
+        stage  = ginfo.get("stage_ft")
+        cfs    = ginfo.get("discharge_cfs")
+        ok_g   = ginfo.get("ok", False)
+        gc     = "#5AC8FA" if ok_g else "#FF3333"
+        s_str  = f"{stage} ft" if stage is not None else "N/A"
+        q_str  = f"{int(cfs):,} cfs" if cfs is not None else "N/A"
+
+        folium.CircleMarker(
+            location=[glat, glon],
+            radius=7, color=gc, weight=2,
+            fill=True, fill_color=gc, fill_opacity=0.78,
+            tooltip=f"<b>{gname}</b><br>Stage: {s_str} | Flow: {q_str}",
+            popup=folium.Popup(
+                f"<b>{gname}</b><br>Stage: {s_str}<br>Flow: {q_str}<br><small>USGS #{sid}</small>",
+                max_width=220,
+            ),
+        ).add_to(m)
+
+        folium.Marker(
+            location=[glat + 0.018, glon + 0.01],
+            icon=folium.DivIcon(
+                html=(
+                    f'<div style="font-family:Share Tech Mono,monospace;font-size:10px;'
+                    f'color:{gc};white-space:nowrap;'
+                    f'text-shadow:0 0 6px rgba(0,20,50,0.95);">'
+                    f'{gname.split("@")[-1].strip()[:14]}</div>'
+                ),
+                icon_size=(120, 14), icon_anchor=(60, 7),
+            ),
+        ).add_to(m)
+
+    # NWS alert polygons
+    sev_color = {
+        "Extreme":  "#FF3333",
+        "Severe":   "#FF8C00",
+        "Moderate": "#FFD700",
+        "Minor":    "#AAFF00",
+        "Unknown":  "#7AACCC",
+    }
+    for alert in alerts:
+        geom = alert.get("geometry")
+        if not geom:
+            continue
+        ec      = sev_color.get(alert.get("severity", "Unknown"), "#7AACCC")
+        event   = alert.get("event", "Alert")
+        headline= alert.get("headline", "")
+
+        def _poly(ring, _ec=ec, _ev=event, _hl=headline):
+            folium.Polygon(
+                locations=[[pt[1], pt[0]] for pt in ring],
+                color=_ec, weight=2,
+                fill=True, fill_color=_ec, fill_opacity=0.13,
+                tooltip=f"<b>{_ev}</b><br>{_hl[:80]}",
+                popup=folium.Popup(f"<b>{_ev}</b><br>{_hl}", max_width=300),
+            ).add_to(m)
+
+        if geom["type"] == "Polygon":
+            _poly(geom["coordinates"][0])
+        elif geom["type"] == "MultiPolygon":
+            for poly in geom["coordinates"]:
+                _poly(poly[0])
+
+    # Animated RainViewer radar
+    if all_frames:
+        map_var  = m.get_name()
+        frames_j = json.dumps(all_frames)
+        max_idx  = len(all_frames) - 1
+
+        radar_js = f"""
+<script>
+(function() {{
+    function initRadar() {{
+        var map = window['{map_var}'];
+        if (!map) {{ setTimeout(initRadar, 250); return; }}
+
+        var frames    = {frames_j};
+        var host      = "{host}";
+        var lenPast   = {len_past};
+        var color     = 2;
+        var smooth    = 1;
+        var RDR_OPACITY = 0.65;
+        var idx       = frames.length - 1;
+        var layers    = {{}};
+        var playing   = true;
+        var timer     = null;
+
+        frames.forEach(function(f) {{
+            var url = host + f.path + '/256/{{z}}/{{x}}/{{y}}/' + color + '/' + smooth + '_1.png';
+            layers[f.time] = L.tileLayer(url, {{ opacity: 0, zIndex: 200 }});
+            layers[f.time].addTo(map);
+        }});
+
+        function showFrame(i) {{
+            frames.forEach(function(f, j) {{
+                layers[f.time].setOpacity(j === i ? RDR_OPACITY : 0);
+            }});
+            idx = i;
+
+            var ts  = new Date(frames[i].time * 1000);
+            var lbl = ts.toLocaleTimeString([], {{hour:'2-digit', minute:'2-digit'}});
+            var el  = document.getElementById('rv-ts');
+            if (el) el.innerText = lbl;
+
+            var badge = document.getElementById('rv-badge');
+            if (badge) {{
+                var isNow = i >= lenPast;
+                badge.innerText = isNow ? '🔮 NOWCAST' : '📡 NEXRAD';
+                badge.style.color = isNow ? '#AAFF00' : '#00FFCC';
+            }}
+
+            var prog = document.getElementById('rv-prog');
+            if (prog && prog !== document.activeElement) prog.value = i;
+        }}
+
+        function nextFrame() {{ showFrame((idx + 1) % frames.length); }}
+
+        function startAnim() {{
+            if (timer) clearInterval(timer);
+            timer = setInterval(nextFrame, 550);
+            playing = true;
+            var btn = document.getElementById('rv-btn');
+            if (btn) btn.innerText = '⏸';
+        }}
+
+        function stopAnim() {{
+            if (timer) {{ clearInterval(timer); timer = null; }}
+            playing = false;
+            var btn = document.getElementById('rv-btn');
+            if (btn) btn.innerText = '▶';
+        }}
+
+        window._rvToggle = function() {{ playing ? stopAnim() : startAnim(); }};
+        window._rvSeek   = function(v) {{ stopAnim(); showFrame(parseInt(v)); }};
+
+        var ctrl = L.control({{position: 'bottomleft'}});
+        ctrl.onAdd = function() {{
+            var d = L.DomUtil.create('div', '');
+            d.innerHTML =
+                '<div style="background:rgba(6,12,20,0.93);border:1px solid rgba(0,136,255,0.4);' +
+                'border-radius:8px;padding:8px 14px;font-family:monospace;font-size:11px;' +
+                'color:#7AACCC;min-width:280px;box-shadow:0 0 22px rgba(0,60,140,0.45);">' +
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px;">' +
+                '<span id="rv-badge" style="color:#00FFCC;font-weight:700;font-size:12px;">📡 NEXRAD</span>' +
+                '<span style="color:#2A4060;">|</span>' +
+                '<span id="rv-ts" style="color:#FFFFFF;font-size:12px;letter-spacing:1px;">--:--</span>' +
+                '<span style="flex:1;"></span>' +
+                '<button onclick="window._rvToggle()" id="rv-btn" style="' +
+                'background:rgba(0,136,255,0.2);border:1px solid rgba(0,136,255,0.5);' +
+                'border-radius:4px;color:#00FFCC;cursor:pointer;padding:2px 10px;font-size:14px;">⏸</button>' +
+                '</div>' +
+                '<input id="rv-prog" type="range" min="0" max="{max_idx}" value="{max_idx}"' +
+                ' oninput="window._rvSeek(this.value)"' +
+                ' style="width:100%;accent-color:#00FFCC;cursor:pointer;">' +
+                '<div style="display:flex;justify-content:space-between;font-size:9px;' +
+                'color:#2A5070;margin-top:3px;">' +
+                '<span>◀ PAST</span><span>LIVE</span><span style="color:#AAFF00;">NOWCAST ▶</span>' +
+                '</div>' +
+                '<div style="font-size:9px;color:#1A3050;margin-top:4px;text-align:right;">' +
+                'RainViewer · NWS Alerts</div>' +
+                '</div>';
+            L.DomEvent.disableClickPropagation(d);
+            L.DomEvent.disableScrollPropagation(d);
+            return d;
+        }};
+        ctrl.addTo(map);
+
+        showFrame(frames.length - 1);
+        startAnim();
+    }}
+    setTimeout(initRadar, 400);
+}})();
+</script>
+"""
+        m.get_root().html.add_child(folium.Element(radar_js))
+
+    return m
 
 # ============================================================
 # UI HELPERS
@@ -1281,23 +1521,25 @@ def render_data_card(title, value, detail=None):
     )
 
 # ============================================================
-# LOAD DATA
+# LOAD ALL DATA
 # ============================================================
 
 with st.spinner("Syncing all data sources..."):
-    ambient_payload = fetch_ambient()
-    blitz_payload = fetch_blitzortung_lightning()
-    aqi_payload = fetch_aqi()
-    airport_payload = fetch_airport_metar()
-    usgs_data = fetch_usgs_gauges()
+    ambient_payload  = fetch_ambient()
+    blitz_payload    = fetch_blitzortung_lightning()
+    aqi_payload      = fetch_aqi()
+    airport_payload  = fetch_airport_metar()
+    usgs_data        = fetch_usgs_gauges()
     forecast_payload = fetch_best_7day_forecast()
-    hist_payload = fetch_historical_rain_30d()
+    hist_payload     = fetch_historical_rain_30d()
+    rv_payload       = fetch_rainviewer_frames()
+    alerts_payload   = fetch_nws_alerts()
 
-ambient = ambient_payload.get("data", {})
-aqi_data = aqi_payload.get("data", {})
-airport = airport_payload.get("data", {})
-forecast = forecast_payload.get("data", {}).get("days", [])
-hist_rain = hist_payload.get("data", {}).get("rain_30d", [0.05] * 30)
+ambient      = ambient_payload.get("data", {})
+aqi_data     = aqi_payload.get("data", {})
+airport      = airport_payload.get("data", {})
+forecast     = forecast_payload.get("data", {}).get("days", [])
+hist_rain    = hist_payload.get("data", {}).get("rain_30d", [0.05] * 30)
 
 # ============================================================
 # DERIVED METRICS
@@ -1310,14 +1552,12 @@ elif airport_payload["ok"]:
     rain_today = airport.get("precip", 0.0) or 0.0
 
 rain_3d_forecast = sum((day.get("precip") or 0.0) for day in forecast[:3]) if forecast else 0.0
-wind_now = first_non_none(ambient.get("wind_speed"), airport.get("wind_mph"), 0) or 0
-pop_today = forecast[0]["pop"] if forecast else 0
-today_src = forecast[0].get("source", "CASCADE") if forecast else "CASCADE"
+wind_now   = first_non_none(ambient.get("wind_speed"), airport.get("wind_mph"), 0) or 0
+pop_today  = forecast[0]["pop"] if forecast else 0
+today_src  = forecast[0].get("source", "CASCADE") if forecast else "CASCADE"
 
 soil_pct, soil_status, soil_color, soil_storage = estimate_soil_moisture_belk(
-    hist_rain,
-    rain_today,
-    profile="belk_compacted"
+    hist_rain, rain_today, profile="belk_compacted"
 )
 
 l_dist, l_source, l_strikes, lightning_detected = resolve_lightning(ambient_payload, blitz_payload)
@@ -1338,9 +1578,9 @@ if lightning_detected:
     l_detail = f"Nearest Strike: <b style='color:#00FFCC'>{l_dist:.1f} mi</b>"
 else:
     l_display = 0.0
-    l_color = COLORS["green"]
-    l_label = "NO STRIKES"
-    l_detail = "No lightning detected nearby"
+    l_color   = COLORS["green"]
+    l_label   = "NO STRIKES"
+    l_detail  = "No lightning detected nearby"
 
 uv_val = ambient.get("uv", 0) if ambient_payload["ok"] else 0
 uv_val = uv_val or 0
@@ -1359,9 +1599,9 @@ uv_label = (
     "EXTREME"
 )
 
-temp_now = first_non_none(ambient.get("temp"), airport.get("temp_f"))
+temp_now     = first_non_none(ambient.get("temp"), airport.get("temp_f"))
 temp_display = clamp(temp_now if temp_now is not None else 70, 0, 120)
-temp_color = (
+temp_color   = (
     COLORS["blue"] if temp_display < 32 else
     COLORS["cyan"] if temp_display < 50 else
     COLORS["green"] if temp_display < 80 else
@@ -1393,9 +1633,9 @@ hum_label = (
     "VERY HUMID"
 )
 
-tonight_low = forecast[0]["lo"] if forecast and forecast[0].get("lo") is not None else 50
+tonight_low   = forecast[0]["lo"] if forecast and forecast[0].get("lo") is not None else 50
 freeze_display = clamp(tonight_low, 0, 80)
-freeze_color = (
+freeze_color  = (
     COLORS["green"] if tonight_low > 45 else
     COLORS["yellow"] if tonight_low > 32 else
     COLORS["orange"] if tonight_low > 28 else
@@ -1419,9 +1659,9 @@ moon_color = (
     COLORS["blue"]
 )
 
-aqi_val = aqi_data.get("aqi", 0) if aqi_payload["ok"] else 0
+aqi_val     = aqi_data.get("aqi", 0) if aqi_payload["ok"] else 0
 aqi_display = min(aqi_val, 200)
-aqi_color = (
+aqi_color   = (
     COLORS["green"] if aqi_val <= 50 else
     COLORS["lime"] if aqi_val <= 100 else
     COLORS["yellow"] if aqi_val <= 150 else
@@ -1437,7 +1677,7 @@ aqi_label = (
 )
 
 rain3d_display = clamp(rain_3d_forecast, 0, 5)
-rain3d_color = (
+rain3d_color   = (
     COLORS["green"] if rain_3d_forecast < 0.5 else
     COLORS["yellow"] if rain_3d_forecast < 1.5 else
     COLORS["orange"] if rain_3d_forecast < 3.0 else
@@ -1450,9 +1690,9 @@ rain3d_label = (
     "SIGNIFICANT"
 )
 
-pressure_now = first_non_none(ambient.get("pressure"), 29.92)
-current_time = now_local()
-tz_label = current_time.tzname() or "ET"
+pressure_now  = first_non_none(ambient.get("pressure"), 29.92)
+current_time  = now_local()
+tz_label      = current_time.tzname() or "ET"
 
 # ============================================================
 # HEADER
@@ -1472,6 +1712,7 @@ st.markdown(
         {render_source_status_badge("💧 USGS", any(v["ok"] for v in usgs_data.values()))}
         {render_source_status_badge("🌬️ AQI", aqi_payload["ok"])}
         {render_source_status_badge("🌐 FORECAST", bool(forecast))}
+        {render_source_status_badge("🗺️ RADAR", rv_payload["ok"])}
     </div>
 </div>
 """,
@@ -1479,7 +1720,7 @@ st.markdown(
 )
 
 # ============================================================
-# GAUGE ROW 1
+# GAUGE ROW 1 — Hazard & Atmospheric
 # ============================================================
 
 st.markdown('<div class="panel"><div class="panel-title">⚡ Hazard & Atmospheric Gauges</div>', unsafe_allow_html=True)
@@ -1564,7 +1805,7 @@ for col, config in zip(cols, row1):
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# GAUGE ROW 2
+# GAUGE ROW 2 — Site Conditions
 # ============================================================
 
 st.markdown('<div class="panel"><div class="panel-title">🌱 Site Condition Gauges</div>', unsafe_allow_html=True)
@@ -1645,7 +1886,7 @@ for col, config in zip(cols, row2):
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# GAUGE ROW 3
+# GAUGE ROW 3 — Rain & Short-Term
 # ============================================================
 
 st.markdown('<div class="panel"><div class="panel-title">🌧️ Rain & Short-Term Impact</div>', unsafe_allow_html=True)
@@ -1693,7 +1934,7 @@ row3 = [
         "max_val": 32,
         "unit": " inHg",
         "thresholds": [
-            {"range": [28, 29], "color": "rgba(255,51,51,0.12)"},
+            {"range": [28, 29],   "color": "rgba(255,51,51,0.12)"},
             {"range": [29, 29.8], "color": "rgba(255,140,0,0.12)"},
             {"range": [29.8, 30.3], "color": "rgba(0,255,156,0.12)"},
             {"range": [30.3, 32], "color": "rgba(90,200,250,0.12)"},
@@ -1711,7 +1952,7 @@ for col, config in zip(cols, row3):
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ============================================================
-# FORECAST — SMART CASCADE PANEL
+# 7-DAY FORECAST PANEL
 # ============================================================
 
 st.markdown(
@@ -1729,6 +1970,34 @@ if forecast:
     st.markdown(tiles_html, unsafe_allow_html=True)
 else:
     st.warning("Forecast data unavailable.")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ============================================================
+# RADAR MAP PANEL
+# ============================================================
+
+n_frames  = (
+    len(rv_payload.get("data", {}).get("past", []))
+    + len(rv_payload.get("data", {}).get("nowcast", []))
+)
+n_alerts  = len(alerts_payload.get("data", {}).get("alerts", []))
+rv_live   = "LIVE" if rv_payload["ok"] else "OFFLINE"
+al_live   = "LIVE" if alerts_payload["ok"] else "OFFLINE"
+
+st.markdown(
+    f'<div class="panel"><div class="panel-title">'
+    f'🗺️ Live Radar Map — NEXRAD Composite · NWS Storm Alerts'
+    f'&nbsp;<span class="source-badge">RAINVIEWER {rv_live}</span>'
+    f'<span class="source-badge">NWS ALERTS {al_live}</span>'
+    f'<span class="source-badge">{n_frames} FRAMES</span>'
+    f'<span class="source-badge">{n_alerts} ACTIVE ALERTS</span>'
+    f'</div>',
+    unsafe_allow_html=True,
+)
+
+radar_map = build_radar_folium_map(rv_payload, alerts_payload, usgs_data)
+st_folium(radar_map, use_container_width=True, height=540, returned_objects=[])
 
 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1760,14 +2029,14 @@ with right:
     st.markdown('<div class="panel"><div class="panel-title">💧 USGS / Aviation / Diagnostics</div>', unsafe_allow_html=True)
 
     for site_id, item in usgs_data.items():
-        status = "LIVE" if item["ok"] else "OFFLINE"
-        stage = item.get("stage_ft")
-        cfs = item.get("discharge_cfs")
+        status   = "LIVE" if item["ok"] else "OFFLINE"
+        stage    = item.get("stage_ft")
+        cfs      = item.get("discharge_cfs")
         if item["ok"]:
-            val_str = f"{stage} ft" if stage is not None else "--"
+            val_str    = f"{stage} ft" if stage is not None else "--"
             detail_str = f"{int(cfs):,} cfs • Gauge {site_id} • {status}" if cfs is not None else f"Gauge {site_id} • {status}"
         else:
-            val_str = "OFFLINE"
+            val_str    = "OFFLINE"
             detail_str = f"Gauge {site_id} • {item.get('error','')[:60]}"
         render_data_card(f"USGS {item['name']}", val_str, detail_str)
 

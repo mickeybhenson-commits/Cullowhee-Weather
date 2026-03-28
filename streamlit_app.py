@@ -40,6 +40,7 @@ AMBIENT_STATION_NAME = "riverbend"
 AIRPORT_ID = "K24A"
 NWS_USER_AGENT = "(WCU-Belk-Weather/1.0 mickey.b.henson@gmail.com)"
 
+# Tuckasegee stream gauges — report stage (ft) and discharge (cfs), NOT precipitation
 USGS_GAUGES = {
     "03439000": "Tuckasegee @ Cullowhee",
     "03460000": "Tuckasegee @ Bryson City",
@@ -814,22 +815,65 @@ def fetch_airport_metar():
         return ok_payload(source="AVIATION WEATHER", error=str(e))
 
 
-@st.cache_data(ttl=300)
-def fetch_usgs_rain():
+@st.cache_data(ttl=60)
+def fetch_usgs_gauges():
+    """
+    Fetch Tuckasegee River stage (ft) and discharge (cfs) from USGS.
+    parameterCd=00065 = gage height (ft)
+    parameterCd=00060 = discharge (cfs)
+    Both are returned for each site when available.
+    """
     results = {}
     for site_id, name in USGS_GAUGES.items():
         try:
             r = safe_get(
                 "https://waterservices.usgs.gov/nwis/iv/",
-                params={"format": "json", "sites": site_id, "parameterCd": "00045"},
+                params={
+                    "format": "json",
+                    "sites": site_id,
+                    "parameterCd": "00065,00060",
+                },
                 timeout=8,
             )
             r.raise_for_status()
-            data = r.json()
-            val = float(data["value"]["timeSeries"][0]["values"][0]["value"][0]["value"])
-            results[site_id] = {"name": name, "value": val, "ok": True, "error": None}
+            ts_list = r.json().get("value", {}).get("timeSeries", [])
+
+            stage_ft = None
+            discharge_cfs = None
+
+            for ts in ts_list:
+                code = ts["variable"]["variableCode"][0]["value"]
+                vals = ts["values"][0]["value"]
+                if not vals:
+                    continue
+                latest = vals[-1]["value"]
+                try:
+                    v = float(latest)
+                    if code == "00065":
+                        stage_ft = round(v, 2)
+                    elif code == "00060":
+                        discharge_cfs = round(v, 0)
+                except (ValueError, TypeError):
+                    pass
+
+            if stage_ft is None and discharge_cfs is None:
+                results[site_id] = {
+                    "name": name, "stage_ft": None, "discharge_cfs": None,
+                    "ok": False, "error": "No data returned",
+                }
+            else:
+                results[site_id] = {
+                    "name": name,
+                    "stage_ft": stage_ft,
+                    "discharge_cfs": discharge_cfs,
+                    "ok": True,
+                    "error": None,
+                }
         except Exception as e:
-            results[site_id] = {"name": name, "value": 0.0, "ok": False, "error": str(e)}
+            results[site_id] = {
+                "name": name, "stage_ft": None, "discharge_cfs": None,
+                "ok": False, "error": str(e),
+            }
     return results
 
 
@@ -1245,7 +1289,7 @@ with st.spinner("Syncing all data sources..."):
     blitz_payload = fetch_blitzortung_lightning()
     aqi_payload = fetch_aqi()
     airport_payload = fetch_airport_metar()
-    usgs_data = fetch_usgs_rain()
+    usgs_data = fetch_usgs_gauges()
     forecast_payload = fetch_best_7day_forecast()
     hist_payload = fetch_historical_rain_30d()
 
@@ -1717,11 +1761,15 @@ with right:
 
     for site_id, item in usgs_data.items():
         status = "LIVE" if item["ok"] else "OFFLINE"
-        render_data_card(
-            f"USGS {item['name']}",
-            format_num(item["value"], 2, " in"),
-            f"Gauge {site_id} • {status}",
-        )
+        stage = item.get("stage_ft")
+        cfs = item.get("discharge_cfs")
+        if item["ok"]:
+            val_str = f"{stage} ft" if stage is not None else "--"
+            detail_str = f"{int(cfs):,} cfs • Gauge {site_id} • {status}" if cfs is not None else f"Gauge {site_id} • {status}"
+        else:
+            val_str = "OFFLINE"
+            detail_str = f"Gauge {site_id} • {item.get('error','')[:60]}"
+        render_data_card(f"USGS {item['name']}", val_str, detail_str)
 
     render_data_card("Airport METAR", AIRPORT_ID, airport.get("raw", "No raw observation"))
     render_data_card(

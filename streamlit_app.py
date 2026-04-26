@@ -31,12 +31,15 @@ LON = -83.182899
 SITE = "Belk Building — Western Carolina University, Cullowhee, NC"
 TIMEZONE = ZoneInfo("America/New_York")
 
-_AWN_KEY = st.secrets.get(
+# ── FIX: AWN requires two separate keys ──
+AMBIENT_API_KEY = st.secrets.get(
     "AMBIENT_API_KEY",
     "4112bd1931ce4b7a9ba75da04c237db348c6f56e18dc4616966bd3e6474fac04",
 )
-AMBIENT_API_KEY = _AWN_KEY
-AMBIENT_APP_KEY = _AWN_KEY   # subscription accounts use same key for both fields
+AMBIENT_APP_KEY = st.secrets.get(
+    "AMBIENT_APP_KEY",
+    "8a162b733aed482a94a00abdacfe16165dd8f24c131b464290685fa77e872629",
+)
 
 AMBIENT_STATION_NAME = "riverbend"
 AIRPORT_ID = "K24A"
@@ -1115,7 +1118,6 @@ def fetch_best_7day_forecast():
 
 @st.cache_data(ttl=180)
 def fetch_rainviewer_frames():
-    """Fetch RainViewer API frame list for animated NEXRAD-composite radar."""
     try:
         r = safe_get("https://api.rainviewer.com/public/weather-maps.json", timeout=8)
         r.raise_for_status()
@@ -1137,7 +1139,6 @@ def fetch_rainviewer_frames():
 
 @st.cache_data(ttl=120)
 def fetch_nws_alerts():
-    """Fetch active NWS severe weather alerts near WCU."""
     try:
         r = safe_get(
             "https://api.weather.gov/alerts/active",
@@ -1165,14 +1166,6 @@ def fetch_nws_alerts():
 # ============================================================
 
 def build_radar_folium_map(rv_payload, alerts_payload):
-    """
-    Interactive folium map with:
-      - CartoDB Dark basemap
-      - Animated RainViewer NEXRAD radar (play/pause + scrubber)
-      - NWS active alert polygons (storm cell / severe wx proxy)
-      - WCU site marker
-    """
-
     past      = rv_payload.get("data", {}).get("past", [])
     nowcast   = rv_payload.get("data", {}).get("nowcast", [])
     host      = rv_payload.get("data", {}).get("host", "https://tilecache.rainviewer.com")
@@ -1188,7 +1181,6 @@ def build_radar_folium_map(rv_payload, alerts_payload):
         prefer_canvas=True,
     )
 
-    # CartoDB Dark basemap
     folium.TileLayer(
         tiles="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         attr="© OpenStreetMap · © CARTO",
@@ -1196,7 +1188,6 @@ def build_radar_folium_map(rv_payload, alerts_payload):
         max_zoom=19,
     ).add_to(m)
 
-    # WCU site marker
     folium.CircleMarker(
         location=[LAT, LON],
         radius=10,
@@ -1218,7 +1209,6 @@ def build_radar_folium_map(rv_payload, alerts_payload):
         ),
     ).add_to(m)
 
-    # NWS alert polygons
     sev_color = {
         "Extreme":  "#FF3333",
         "Severe":   "#FF8C00",
@@ -1249,7 +1239,6 @@ def build_radar_folium_map(rv_payload, alerts_payload):
             for poly in geom["coordinates"]:
                 _poly(poly[0])
 
-    # Animated RainViewer radar
     if all_frames:
         map_var  = m.get_name()
         frames_j = json.dumps(all_frames)
@@ -1895,10 +1884,10 @@ row3 = [
         "max_val": 32,
         "unit": " inHg",
         "thresholds": [
-            {"range": [28, 29],   "color": "rgba(255,51,51,0.12)"},
-            {"range": [29, 29.8], "color": "rgba(255,140,0,0.12)"},
+            {"range": [28, 29],     "color": "rgba(255,51,51,0.12)"},
+            {"range": [29, 29.8],   "color": "rgba(255,140,0,0.12)"},
             {"range": [29.8, 30.3], "color": "rgba(0,255,156,0.12)"},
-            {"range": [30.3, 32], "color": "rgba(90,200,250,0.12)"},
+            {"range": [30.3, 32],   "color": "rgba(90,200,250,0.12)"},
         ],
         "color": COLORS["cyan"],
         "label": "BAROMETRIC",

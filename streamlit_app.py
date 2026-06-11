@@ -353,4 +353,4 @@ lvl = overall_level(rw)
 col = SEV[lvl]
 
 wp_name = flood_network.SITES["belk"]["name"]
-lead = f"{round(rw.lead_time_hr * 60)} min" if rw.lead_time_hr is not None
+lead = f"{round(rw.lead_time_hr * 60)} min" if rw.lead_time_hr is not None else "—"

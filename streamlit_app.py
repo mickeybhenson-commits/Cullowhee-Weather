@@ -13,12 +13,14 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 from google.cloud import firestore
 
 try:
     import flood_engine
     import flood_network
     import orographic
+    import flood_profile
     FLOOD_OK = True
 except Exception as _e:
     FLOOD_OK = False
@@ -449,6 +451,20 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
             '</div>', unsafe_allow_html=True)
 
 # incoming weather
+# corridor profile (simulated depth & discharge along the creek)
+st.markdown('<div class="eyebrow">Corridor profile \u2014 simulated depth &amp; discharge along the creek</div>',
+            unsafe_allow_html=True)
+components.html(
+    '<div style="font-family:Inter,system-ui,sans-serif">' + flood_profile.corridor_svg() + '</div>',
+    height=470, scrolling=False)
+with st.expander('Station table — simulated depth & discharge'):
+    _rows = flood_profile.stations()
+    st.dataframe(
+        [{'Reach': r['reach'], 'Chainage (mi)': r['chainage_mi'],
+          'Drainage area (mi\u00b2)': r['area_sqmi'], 'Discharge (cfs)': r['discharge_cfs'],
+          'Depth (ft)': r['depth_ft']} for r in _rows],
+        use_container_width=True, hide_index=True)
+
 st.markdown('<div class="eyebrow">Incoming weather — forecast precipitation</div>', unsafe_allow_html=True)
 fc = fetch_best_7day(); days = fc.get("days", [])
 if days:

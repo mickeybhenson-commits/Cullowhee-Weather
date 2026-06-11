@@ -1,14 +1,16 @@
 """
-streamlit_app.py  —  Belk dashboard + flood engine
+streamlit_app.py  —  Belk dashboard + watershed flood network
 =====================================================================
-Top half  : temp / humidity / pressure pulled from station_1
-            (pressure sea-level-corrected in Python; raw kept in Firestore).
-Bottom half: flood_engine running on stage data.
+Top    : temp / humidity / pressure from station_1 (pressure corrected
+         in Python; raw preserved in Firestore).
+Bottom : routed watershed warning for Belk via flood_network —
+         Belk's combined warning + each UPSTREAM site (Double Springs,
+         AAHP) with status and travel-time ETA. Body Farm is excluded
+         automatically (it drains below Belk).
 
-Stage source: tries STAGE_COLLECTION first; if that collection is empty
-or absent (Argonaut node not online yet), it falls back to a synthetic
-hydrograph so the engine is visible end-to-end. When real depth starts
-landing in STAGE_COLLECTION, the dashboard switches to it automatically.
+Live inputs are wired per-site as sensors come online; until then a
+DEMO scenario injects a synthetic upstream pulse so the routing is
+visible end-to-end.
 =====================================================================
 """
 
@@ -20,9 +22,9 @@ import pandas as pd
 import streamlit as st
 from google.cloud import firestore
 
-# flood logic lives in its own importable module beside this file
 try:
     import flood_engine
+    import flood_network
     FLOOD_OK = True
 except Exception as _e:
     FLOOD_OK = False
@@ -36,18 +38,17 @@ DATABASE   = "cullowhee"
 TIMEZONE   = ZoneInfo("America/New_York")
 SENTINEL   = -1
 
-# --- atmospheric node (BME280) ---
 THP_COLLECTION = "station_1"
-ELEVATION_FT   = 2100.0          # Belk rooftop; set surveyed value [CONFIRM]
-
-# --- stage node (Argonaut-SW) — not online yet ---
-STAGE_COLLECTION = "noah_stage"  # [CONFIRM] collection the depth node will write to
-STAGE_FIELD      = "stage_ft"    # [CONFIRM] depth field name in that doc
+ELEVATION_FT   = 2100.0          # Belk rooftop [CONFIRM]
 
 LEVEL_COLOR = {"NORMAL": "#1D9E75", "WATCH": "#EF9F27",
                "WARNING": "#D85A30", "EMERGENCY": "#E24B4A"}
 
-st.set_page_config(page_title="Belk · weather + flood", layout="wide")
+def prob_color(p):
+    return ("#1D9E75" if p < 0.30 else "#EF9F27" if p < 0.60
+            else "#D85A30" if p < 0.85 else "#E24B4A")
+
+st.set_page_config(page_title="Belk · weather + watershed", layout="wide")
 
 # ---------------------------------------------------------------------
 # CONNECT
@@ -142,48 +143,60 @@ def fetch_thp(elevation_ft, max_docs=2000):
     return pd.DataFrame(rows).sort_values("time").set_index("time")
 
 # ---------------------------------------------------------------------
-# FETCH — stage  (real if available, else synthetic demo)
+# FETCH — per-site stage series (real, generic)
 # ---------------------------------------------------------------------
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_stage_real(max_docs=2000):
+def fetch_stage_series(collection, max_docs=2000):
+    if not collection:
+        return None
     try:
         db = get_db()
-        docs = list(db.collection(STAGE_COLLECTION).limit(max_docs).stream())
+        docs = list(db.collection(collection).limit(max_docs).stream())
     except Exception:
         return None
     rows = []
     for d in docs:
         rec = d.to_dict() or {}
         t = parse_time(rec.get("timestamp"), d)
-        s = _clean(rec.get(STAGE_FIELD))
+        s = _clean(rec.get("stage_ft"))
         if t is None or s is None:
             continue
         rows.append((int(t.timestamp()), s))
     rows.sort()
     return rows or None
 
-def generate_demo_stage():
-    """6 h synthetic hydrograph ending 'now': baseflow -> accelerating rise."""
+def assemble_live_inputs():
+    """Pull whatever real inputs exist for each site. All None for now."""
+    inputs = {}
+    for sid, s in flood_network.SITES.items():
+        d = {}
+        series = fetch_stage_series(s.get("stage_coll"))
+        if series:
+            d["stage_series"] = series
+        if d:
+            inputs[sid] = d
+    return inputs
+
+def demo_inputs():
+    """Synthetic upstream pulse anchored to 'now' (scenario A)."""
     now = datetime.now(TIMEZONE)
-    step, total = 5, 360
-    n = total // step
-    base, peak = 4.0, 9.3
-    rise_start = n // 2
-    pts = []
-    for i in range(n + 1):
-        t = now - timedelta(minutes=(n - i) * step)
-        if i <= rise_start:
-            stage = base
-        else:
-            frac = (i - rise_start) / (n - rise_start)
-            stage = base + (peak - base) * (frac ** 1.6)
-        pts.append((int(t.timestamp()), round(stage, 3)))
-    return pts
+    step, hours = 5, 3
+    n = (hours * 60) // step
+    base, peak = 4.0, 9.5
+    rising = []
+    for k in range(n):
+        t = now - timedelta(minutes=(n - k) * step)
+        frac = (k + 1) / n
+        rising.append((int(t.timestamp()), round(base + (peak - base) * (frac ** 1.6), 3)))
+    return {
+        "double_springs": {"stage_series": rising},          # upstream surging
+        "aahp": {"soil_pct": 88.0, "storm_rain_in": 1.8},     # primed, rain-only
+    }
 
 # =====================================================================
 # UI — ATMOSPHERIC
 # =====================================================================
-st.title("Belk Station — weather + flood engine")
+st.title("Belk Station — weather + watershed flood network")
 st.caption(f"{THP_COLLECTION} · cullowhee · {PROJECT_ID}")
 
 c1, c2 = st.columns([1, 1])
@@ -198,73 +211,104 @@ else:
     if hours:
         cutoff = datetime.now(TIMEZONE) - timedelta(hours=hours)
         df = df[df.index >= cutoff]
-
     if df.empty:
         st.info("No readings in the selected window — widen it.")
     else:
         st.write(f"**{len(df)}** readings · latest "
                  f"{df.index[-1].strftime('%a %m/%d %I:%M %p')}")
         st.subheader("Temperature")
-        st.line_chart(df[["Temperature (°F)"]], height=240)
+        st.line_chart(df[["Temperature (°F)"]], height=220)
         st.subheader("Humidity")
-        st.line_chart(df[["Humidity (%)"]], height=240)
+        st.line_chart(df[["Humidity (%)"]], height=220)
         st.subheader("Pressure")
         pcol = "Pressure sea-level (inHg)" if correct else "Pressure raw (inHg)"
         st.caption("Sea-level-corrected in Python · raw value preserved in Firestore"
                    if correct else "Raw station pressure (uncorrected for elevation)")
-        st.line_chart(df[[pcol]], height=240)
+        st.line_chart(df[[pcol]], height=220)
 
 # =====================================================================
-# UI — FLOOD ENGINE
+# UI — WATERSHED FLOOD NETWORK
 # =====================================================================
 st.divider()
-st.header("Flood engine")
+st.header("Watershed flood network — Belk")
 
 if not FLOOD_OK:
-    st.error(f"flood_engine.py could not be imported: {_FLOOD_ERR}")
+    st.error(f"flood modules could not be imported: {_FLOOD_ERR}")
 else:
-    real = fetch_stage_real()
-    if real:
-        series, demo = real, False
-    else:
-        series, demo = generate_demo_stage(), True
+    live = assemble_live_inputs()
+    has_live = any(live.values())
+    demo = st.toggle("Demo scenario (synthetic upstream pulse)", value=not has_live)
+    inputs = demo_inputs() if demo else live
 
     if demo:
-        st.info("DEMO — synthetic stage hydrograph. The Argonaut depth node "
-                f"isn't writing to `{STAGE_COLLECTION}` yet; this proves the engine "
-                "end-to-end. It switches to live depth automatically when that data lands.")
+        st.info("DEMO — synthetic upstream pulse. No live stage/rain/soil sensors "
+                "are reporting yet; this shows the routing end-to-end. Turn off once "
+                "real per-site inputs are flowing.")
 
-    a = flood_engine.assess(series, prev_level="NORMAL",
-                            soil_moisture_pct=None, storm_rain_in=None)
-    color = LEVEL_COLOR.get(a.level, "#888780")
+    rw = flood_network.routed_assessment("belk", inputs)
 
+    # headline banner
+    pc = prob_color(rw.combined_probability)
+    lead = f"{rw.lead_time_hr} hr" if rw.lead_time_hr is not None else "—"
     st.markdown(
-        f"<div style='background:{color}22;border-left:6px solid {color};"
-        f"border-radius:0 8px 8px 0;padding:10px 16px;margin-bottom:12px;'>"
-        f"<span style='font-size:1.4em;font-weight:600;color:{color};'>{a.level}</span>"
+        f"<div style='background:{pc}22;border-left:6px solid {pc};border-radius:0 8px 8px 0;"
+        f"padding:12px 18px;margin-bottom:6px;'>"
+        f"<span style='font-size:1.1em;color:{pc};font-weight:600;'>BELK ROUTED OUTLOOK</span><br>"
+        f"<span style='font-size:1.6em;font-weight:700;color:{pc};'>"
+        f"{rw.combined_probability:.0%}</span>"
+        f"<span style='color:#9aa;'> combined warning probability · lead time {lead}</span>"
         f"</div>", unsafe_allow_html=True)
+    st.caption(rw.note)
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Stage", f"{a.stage_ft} ft")
-    m2.metric("Discharge", f"{a.discharge_cfs:,.0f} cfs")
-    m3.metric("Rate of rise", f"{a.rate_ft_hr:+.2f} ft/hr")
-    m4.metric("Warning prob.", f"{a.ew_probability:.0%}")
+    # site cards
+    st.subheader("Contributing sites")
+    cards = st.columns(1 + len(rw.upstream))
 
-    if a.next_level and a.time_to_next_hr is not None:
-        st.caption(f"At current rate → **{a.next_level}** in ~{a.time_to_next_hr} hr")
-    elif a.next_level:
-        st.caption(f"Next level: {a.next_level} (not rising toward it)")
+    with cards[0]:
+        if rw.local:
+            lc = LEVEL_COLOR.get(rw.local.level, "#888")
+            st.markdown(f"**Belk** (outlet)")
+            st.markdown(f"<span style='color:{lc};font-weight:700;'>{rw.local.level}</span> · "
+                        f"{rw.local.stage_ft} ft", unsafe_allow_html=True)
+            st.caption(f"discharge {rw.local.discharge_cfs:,.0f} cfs")
+        else:
+            st.markdown("**Belk** (outlet)")
+            st.markdown("<span style='color:#888;'>no stage gauge yet</span>",
+                        unsafe_allow_html=True)
+            st.caption("warning relies on upstream until depth node is online")
 
-    stage_df = pd.DataFrame(
-        {"Stage (ft)": [s for _, s in series]},
-        index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in series],
-    )
-    st.line_chart(stage_df, height=260)
+    for col, c in zip(cards[1:], rw.upstream):
+        with col:
+            st.markdown(f"**{c.name}** ↑")
+            if c.level is not None:
+                lc = LEVEL_COLOR.get(c.level, "#888")
+                st.markdown(f"<span style='color:{lc};font-weight:700;'>{c.level}</span> · "
+                            f"P {c.ew_prob:.0%}", unsafe_allow_html=True)
+            elif c.priming is not None:
+                st.markdown(f"priming **{c.priming:.0%}**")
+            else:
+                st.markdown("<span style='color:#888;'>no inputs online</span>",
+                            unsafe_allow_html=True)
+            st.caption(f"~{c.eta_hr} hr travel time to Belk")
+
+    st.caption("Body Farm is excluded — it enters the stream below Belk and cannot affect it.")
+
+    # show any site with a live/demo stage series
+    for sid, inp in inputs.items():
+        series = inp.get("stage_series")
+        if series:
+            name = flood_network.SITES[sid]["name"]
+            sdf = pd.DataFrame(
+                {f"{name} stage (ft)": [s for _, s in series]},
+                index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in series],
+            )
+            st.subheader(f"{name} stage")
+            st.line_chart(sdf, height=220)
 
     st.caption(
-        f"Manning's-HDc discharge at thresholds: "
+        f"Manning's-HDc discharge at Belk thresholds: "
         f"7 ft = {flood_engine.mannings_discharge_cfs(7):,.0f} · "
         f"9 ft = {flood_engine.mannings_discharge_cfs(9):,.0f} · "
         f"11 ft = {flood_engine.mannings_discharge_cfs(11):,.0f} cfs   "
-        f"(HDc = {flood_engine.HDC} — placeholder until JAWRA value is set)"
+        f"(HDc = {flood_engine.HDC}; warning probability uncalibrated — relative, not absolute)"
     )

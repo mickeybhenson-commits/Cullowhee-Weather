@@ -1,10 +1,14 @@
 """
-streamlit_app.py  —  Belk station_1: temperature, humidity, pressure
+streamlit_app.py  —  Belk dashboard + flood engine
 =====================================================================
-Pulls ONLY temp / humidity / pressure from the station_1 collection
-in the 'cullowhee' Firestore database and graphs them. Pressure is
-corrected to sea level in Python (display-side); the raw value stays
-untouched in Firestore.
+Top half  : temp / humidity / pressure pulled from station_1
+            (pressure sea-level-corrected in Python; raw kept in Firestore).
+Bottom half: flood_engine running on stage data.
+
+Stage source: tries STAGE_COLLECTION first; if that collection is empty
+or absent (Argonaut node not online yet), it falls back to a synthetic
+hydrograph so the engine is visible end-to-end. When real depth starts
+landing in STAGE_COLLECTION, the dashboard switches to it automatically.
 =====================================================================
 """
 
@@ -16,26 +20,39 @@ import pandas as pd
 import streamlit as st
 from google.cloud import firestore
 
+# flood logic lives in its own importable module beside this file
+try:
+    import flood_engine
+    FLOOD_OK = True
+except Exception as _e:
+    FLOOD_OK = False
+    _FLOOD_ERR = str(_e)
+
 # ---------------------------------------------------------------------
 # CONFIG
 # ---------------------------------------------------------------------
 PROJECT_ID = "ee-dashboard-477704"
 DATABASE   = "cullowhee"
-COLLECTION = "station_1"            # the live Belk bucket right now
 TIMEZONE   = ZoneInfo("America/New_York")
-SENTINEL   = -1                     # treated as "missing"
+SENTINEL   = -1
 
-# Belk rooftop elevation, used ONLY for the sea-level pressure correction.
-# Set this to your surveyed rooftop value for an accurate barometer reading.
-ELEVATION_FT = 2100.0
+# --- atmospheric node (BME280) ---
+THP_COLLECTION = "station_1"
+ELEVATION_FT   = 2100.0          # Belk rooftop; set surveyed value [CONFIRM]
 
-st.set_page_config(page_title="Belk · T/H/P", layout="wide")
-st.title("Belk Station — Temperature · Humidity · Pressure")
-st.caption(f"{COLLECTION} · cullowhee · {PROJECT_ID}")
+# --- stage node (Argonaut-SW) — not online yet ---
+STAGE_COLLECTION = "noah_stage"  # [CONFIRM] collection the depth node will write to
+STAGE_FIELD      = "stage_ft"    # [CONFIRM] depth field name in that doc
+
+LEVEL_COLOR = {"NORMAL": "#1D9E75", "WATCH": "#EF9F27",
+               "WARNING": "#D85A30", "EMERGENCY": "#E24B4A"}
+
+st.set_page_config(page_title="Belk · weather + flood", layout="wide")
 
 # ---------------------------------------------------------------------
 # CONNECT
 # ---------------------------------------------------------------------
+@st.cache_resource(show_spinner=False)
 def get_db():
     if "gcp_service_account" in st.secrets:
         import json
@@ -47,28 +64,17 @@ def get_db():
     return firestore.Client(project=PROJECT_ID, database=DATABASE)
 
 # ---------------------------------------------------------------------
-# CORRECTION  (display-side only)
+# HELPERS
 # ---------------------------------------------------------------------
 def sea_level_inhg(station_inhg, temp_f, elevation_ft):
-    """
-    Reduce raw STATION pressure to sea-level-equivalent pressure.
-    Uses the standard barometric reduction with live station temp.
-    Input/output in inHg. Raw value is never modified in Firestore.
-    """
     if station_inhg is None:
         return None
-    h = elevation_ft * 0.3048                       # ft -> m
-    p_hpa = station_inhg * 33.8639                  # inHg -> hPa
+    h = elevation_ft * 0.3048
+    p_hpa = station_inhg * 33.8639
     t_c = (temp_f - 32.0) * 5.0 / 9.0 if temp_f is not None else 15.0
     factor = (1.0 - (0.0065 * h) / (t_c + 0.0065 * h + 273.15)) ** (-5.257)
-    return (p_hpa * factor) / 33.8639               # hPa -> inHg
+    return (p_hpa * factor) / 33.8639
 
-# ---------------------------------------------------------------------
-# TIME PARSING
-#   station_1's "timestamp" is stored as the *text* of a
-#   DatetimeWithNanoseconds(...) object, so we recover the real reading
-#   time by parsing those integers; fall back to Firestore create_time.
-# ---------------------------------------------------------------------
 _DT_RE = re.compile(
     r"DatetimeWithNanoseconds\(\s*(\d+),\s*(\d+),\s*(\d+),\s*(\d+),"
     r"\s*(\d+),\s*(\d+)(?:,\s*(\d+))?"
@@ -109,12 +115,12 @@ def _clean(v):
     return None if v == SENTINEL else v
 
 # ---------------------------------------------------------------------
-# FETCH
+# FETCH — atmospheric
 # ---------------------------------------------------------------------
 @st.cache_data(ttl=300, show_spinner="Pulling station_1…")
-def fetch(elevation_ft, max_docs=2000):
+def fetch_thp(elevation_ft, max_docs=2000):
     db = get_db()
-    docs = list(db.collection(COLLECTION).limit(max_docs).stream())
+    docs = list(db.collection(THP_COLLECTION).limit(max_docs).stream())
     rows = []
     for d in docs:
         rec = d.to_dict() or {}
@@ -136,43 +142,129 @@ def fetch(elevation_ft, max_docs=2000):
     return pd.DataFrame(rows).sort_values("time").set_index("time")
 
 # ---------------------------------------------------------------------
-# UI
+# FETCH — stage  (real if available, else synthetic demo)
 # ---------------------------------------------------------------------
+@st.cache_data(ttl=300, show_spinner=False)
+def fetch_stage_real(max_docs=2000):
+    try:
+        db = get_db()
+        docs = list(db.collection(STAGE_COLLECTION).limit(max_docs).stream())
+    except Exception:
+        return None
+    rows = []
+    for d in docs:
+        rec = d.to_dict() or {}
+        t = parse_time(rec.get("timestamp"), d)
+        s = _clean(rec.get(STAGE_FIELD))
+        if t is None or s is None:
+            continue
+        rows.append((int(t.timestamp()), s))
+    rows.sort()
+    return rows or None
+
+def generate_demo_stage():
+    """6 h synthetic hydrograph ending 'now': baseflow -> accelerating rise."""
+    now = datetime.now(TIMEZONE)
+    step, total = 5, 360
+    n = total // step
+    base, peak = 4.0, 9.3
+    rise_start = n // 2
+    pts = []
+    for i in range(n + 1):
+        t = now - timedelta(minutes=(n - i) * step)
+        if i <= rise_start:
+            stage = base
+        else:
+            frac = (i - rise_start) / (n - rise_start)
+            stage = base + (peak - base) * (frac ** 1.6)
+        pts.append((int(t.timestamp()), round(stage, 3)))
+    return pts
+
+# =====================================================================
+# UI — ATMOSPHERIC
+# =====================================================================
+st.title("Belk Station — weather + flood engine")
+st.caption(f"{THP_COLLECTION} · cullowhee · {PROJECT_ID}")
+
 c1, c2 = st.columns([1, 1])
-window = c1.radio("Window", ["24 h", "7 d", "30 d", "All"],
-                  index=1, horizontal=True)
+window = c1.radio("Window", ["24 h", "7 d", "30 d", "All"], index=1, horizontal=True)
 correct = c2.toggle("Sea-level pressure correction", value=True)
 
-df = fetch(ELEVATION_FT)
+df = fetch_thp(ELEVATION_FT)
 if df.empty:
     st.warning("No readings returned from station_1.")
-    st.stop()
+else:
+    hours = {"24 h": 24, "7 d": 168, "30 d": 720, "All": None}[window]
+    if hours:
+        cutoff = datetime.now(TIMEZONE) - timedelta(hours=hours)
+        df = df[df.index >= cutoff]
 
-hours = {"24 h": 24, "7 d": 168, "30 d": 720, "All": None}[window]
-if hours:
-    cutoff = datetime.now(TIMEZONE) - timedelta(hours=hours)
-    df = df[df.index >= cutoff]
+    if df.empty:
+        st.info("No readings in the selected window — widen it.")
+    else:
+        st.write(f"**{len(df)}** readings · latest "
+                 f"{df.index[-1].strftime('%a %m/%d %I:%M %p')}")
+        st.subheader("Temperature")
+        st.line_chart(df[["Temperature (°F)"]], height=240)
+        st.subheader("Humidity")
+        st.line_chart(df[["Humidity (%)"]], height=240)
+        st.subheader("Pressure")
+        pcol = "Pressure sea-level (inHg)" if correct else "Pressure raw (inHg)"
+        st.caption("Sea-level-corrected in Python · raw value preserved in Firestore"
+                   if correct else "Raw station pressure (uncorrected for elevation)")
+        st.line_chart(df[[pcol]], height=240)
 
-if df.empty:
-    st.info("No readings in the selected window — widen it.")
-    st.stop()
+# =====================================================================
+# UI — FLOOD ENGINE
+# =====================================================================
+st.divider()
+st.header("Flood engine")
 
-st.write(f"**{len(df)}** readings · latest {df.index[-1].strftime('%a %m/%d %I:%M %p')}")
+if not FLOOD_OK:
+    st.error(f"flood_engine.py could not be imported: {_FLOOD_ERR}")
+else:
+    real = fetch_stage_real()
+    if real:
+        series, demo = real, False
+    else:
+        series, demo = generate_demo_stage(), True
 
-# Temperature
-st.subheader("Temperature")
-st.line_chart(df[["Temperature (°F)"]], height=240)
+    if demo:
+        st.info("DEMO — synthetic stage hydrograph. The Argonaut depth node "
+                f"isn't writing to `{STAGE_COLLECTION}` yet; this proves the engine "
+                "end-to-end. It switches to live depth automatically when that data lands.")
 
-# Humidity
-st.subheader("Humidity")
-st.line_chart(df[["Humidity (%)"]], height=240)
+    a = flood_engine.assess(series, prev_level="NORMAL",
+                            soil_moisture_pct=None, storm_rain_in=None)
+    color = LEVEL_COLOR.get(a.level, "#888780")
 
-# Pressure (raw vs corrected)
-st.subheader("Pressure")
-pcol = "Pressure sea-level (inHg)" if correct else "Pressure raw (inHg)"
-st.caption("Sea-level-corrected in Python · raw value preserved in Firestore"
-           if correct else "Raw station pressure (uncorrected for elevation)")
-st.line_chart(df[[pcol]], height=240)
+    st.markdown(
+        f"<div style='background:{color}22;border-left:6px solid {color};"
+        f"border-radius:0 8px 8px 0;padding:10px 16px;margin-bottom:12px;'>"
+        f"<span style='font-size:1.4em;font-weight:600;color:{color};'>{a.level}</span>"
+        f"</div>", unsafe_allow_html=True)
 
-with st.expander("Raw table"):
-    st.dataframe(df)
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Stage", f"{a.stage_ft} ft")
+    m2.metric("Discharge", f"{a.discharge_cfs:,.0f} cfs")
+    m3.metric("Rate of rise", f"{a.rate_ft_hr:+.2f} ft/hr")
+    m4.metric("Warning prob.", f"{a.ew_probability:.0%}")
+
+    if a.next_level and a.time_to_next_hr is not None:
+        st.caption(f"At current rate → **{a.next_level}** in ~{a.time_to_next_hr} hr")
+    elif a.next_level:
+        st.caption(f"Next level: {a.next_level} (not rising toward it)")
+
+    stage_df = pd.DataFrame(
+        {"Stage (ft)": [s for _, s in series]},
+        index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in series],
+    )
+    st.line_chart(stage_df, height=260)
+
+    st.caption(
+        f"Manning's-HDc discharge at thresholds: "
+        f"7 ft = {flood_engine.mannings_discharge_cfs(7):,.0f} · "
+        f"9 ft = {flood_engine.mannings_discharge_cfs(9):,.0f} · "
+        f"11 ft = {flood_engine.mannings_discharge_cfs(11):,.0f} cfs   "
+        f"(HDc = {flood_engine.HDC} — placeholder until JAWRA value is set)"
+    )

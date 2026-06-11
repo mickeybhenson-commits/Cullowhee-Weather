@@ -1,27 +1,26 @@
 """
-firestore_test.py  —  minimal Firestore pull + graph test
+streamlit_app.py  —  minimal Firestore pull + graph test
 ===========================================================
 Standalone diagnostic app. Does ONE thing: connect to the
 'cullowhee' Firestore database, read a collection, show what's
 in it, and graph the numeric fields.
 
-HOW TO RUN IT ON STREAMLIT CLOUD
-  Option A (simplest): in your repo, replace the CONTENTS of
-    streamlit_app.py with this file's contents, commit, reboot.
-    (Your dashboard is still safe in firestore_bme280.py / git history.)
-  Option B (keep both): add this as firestore_test.py in the repo,
-    then in the app: Manage app -> Settings -> Main file path ->
-    set it to  firestore_test.py  -> Save.
-
-REQUIREMENTS (already in your requirements.txt now):
-  streamlit
-  google-cloud-firestore
-  pandas
-
-AUTH
-  Streamlit Cloud: needs your service-account JSON in the app's
-  Secrets as a [gcp_service_account] table. If that's missing,
-  this app will tell you so in plain language instead of going blank.
+AUTH (Streamlit Cloud Secrets):
+  Works with EITHER style of [gcp_service_account] secret:
+    Style 1 (blob):
+        [gcp_service_account]
+        json = '''
+        { ...entire JSON key file pasted here... }
+        '''
+    Style 2 (field-by-field table):
+        [gcp_service_account]
+        type = "service_account"
+        project_id = "ee-dashboard-477704"
+        private_key_id = "..."
+        private_key = "..."
+        client_email = "..."
+        client_id = "..."
+        token_uri = "https://oauth2.googleapis.com/token"
 ===========================================================
 """
 
@@ -43,10 +42,12 @@ st.subheader("1. Connection")
 
 def get_db():
     if "gcp_service_account" in st.secrets:
+        import json
         from google.oauth2 import service_account
-        creds = service_account.Credentials.from_service_account_info(
-            dict(st.secrets["gcp_service_account"])
-        )
+        sa = st.secrets["gcp_service_account"]
+        # Style 1: a single 'json' blob  |  Style 2: a field-by-field table
+        info = json.loads(sa["json"]) if "json" in sa else dict(sa)
+        creds = service_account.Credentials.from_service_account_info(info)
         st.write("Using service-account credentials from Secrets.")
         return firestore.Client(project=PROJECT_ID, database=DATABASE, credentials=creds)
     st.write("No [gcp_service_account] in Secrets — trying default credentials.")

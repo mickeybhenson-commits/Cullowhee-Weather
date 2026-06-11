@@ -24,6 +24,9 @@ except Exception as _e:
     FLOOD_OK = False
     _FLOOD_ERR = str(_e)
 
+# ---------------------------------------------------------------------
+# CONFIG
+# ---------------------------------------------------------------------
 PROJECT_ID = "ee-dashboard-477704"
 DATABASE   = "cullowhee"
 TIMEZONE   = ZoneInfo("America/New_York")
@@ -53,6 +56,9 @@ def olp_category(idx):
 st.set_page_config(page_title="NOAH · Cullowhee Flood Warning",
                    page_icon="🌊", layout="wide")
 
+# ---------------------------------------------------------------------
+# STYLE
+# ---------------------------------------------------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -123,6 +129,9 @@ html, body, [class*="css"] {font-family:'Inter',sans-serif; color:#1B2A38;}
 </style>
 """, unsafe_allow_html=True)
 
+# ---------------------------------------------------------------------
+# CONNECT / PARSE
+# ---------------------------------------------------------------------
 @st.cache_resource(show_spinner=False)
 def get_db():
     if "gcp_service_account" in st.secrets:
@@ -162,6 +171,9 @@ def _clean(v):
     except (TypeError, ValueError): return None
     return None if v == SENTINEL else v
 
+# ---------------------------------------------------------------------
+# FORECAST
+# ---------------------------------------------------------------------
 def weather_desc(code):
     c = {0:"Clear",1:"Mainly Clear",2:"Partly Cloudy",3:"Overcast",45:"Foggy",48:"Rime Fog",
          51:"Lt Drizzle",53:"Drizzle",55:"Hvy Drizzle",61:"Lt Rain",63:"Rain",65:"Hvy Rain",
@@ -279,6 +291,9 @@ def fetch_best_7day():
 
 SRC_COLOR = {"HRRR": "#0F6E56", "NWS": "#1C6E8C", "ECMWF": "#534AB7", "N/A": "#8A97A4"}
 
+# ---------------------------------------------------------------------
+# STAGE + INPUTS
+# ---------------------------------------------------------------------
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_stage_series(collection, max_docs=2000):
     if not collection: return None
@@ -324,6 +339,9 @@ def overall_level(rw):
         if c.level: lv.append(c.level)
     return max(lv, key=lambda L: ORDER.index(L)) if lv else "NORMAL"
 
+# =====================================================================
+# RENDER
+# =====================================================================
 now_str = datetime.now(TIMEZONE).strftime("%a %b %d, %Y · %I:%M %p %Z")
 st.markdown(f"""
 <div class="appbar">
@@ -352,5 +370,165 @@ rw = flood_network.routed_assessment("belk", inputs, orographic_by_site=oro)
 lvl = overall_level(rw)
 col = SEV[lvl]
 
+# threat status
 wp_name = flood_network.SITES["belk"]["name"]
 lead = f"{round(rw.lead_time_hr * 60)} min" if rw.lead_time_hr is not None else "—"
+st.markdown(f"""
+<div class="threat" style="border-color:{col};">
+  <div class="threat-level" style="color:{col};">{lvl}</div>
+  <div class="threat-statement">{STATEMENT[lvl]}</div>
+  <div class="threat-metrics">
+    <span>Combined probability <b>{rw.combined_probability:.0%}</b></span>
+    <span>Estimated lead time to WCU Campus <b>{lead}</b></span>
+    <span>Warning point <b class="mono">{wp_name}</b></span>
+  </div>
+  <div class="threat-note">{rw.note}</div>
+</div>
+""", unsafe_allow_html=True)
+
+# legend
+chips = "".join(
+    f'<div class="legend-chip"><span class="legend-dot" style="background:{SEV[L]}"></span>'
+    f'<span>{L.title()}</span>'
+    f'<span class="legend-th">{("≥ "+str(THRESH_FT[L])+" ft") if L in THRESH_FT else "baseflow"}</span></div>'
+    for L in ORDER)
+st.markdown(f'<div class="legend">{chips}</div>', unsafe_allow_html=True)
+
+# monitoring sites
+st.markdown('<div class="eyebrow">Monitoring sites — upstream contributions routed to WCU Campus</div>',
+            unsafe_allow_html=True)
+
+def site_card(sid, contribution=None):
+    name = flood_network.SITES[sid]["name"]
+    elev = flood_network.SITES[sid].get("elevation_ft")
+    _rolemap = {"warning": "outlet · warning point", "confluence": "confluence",
+                "upstream": "upstream", "downstream": "downstream"}
+    role = _rolemap.get(flood_network.SITES[sid].get("role"), "site")
+    lat, lon = COORDS.get(sid, (None, None))
+    coord = (f'{abs(lat):.4f}°N {abs(lon):.4f}°W · {elev:,.0f} ft'
+             if lat is not None else f'{elev:,.0f} ft')
+    if sid == "belk":
+        if rw.local:
+            c = SEV.get(rw.local.level, "#888")
+            body = (f'<div class="site-level" style="color:{c};">{rw.local.level}</div>'
+                    f'<div class="site-detail">Stage {rw.local.stage_ft} ft · '
+                    f'discharge {rw.local.discharge_cfs:,.0f} cfs</div>')
+        else:
+            body = ('<div class="site-level" style="color:#8A97A4;">NO GAUGE</div>'
+                    '<div class="site-detail">Stage node pending — warning relies on upstream sites.</div>')
+    else:
+        c = contribution
+        if c.level is not None:
+            lc = SEV.get(c.level, "#888")
+            head = f'<div class="site-level" style="color:{lc};">{c.level}</div>'
+        elif c.priming is not None:
+            head = f'<div class="site-level" style="color:#C08A00;">PRIMED {c.priming:.0%}</div>'
+        else:
+            head = '<div class="site-level" style="color:#8A97A4;">STANDBY</div>'
+        det = []
+        sinp = inputs.get(sid, {})
+        if sinp.get("storm_rain_in") is not None:
+            b = flood_network.lead_time_breakdown(sid, sinp["storm_rain_in"], sinp.get("soil_pct"))
+            det.append(f'Rain {sinp["storm_rain_in"]}″ → runoff {b["runoff_in"]}″ · '
+                       f'campus rise ~{round(b["total_lead_hr"]*60)} min')
+        else:
+            det.append(f'~{round(c.eta_hr*60)} min channel travel to campus')
+        if c.olp_index is not None:
+            det.append(f'Orographic lift: {olp_category(c.olp_index)} ({c.olp_index:.0%}) · pre-rain')
+        body = head + "".join(f'<div class="site-detail">{x}</div>' for x in det)
+    border = SEV.get(rw.local.level, "#CBD3DA") if (sid == "belk" and rw.local) else "#CBD3DA"
+    return (f'<div class="card" style="border-left:4px solid {border};">'
+            f'<div class="site-name">{name}<span class="site-role">{role}</span></div>'
+            f'<div class="site-coord mono">{coord}</div>{body}</div>')
+
+cards = [site_card("belk")] + [site_card(c.site_id, c) for c in rw.upstream]
+st.markdown(f'<div class="grid sites">{"".join(cards)}</div>', unsafe_allow_html=True)
+st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
+            'Body Farm is excluded — it enters the channel below the WCU Campus reach '
+            'and cannot affect the warning point.'
+            '</div>', unsafe_allow_html=True)
+
+# incoming weather
+st.markdown('<div class="eyebrow">Incoming weather — forecast precipitation</div>', unsafe_allow_html=True)
+fc = fetch_best_7day(); days = fc.get("days", [])
+if days:
+    tiles = []
+    for i, d in enumerate(days):
+        hi = f'{d["hi"]}°' if d.get("hi") is not None else "--"
+        lo = f'{d["lo"]}°' if d.get("lo") is not None else "--"
+        pop = d.get("pop", 0); src = d.get("source", "—")
+        cls = "ftile ftile-today" if i == 0 else "ftile"
+        tiles.append(
+            f'<div class="{cls}"><div class="ftile-day">{d["label"]}</div>'
+            f'<div style="font-size:1.4rem;line-height:1.3;">{weather_emoji(d.get("code",0))}</div>'
+            f'<div class="ftile-hi">{hi}</div><div class="ftile-lo">lo {lo}</div>'
+            f'<div class="ftile-desc">{d.get("desc","—")}</div>'
+            f'<div style="background:#E5E9ED;border-radius:3px;height:4px;margin:5px 3px;">'
+            f'<div style="height:100%;width:{pop}%;background:{pop_color(pop)};border-radius:3px;"></div></div>'
+            f'<div class="ftile-day">PoP {pop}%</div>'
+            f'<div class="ftile-src" style="color:{SRC_COLOR.get(src,"#888")};">{src}</div></div>')
+    st.markdown(f'<div class="grid fcast">{"".join(tiles)}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="site-detail" style="color:#8A97A4;margin-top:6px;">'
+                'Model by horizon: HRRR (0–1 d) · NWS (2–3 d) · ECMWF (4–6 d)</div>',
+                unsafe_allow_html=True)
+    if fc.get("errors"):
+        st.markdown('<div class="site-detail" style="color:#8A97A4;">Model notes: '
+                    + " · ".join(f"{k}: {v[:36]}" for k, v in fc["errors"].items()) + '</div>',
+                    unsafe_allow_html=True)
+else:
+    st.info("Forecast unavailable right now.")
+
+# stage records
+for sid, inp in inputs.items():
+    series = inp.get("stage_series")
+    if series:
+        name = flood_network.SITES[sid]["name"]
+        st.markdown(f'<div class="eyebrow">{name} — stage record</div>', unsafe_allow_html=True)
+        sdf = pd.DataFrame({f"{name} stage (ft)": [s for _, s in series]},
+                           index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in series])
+        st.line_chart(sdf, height=200)
+
+# system status / provenance
+st.markdown('<div class="eyebrow">System status — data sources & confidence</div>', unsafe_allow_html=True)
+
+def chip(label, status):
+    c = STATUS_COLOR.get(status, "#888")
+    return (f'<span class="chip" style="background:{c}14;color:{c};border-color:{c}55;">'
+            f'{label}: {status}</span>')
+
+def site_status(sid, key):
+    d = inputs.get(sid, {})
+    return ("synthetic" if demo else "live") if d.get(key) is not None else "none"
+
+rows = []
+for sid in ["belk"] + flood_network.contributing_sites("belk"):
+    name = flood_network.SITES[sid]["name"]
+    parts = [chip("rain", site_status(sid, "storm_rain_in")),
+             chip("soil", site_status(sid, "soil_pct")),
+             chip("stage", site_status(sid, "stage_series"))]
+    if sid in orographic.TERRAIN:
+        parts.append(chip("lift", ("synthetic" if demo else "live") if sid in oro else "none"))
+    rows.append(f'<div class="chiprow"><span class="chip-label">{name}</span>{"".join(parts)}</div>')
+st.markdown("".join(rows), unsafe_allow_html=True)
+st.markdown('<div class="chiprow" style="margin-top:6px;"><span class="chip-label">Model parameters</span>'
+            + "".join(chip(i.replace("_", " "), s) for i, s, _ in flood_network.describe_provenance())
+            + '</div>', unsafe_allow_html=True)
+
+# footer
+st.markdown(f"""
+<div class="footer">
+  <div><b>Methodology.</b> HDc-corrected Manning's discharge · TR-55 dynamic curve number ·
+  kinematic-wave channel routing · orographic lift index. A sub-watershed network routes
+  upstream sub-basins (Double Springs, AAHP) to the WCU Campus (Camp Building) warning
+  point with travel-time lead.</div>
+  <div style="margin-top:6px;"><b>Channel capacity (Manning–HDc):</b>
+  <span class="mono">7 ft = {flood_engine.mannings_discharge_cfs(7):,.0f} cfs ·
+  9 ft = {flood_engine.mannings_discharge_cfs(9):,.0f} cfs ·
+  11 ft = {flood_engine.mannings_discharge_cfs(11):,.0f} cfs</span></div>
+  <div style="margin-top:6px;"><b>Data sources.</b> NWS · HRRR · ECMWF forecast · USGS gauges ·
+  in-network LoRa sensors (rain, soil moisture, stream stage).</div>
+  <div class="disclaimer">Research prototype developed at Western Carolina University.
+  This demonstration uses synthetic data and provisional parameters pending field calibration.
+  Not an operational warning service and not for life-safety decisions.</div>
+</div>
+""", unsafe_allow_html=True)

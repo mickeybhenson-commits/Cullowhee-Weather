@@ -14,6 +14,7 @@ import pandas as pd
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
+import pydeck as pdk
 from google.cloud import firestore
 
 try:
@@ -452,6 +453,37 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
 
 # incoming weather
 # corridor profile (simulated depth & discharge along the creek)
+# real-basemap watershed map (surveyed basin + reaches between sensor nodes)
+st.markdown('<div class="eyebrow">Watershed map \u2014 reaches on the surveyed basin</div>',
+            unsafe_allow_html=True)
+try:
+    _basin = flood_profile.BASIN_FEATURE
+    _nodes = flood_profile.map_nodes()
+    _reaches = flood_profile.map_reaches()
+    _layers = [
+        pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
+                  get_fill_color=[60, 130, 180, 28], get_line_color=[35, 79, 134, 200],
+                  line_width_min_pixels=2, pickable=False),
+        pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
+                  get_width="width", width_units="pixels", width_min_pixels=3, pickable=True),
+        pdk.Layer("ScatterplotLayer", _nodes, get_position="position",
+                  get_fill_color="color", get_radius="radius", radius_units="pixels",
+                  radius_min_pixels=6, stroked=True, get_line_color=[255, 255, 255],
+                  line_width_min_pixels=1, pickable=True),
+    ]
+    _view = pdk.ViewState(latitude=35.255, longitude=-83.197, zoom=10.6)
+    _deck = pdk.Deck(layers=_layers, initial_view_state=_view,
+                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                     tooltip={"text": "{name}\n{tip}"})
+    st.pydeck_chart(_deck, use_container_width=True)
+    st.markdown('<div class="site-detail" style="color:#8A97A4;">'
+                'Surveyed watershed boundary and campus outlet are real (StreamStats). '
+                'Upstream node pins are approximate \u2014 replace with sensor GPS in NODE_COORDS. '
+                'Reaches drawn as straight connectors between nodes until the centerline is loaded.</div>',
+                unsafe_allow_html=True)
+except Exception as _map_err:
+    st.info(f"Map unavailable: {_map_err}")
+
 st.markdown('<div class="eyebrow">Corridor reaches \u2014 simulated depth &amp; discharge between sensor nodes</div>',
             unsafe_allow_html=True)
 components.html(

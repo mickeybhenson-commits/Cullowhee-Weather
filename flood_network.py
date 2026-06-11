@@ -236,3 +236,55 @@ def _run_self_test():
 
 if __name__ == "__main__":
     _run_self_test()
+
+
+# =====================================================================
+# TRAVEL-TIME ESTIMATION  (kinematic-wave celerity from the HDc rating)
+# =====================================================================
+#   A flood wave translates at the wave celerity, not the mean water
+#   velocity. For a wide channel (Manning), celerity c ~= (5/3)*V_mean.
+#   V_mean = Q(stage)/A(stage), both from flood_engine at a reference
+#   flood stage. travel_time = reach_length / c.
+#
+#   SET these reach lengths from the DEM / stream network (stream-feet
+#   along the channel from each upstream node down to Belk's gauge).
+# ---------------------------------------------------------------------
+REACH_LENGTH_FT = {
+    "double_springs": 42000.0,   # ~8 stream-mi  [EXAMPLE — measure off DEM]
+    "aahp":           31000.0,   # ~6 stream-mi  [EXAMPLE — measure off DEM]
+}
+REF_FLOOD_STAGE_FT = 9.0         # stage at which to evaluate wave speed (WARNING)
+CELERITY_BETA      = 5.0 / 3.0   # wide-channel kinematic-wave factor
+
+
+def mean_velocity_fps(stage_ft):
+    area, _ = fe.channel_geometry(stage_ft)
+    if area <= 0:
+        return 0.0
+    return fe.mannings_discharge_cfs(stage_ft) / area
+
+
+def wave_celerity_fps(stage_ft, beta=CELERITY_BETA):
+    return beta * mean_velocity_fps(stage_ft)
+
+
+def travel_time_hr(reach_length_ft, stage_ft=REF_FLOOD_STAGE_FT, beta=CELERITY_BETA):
+    c = wave_celerity_fps(stage_ft, beta)
+    if c <= 0:
+        return None
+    return reach_length_ft / c / 3600.0
+
+
+def recompute_travel_times(stage_ft=REF_FLOOD_STAGE_FT):
+    """Update each upstream site's travel_hr_to_down from its reach length."""
+    out = {}
+    for sid, length in REACH_LENGTH_FT.items():
+        tt = travel_time_hr(length, stage_ft)
+        if tt is not None and sid in SITES:
+            SITES[sid]["travel_hr_to_down"] = round(tt, 2)
+            out[sid] = round(tt, 2)
+    return out
+
+
+if __name__ == "__main__" and False:
+    pass

@@ -187,3 +187,60 @@ if __name__ == "__main__":
               f'depth {r["up_depth_ft"]:.1f}->{r["dn_depth_ft"]:.1f} ft  '
               f'Q {r["up_discharge_cfs"]}->{r["dn_discharge_cfs"]} cfs')
     print("\nSVG chars:", len(corridor_svg()))
+
+
+# =====================================================================
+# REAL-BASEMAP DATA  (pydeck)
+# =====================================================================
+# Surveyed watershed boundary (StreamStats delineation, simplified) — REAL
+BASIN_POLYGON = [[-83.24549, 35.25504], [-83.24397, 35.25666], [-83.23764, 35.25688], [-83.23691, 35.26012], [-83.22615, 35.26801], [-83.22754, 35.27142], [-83.22697, 35.27408], [-83.22206, 35.2764], [-83.22526, 35.2819], [-83.22277, 35.28628], [-83.21376, 35.28907], [-83.21328, 35.29139], [-83.20867, 35.2956], [-83.20232, 35.29936], [-83.18676, 35.30411], [-83.18449, 35.30691], [-83.18575, 35.30976], [-83.17969, 35.30939], [-83.17433, 35.29522], [-83.16692, 35.28805], [-83.1667, 35.28566], [-83.16937, 35.28087], [-83.16871, 35.27792], [-83.16693, 35.27452], [-83.16111, 35.27092], [-83.16212, 35.26907], [-83.15906, 35.26415], [-83.15923, 35.2596], [-83.15741, 35.25744], [-83.15943, 35.25374], [-83.15833, 35.24998], [-83.16379, 35.24451], [-83.16347, 35.24032], [-83.16584, 35.23545], [-83.16877, 35.23378], [-83.17451, 35.234], [-83.17362, 35.2304], [-83.17493, 35.22656], [-83.17361, 35.22231], [-83.17601, 35.22017], [-83.1762, 35.21793], [-83.181, 35.21546], [-83.1808, 35.21356], [-83.18328, 35.2129], [-83.18514, 35.20995], [-83.18694, 35.21376], [-83.19235, 35.21325], [-83.19584, 35.20884], [-83.20052, 35.20991], [-83.20364, 35.20807], [-83.20556, 35.20437], [-83.21632, 35.20837], [-83.21596, 35.21309], [-83.21836, 35.21671], [-83.21847, 35.22084], [-83.21649, 35.22338], [-83.22171, 35.22889], [-83.22413, 35.23871], [-83.23275, 35.24022], [-83.24294, 35.23887], [-83.24549, 35.25504]]
+
+# Node coordinates [lon, lat].  Campus outlet is the surveyed StreamStats point
+# (REAL); the others are APPROXIMATE placeholders — replace each with the actual
+# sensor GPS coordinate when the node is sited.  [SET]
+NODE_COORDS = {
+    "belk":           [-83.18483, 35.30661],   # REAL — StreamStats outlet
+    "speedwell":      [-83.19000, 35.28500],   # [approx — set to sensor GPS]
+    "double_springs": [-83.18350, 35.21200],   # [approx — set to sensor GPS]
+    "aahp":           [-83.23400, 35.25300],   # [approx — set to sensor GPS]
+}
+
+
+def _hex_rgb(h):
+    h = h.lstrip("#")
+    return [int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)]
+
+
+def map_nodes():
+    out = []
+    for nid, xy in NODE_COORDS.items():
+        ns = node_state(nid)
+        real = (nid == "belk")
+        out.append({
+            "name": ns["name"], "position": xy, "level": ns["level"],
+            "color": _hex_rgb(SEV[ns["level"]]) + [230],
+            "radius": 6 + math.sqrt(max(ns["discharge_cfs"], 0)) * 0.22,
+            "tip": f'{ns["level"]} \u00b7 {ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs'
+                   + ("" if real else "  (approx location)"),
+        })
+    return out
+
+
+def map_reaches():
+    out = []
+    for r in reaches():
+        p, q = NODE_COORDS.get(r["up"]), NODE_COORDS.get(r["dn"])
+        if not p or not q:
+            continue
+        meanQ = 0.5 * (r["up_discharge_cfs"] + r["dn_discharge_cfs"])
+        out.append({
+            "name": r["name"], "level": r["level"], "path": [p, q],
+            "color": _hex_rgb(SEV[r["level"]]) + [230],
+            "width": 3 + math.sqrt(max(meanQ, 0)) * 0.18,
+            "tip": f'{r["level"]} \u00b7 {r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft '
+                   f'\u00b7 {r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs',
+        })
+    return out
+
+
+BASIN_FEATURE = [{"polygon": BASIN_POLYGON, "name": "Cullowhee Creek watershed (20.8 mi\u00b2, surveyed)"}]

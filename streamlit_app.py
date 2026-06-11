@@ -1,287 +1,152 @@
 """
-firestore_bme280.py
-===================================================================
-Drop-in BME280 history panel for the WCU Belk Weather Intelligence
-Streamlit dashboard. Pulls temp / humidity / pressure time series from
-Firestore and renders dark-HUD Plotly line charts that match app.py.
+firestore_test.py  —  minimal Firestore pull + graph test
+===========================================================
+Standalone diagnostic app. Does ONE thing: connect to the
+'cullowhee' Firestore database, read a collection, show what's
+in it, and graph the numeric fields.
 
--------------------------------------------------------------------
-WIRING (three edits to app.py):
+HOW TO RUN IT ON STREAMLIT CLOUD
+  Option A (simplest): in your repo, replace the CONTENTS of
+    streamlit_app.py with this file's contents, commit, reboot.
+    (Your dashboard is still safe in firestore_bme280.py / git history.)
+  Option B (keep both): add this as firestore_test.py in the repo,
+    then in the app: Manage app -> Settings -> Main file path ->
+    set it to  firestore_test.py  -> Save.
 
-  1. At the top of app.py, add:
-         from firestore_bme280 import render_bme280_history_panel
+REQUIREMENTS (already in your requirements.txt now):
+  streamlit
+  google-cloud-firestore
+  pandas
 
-  2. Anywhere you want the panel (e.g. right after the 7-DAY FORECAST
-     PANEL block, before the RADAR MAP PANEL), add one line:
-         render_bme280_history_panel()
-
-  3. requirements.txt — add:
-         google-cloud-firestore
-
--------------------------------------------------------------------
-AUTH:
-  Local dev   -> Application Default Credentials (gcloud auth
-                 application-default login).
-  Streamlit   -> paste your service-account JSON into the app's
-   Community     Secrets as a [gcp_service_account] table, e.g.:
-
-     [gcp_service_account]
-     type = "service_account"
-     project_id = "ee-dashboard-477704"
-     private_key_id = "..."
-     private_key = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-     client_email = "...@ee-dashboard-477704.iam.gserviceaccount.com"
-     client_id = "..."
-     token_uri = "https://oauth2.googleapis.com/token"
-
--------------------------------------------------------------------
-CONFIRM BEFORE DEPLOY (the only things I assumed):
-  - COLLECTION  -> "station_1" (one of the fragmented buckets; switch
-                   to "skye_belk_thp1" once the reflash is confirmed).
-  - METRICS     -> field keys default to the OBSERVED schema
-                   (temp_f / humidity / pressure_inhg). If your node
-                   writes temp_c / pressure_hpa, change them here.
-  - TIME_FIELD  -> "timestamp"; falls back to Firestore create_time
-                   automatically if that field is absent or unparseable.
-===================================================================
+AUTH
+  Streamlit Cloud: needs your service-account JSON in the app's
+  Secrets as a [gcp_service_account] table. If that's missing,
+  this app will tell you so in plain language instead of going blank.
+===========================================================
 """
 
-from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
-
-import plotly.graph_objects as go
+import pandas as pd
 import streamlit as st
 from google.cloud import firestore
 
-# ------------------------------------------------------------------
-# CONFIG  — edit these if the schema differs
-# ------------------------------------------------------------------
-
 PROJECT_ID = "ee-dashboard-477704"
 DATABASE   = "cullowhee"
-COLLECTION = "station_1"          # <- flip to "skye_belk_thp1" post-reflash
-TIME_FIELD = "timestamp"          # <- falls back to doc.create_time if missing
-SENTINEL   = -1                   # your "missing field" marker
-TIMEZONE   = ZoneInfo("America/New_York")
 
-# Field keys default to what was actually observed in the station_1 doc.
-# If the node sends temp_c / pressure_hpa instead, change "key" below.
-METRICS = [
-    {"key": "temp_f",        "label": "TEMPERATURE", "unit": "°F",   "color": "#00FF9C"},
-    {"key": "humidity",      "label": "HUMIDITY",    "unit": "%",    "color": "#5AC8FA"},
-    {"key": "pressure_inhg", "label": "PRESSURE",    "unit": " inHg", "color": "#FFD700"},
-]
+st.set_page_config(page_title="Firestore Test", layout="wide")
+st.title("Firestore Pull Test")
+st.caption(f"project: {PROJECT_ID}  |  database: {DATABASE}")
 
-# Optional 4th trace if you want it — battery is in the same doc.
-# METRICS.append({"key": "battery_v", "label": "BATTERY", "unit": " V", "color": "#AAFF00"})
+# ----------------------------------------------------------
+# 1. CONNECT
+# ----------------------------------------------------------
+st.subheader("1. Connection")
 
-PALETTE = {"text": "#E0E8F0", "muted": "#7AACCC",
-           "grid": "rgba(0,136,255,0.08)", "axis": "#2A4060"}
-
-MAX_DOCS = 3000   # safety cap on how many docs to pull per refresh
-
-# ------------------------------------------------------------------
-# CLIENT
-# ------------------------------------------------------------------
-
-@st.cache_resource(show_spinner=False)
-def _get_db():
-    """Firestore client for the named 'cullowhee' database."""
+def get_db():
     if "gcp_service_account" in st.secrets:
         from google.oauth2 import service_account
         creds = service_account.Credentials.from_service_account_info(
             dict(st.secrets["gcp_service_account"])
         )
+        st.write("Using service-account credentials from Secrets.")
         return firestore.Client(project=PROJECT_ID, database=DATABASE, credentials=creds)
-    # local dev: application default credentials
+    st.write("No [gcp_service_account] in Secrets — trying default credentials.")
     return firestore.Client(project=PROJECT_ID, database=DATABASE)
 
-# ------------------------------------------------------------------
-# TIME PARSING
-# ------------------------------------------------------------------
+try:
+    db = get_db()
+    st.success("Connected to Firestore client OK.")
+except Exception as e:
+    st.error("Could NOT create the Firestore client.")
+    st.exception(e)
+    st.stop()
 
-def _extract_time(rec, doc):
-    """
-    Resolve a tz-aware local datetime for a document.
-    Tries the payload TIME_FIELD (datetime / epoch / ISO string),
-    then falls back to Firestore's own create_time.
-    """
-    raw = rec.get(TIME_FIELD)
-    dt = None
-    if isinstance(raw, datetime):
-        dt = raw
-    elif isinstance(raw, (int, float)) and raw > 0:
-        secs = raw / 1000.0 if raw > 1e12 else float(raw)   # ms vs s
-        try:
-            dt = datetime.fromtimestamp(secs, tz=timezone.utc)
-        except (OverflowError, OSError, ValueError):
-            dt = None
-    elif isinstance(raw, str) and raw.strip():
-        try:
-            dt = datetime.fromisoformat(raw.strip().replace("Z", "+00:00"))
-        except ValueError:
-            dt = None
+# ----------------------------------------------------------
+# 2. CHOOSE COLLECTION + PULL
+# ----------------------------------------------------------
+st.subheader("2. Pull a collection")
 
-    if dt is None:
-        ct = getattr(doc, "create_time", None)   # every Firestore doc has this
-        if ct is not None:
-            dt = ct
+collection = st.text_input("Collection name", value="station_1")
+limit = st.number_input("Max documents to pull", min_value=10, max_value=5000, value=500, step=50)
 
-    if dt is None:
-        return None
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(TIMEZONE)
-
-# ------------------------------------------------------------------
-# FETCH
-# ------------------------------------------------------------------
-
-@st.cache_data(ttl=300, show_spinner=False)
-def fetch_bme280_history(collection: str, hours, max_docs: int = MAX_DOCS):
-    """
-    Returns a chronological list of (datetime, doc_dict) tuples.
-    `hours=None` returns everything available (capped at max_docs).
-    """
-    db = _get_db()
-    col = db.collection(collection)
-
-    # Prefer server-side ordering; fall back to an unordered limited stream
-    # (handles the case where TIME_FIELD doesn't exist on the docs).
-    docs = []
+if st.button("Pull data", type="primary"):
     try:
-        q = col.order_by(TIME_FIELD, direction=firestore.Query.DESCENDING).limit(max_docs)
-        docs = list(q.stream())
-    except Exception:
-        docs = []
-    if not docs:
-        docs = list(col.limit(max_docs).stream())
+        docs = list(db.collection(collection).limit(int(limit)).stream())
+    except Exception as e:
+        st.error(f"Query against '{collection}' failed.")
+        st.exception(e)
+        st.stop()
 
-    cutoff = (datetime.now(TIMEZONE) - timedelta(hours=hours)) if hours else None
+    st.write(f"Documents returned from **{collection}**: **{len(docs)}**")
+    if not docs:
+        st.warning("Zero documents. Check the collection name (Firestore is case-sensitive: "
+                   "'station_1', 'Station_1', and 'LoRa_Station_1' are all different).")
+        st.stop()
+
+    # ------------------------------------------------------
+    # 3. SHOW THE RAW FIELDS  (this is how we learn the real keys)
+    # ------------------------------------------------------
+    st.subheader("3. What one document actually contains")
+    first = docs[0].to_dict() or {}
+    st.json(first)
+
+    # build a row per doc, attaching a usable time + Firestore create_time
     rows = []
     for d in docs:
-        rec = d.to_dict() or {}
-        ts = _extract_time(rec, d)
-        if ts is None:
-            continue
-        if cutoff and ts < cutoff:
-            continue
-        rows.append((ts, rec))
+        rec = dict(d.to_dict() or {})
+        rec["_create_time"] = getattr(d, "create_time", None)
+        rec["_doc_id"] = d.id
+        rows.append(rec)
 
-    rows.sort(key=lambda r: r[0])
-    return rows
+    df = pd.DataFrame(rows)
 
-
-def _series(rows, key):
-    """Extract (xs, ys) for one field, dropping the -1 sentinel."""
-    xs, ys = [], []
-    for ts, rec in rows:
-        v = rec.get(key)
-        if v is None:
-            continue
-        try:
-            v = float(v)
-        except (TypeError, ValueError):
-            continue
-        if v == SENTINEL:
-            continue
-        xs.append(ts)
-        ys.append(v)
-    return xs, ys
-
-# ------------------------------------------------------------------
-# CHART
-# ------------------------------------------------------------------
-
-def _make_ts_fig(xs, ys, metric):
-    color = metric["color"]
-    unit  = metric["unit"]
-    last  = ys[-1] if ys else None
-
-    fig = go.Figure(go.Scatter(
-        x=xs, y=ys, mode="lines+markers",
-        line=dict(color=color, width=2, shape="spline", smoothing=0.5),
-        marker=dict(size=3, color=color),
-        fill="tozeroy" if metric["key"] == "humidity" else None,
-        fillcolor="rgba(90,200,250,0.06)",
-        hovertemplate="%{x|%m/%d %H:%M}<br>%{y:.2f}" + unit + "<extra></extra>",
-    ))
-
-    title = f"{metric['label']}"
-    if last is not None:
-        title += f"  —  now {last:.1f}{unit}"
-        lo, hi = min(ys), max(ys)
-        title += f"   ·   range {lo:.1f}–{hi:.1f}{unit}"
-
-    fig.update_layout(
-        title=dict(text=title, font=dict(size=12, color=PALETTE["muted"],
-                                         family="Share Tech Mono"), x=0.01, xanchor="left"),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color=PALETTE["text"], family="Rajdhani"),
-        margin=dict(t=34, b=24, l=48, r=18), height=230, showlegend=False,
-        hovermode="x unified",
-        xaxis=dict(showgrid=True, gridcolor=PALETTE["grid"], linecolor=PALETTE["axis"],
-                   tickfont=dict(color="#5A7A9A", size=9), tickformat="%m/%d\n%H:%M"),
-        yaxis=dict(showgrid=True, gridcolor=PALETTE["grid"], linecolor=PALETTE["axis"],
-                   tickfont=dict(color="#5A7A9A", size=9), zeroline=False,
-                   ticksuffix=unit.strip() if unit.strip() in ("%",) else ""),
+    # ------------------------------------------------------
+    # 4. PICK A TIME AXIS
+    # ------------------------------------------------------
+    st.subheader("4. Time axis")
+    time_candidates = [c for c in df.columns
+                       if c in ("timestamp", "time", "datetime", "created", "ts", "_create_time")]
+    time_col = st.selectbox(
+        "Field to use as time (x-axis)",
+        options=time_candidates or ["_create_time"],
+        index=0,
     )
-    return fig
-
-# ------------------------------------------------------------------
-# PANEL
-# ------------------------------------------------------------------
-
-def render_bme280_history_panel():
-    st.markdown(
-        '<div class="panel"><div class="panel-title">'
-        f'📈 BME280 Sensor History &nbsp;·&nbsp; {COLLECTION} '
-        '<span class="source-badge">FIRESTORE</span></div>',
-        unsafe_allow_html=True,
-    )
-
-    window = st.radio(
-        "Window", ["24 h", "7 d", "30 d", "All"],
-        index=1, horizontal=True, label_visibility="collapsed",
-        key="bme280_window",
-    )
-    hours = {"24 h": 24, "7 d": 168, "30 d": 720, "All": None}[window]
-
+    df["_t"] = pd.to_datetime(df[time_col], errors="coerce", utc=True)
+    df = df.dropna(subset=["_t"]).sort_values("_t")
     try:
-        rows = fetch_bme280_history(COLLECTION, hours)
-    except Exception as e:
-        st.warning(f"Firestore unavailable: {e}")
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
+        df["_t"] = df["_t"].dt.tz_convert("America/New_York")
+    except Exception:
+        pass
+    st.write(f"Rows with a valid time: **{len(df)}**")
 
-    if not rows:
-        st.info(f"No documents found in '{COLLECTION}' for the selected window.")
-        st.markdown("</div>", unsafe_allow_html=True)
-        return
+    # ------------------------------------------------------
+    # 5. GRAPH NUMERIC FIELDS
+    # ------------------------------------------------------
+    st.subheader("5. Graphs")
+    numeric_cols = [
+        c for c in df.columns
+        if c not in ("_t", "_create_time", "_doc_id")
+        and pd.api.types.is_numeric_dtype(pd.to_numeric(df[c], errors="coerce"))
+    ]
+    if not numeric_cols:
+        st.warning("No numeric fields detected to graph. The raw document above shows what's there.")
+    else:
+        chosen = st.multiselect(
+            "Fields to graph", options=numeric_cols,
+            default=[c for c in ("temp_f", "temp_c", "humidity",
+                                  "pressure_inhg", "pressure_hpa")
+                     if c in numeric_cols] or numeric_cols[:3],
+        )
+        for col in chosen:
+            series = pd.to_numeric(df[col], errors="coerce")
+            series = series.replace(-1, pd.NA)   # treat -1 sentinel as a gap
+            plot_df = pd.DataFrame({col: series.values}, index=df["_t"].values)
+            st.markdown(f"**{col}**")
+            st.line_chart(plot_df, height=220)
 
-    any_plotted = False
-    for metric in METRICS:
-        xs, ys = _series(rows, metric["key"])
-        if not xs:
-            st.markdown(
-                f"<div class='small-muted'>No '{metric['key']}' values in this window "
-                f"(field missing or all sentinel).</div>",
-                unsafe_allow_html=True,
-            )
-            continue
-        any_plotted = True
-        st.plotly_chart(_make_ts_fig(xs, ys, metric),
-                        use_container_width=True, config={"displayModeBar": False})
-
-    last_ts = rows[-1][0].strftime("%a %m/%d %I:%M %p")
-    st.markdown(
-        f"<div class='small-muted' style='text-align:right;'>"
-        f"{len(rows)} readings &nbsp;·&nbsp; latest {last_ts} "
-        f"&nbsp;·&nbsp; SRC: cullowhee/{COLLECTION}</div>",
-        unsafe_allow_html=True,
-    )
-    if not any_plotted:
-        st.warning("Documents found, but none of the configured field keys matched. "
-                   "Check the METRICS field names against an actual document.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    # ------------------------------------------------------
+    # 6. RAW TABLE
+    # ------------------------------------------------------
+    with st.expander("See raw table of all pulled documents"):
+        st.dataframe(df.drop(columns=["_create_time"], errors="ignore"))
+else:
+    st.info("Set a collection name above and click **Pull data**.")

@@ -112,6 +112,7 @@ class UpstreamContribution:
     level: str = None
     ew_prob: float = None
     priming: float = None
+    olp_index: float = None          # orographic lift potential (pre-rain)
 
 
 @dataclass
@@ -124,15 +125,17 @@ class RoutedWarning:
     note: str = ""
 
 
-def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL"):
+def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL",
+                      orographic_by_site=None):
     inputs_by_site = inputs_by_site or {}
+    orographic_by_site = orographic_by_site or {}
     local = assess_site(warning_id, inputs_by_site.get(warning_id))
 
     probs = []
     if local is not None:
         probs.append(local.ew_probability)
 
-    ups, etas = [], []
+    ups, etas, oro_flag = [], [], False
     for sid in contributing_sites(warning_id):
         s = SITES[sid]
         inp = inputs_by_site.get(sid, {})
@@ -151,6 +154,14 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL"):
                 probs.append(prim)
                 if prim >= 0.5:
                     etas.append(s["travel_hr_to_down"])
+        # orographic lift = PRE-RAIN signal: enhanced-rain risk on this sub-basin
+        olp = orographic_by_site.get(sid)
+        if olp is not None:
+            c.olp_index = round(olp, 3)
+            # weight it modestly — it's a precursor, not yet runoff
+            probs.append(0.6 * olp)
+            if olp >= 0.5:
+                oro_flag = True
         ups.append(c)
 
     combined = _noisy_or(probs) if probs else 0.0
@@ -165,6 +176,8 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL"):
         note = f"Upstream alert in the system — ~{lead} hr of lead time to Belk."
     else:
         note = "Local stage only; no upstream alert."
+    if oro_flag:
+        note += "  Orographic lift elevated upslope — enhanced-rain risk BEFORE rain falls."
 
     return RoutedWarning(warning_id, local, ups, combined, lead, note)
 
@@ -286,5 +299,68 @@ def recompute_travel_times(stage_ft=REF_FLOOD_STAGE_FT):
     return out
 
 
-if __name__ == "__main__" and False:
-    pass
+# =====================================================================
+# FIVE-CLOCK LEAD TIME  (rain -> runoff generation -> channel routing -> Belk)
+# =====================================================================
+#   total lead time at Belk = hillslope/generation lag (clock 3, soil-dependent)
+#                           + channel routing (clock 4, celerity).
+#   Clock 1 (rain) is t=0; clock 2 (infiltration) sets runoff MAGNITUDE, not delay.
+#   SUBBASIN_TC_HR are placeholders — [SET] from sub-basin time of concentration.
+# ---------------------------------------------------------------------
+SUBBASIN_TC_HR = {"double_springs": 1.0, "aahp": 0.7}   # [SET]
+
+
+def hillslope_lag_hr(site_id, soil_pct):
+    tc = SUBBASIN_TC_HR.get(site_id)
+    if tc is None:
+        return None
+    soil = 50.0 if soil_pct is None else soil_pct
+    wetness = 1.3 - 0.6 * (soil / 100.0)     # dry => slower, saturated => flashier
+    return tc * wetness
+
+
+def lead_time_breakdown(site_id, rain_in, soil_pct=None, ref_stage=REF_FLOOD_STAGE_FT):
+    cn = fe.dynamic_cn(soil_pct)
+    Q = fe.runoff_depth_in(rain_in, cn)
+    hill = hillslope_lag_hr(site_id, soil_pct)
+    chan = travel_time_hr(REACH_LENGTH_FT.get(site_id, 0.0), ref_stage)
+    total = (hill or 0.0) + (chan or 0.0)
+    S = 1000.0 / cn - 10.0
+    Ia = 0.2 * S
+    iap = Ia / rain_in if rain_in > 0 else 0.5
+    area = SITES[site_id].get("area_sqmi") or 0.0
+    qu = fe._unit_peak_q(SUBBASIN_TC_HR.get(site_id, 1.0), iap)
+    qp = qu * area * Q * fe.POND_FACTOR
+    return {
+        "site": SITES[site_id]["name"], "rain_in": rain_in, "soil_pct": soil_pct,
+        "cn": round(cn, 1), "runoff_in": round(Q, 3),
+        "hillslope_hr": round(hill, 2) if hill is not None else None,
+        "channel_hr": round(chan, 2) if chan is not None else None,
+        "total_lead_hr": round(total, 2), "peak_cfs": round(qp, 0),
+    }
+
+
+# =====================================================================
+# PROVENANCE  —  every value is one of: placeholder | modeled | live
+#   placeholder : a typed guess; replace ONCE with a survey/calibration
+#   modeled     : computed; never sensed directly, but VALIDATED vs sensors
+#   live        : set at runtime when a real sensor feeds it (per-site;
+#                 the dashboard determines this, not this module)
+# ---------------------------------------------------------------------
+MODEL_PROVENANCE = {
+    "HDc":               ("placeholder", "set to the JAWRA value"),
+    "reach_lengths":     ("placeholder", "measure along channel off the DEM"),
+    "subbasin_tc":       ("placeholder", "time of concentration per sub-basin"),
+    "mannings_n":        ("placeholder", "calibrate the constructed channel"),
+    "channel_routing":   ("modeled", "celerity from HDc rating — validate with 2-point stage"),
+    "hillslope_lag":     ("modeled", "tc-based — validate against observed event timing"),
+    "runoff_partition":  ("modeled", "TR-55 dynamic CN — depends on the soil input"),
+    "logistic_weights":  ("placeholder", "calibrate against observed flood events"),
+    "orographic_terrain": ("placeholder", "upslope azimuth + slope per windward site from DEM"),
+    "orographic_index":   ("modeled", "lift potential from ridge wind + BME280"),
+}
+
+
+def describe_provenance():
+    """List of (item, status, note) for display."""
+    return [(k, v[0], v[1]) for k, v in MODEL_PROVENANCE.items()]

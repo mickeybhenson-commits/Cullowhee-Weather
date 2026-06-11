@@ -452,17 +452,18 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
 
 # incoming weather
 # corridor profile (simulated depth & discharge along the creek)
-st.markdown('<div class="eyebrow">Corridor profile \u2014 simulated depth &amp; discharge along the creek</div>',
+st.markdown('<div class="eyebrow">Corridor reaches \u2014 simulated depth &amp; discharge between sensor nodes</div>',
             unsafe_allow_html=True)
 components.html(
     '<div style="font-family:Inter,system-ui,sans-serif">' + flood_profile.corridor_svg() + '</div>',
     height=470, scrolling=False)
-with st.expander('Station table — simulated depth & discharge'):
-    _rows = flood_profile.stations()
+with st.expander('Reach table — simulated depth & discharge'):
+    _rows = flood_profile.reaches()
     st.dataframe(
-        [{'Reach': r['reach'], 'Chainage (mi)': r['chainage_mi'],
-          'Drainage area (mi\u00b2)': r['area_sqmi'], 'Discharge (cfs)': r['discharge_cfs'],
-          'Depth (ft)': r['depth_ft']} for r in _rows],
+        [{'Reach': r['name'], 'Level': r['level'], 'Length (mi)': r['length_mi'],
+          'Depth up\u2192dn (ft)': f"{r['up_depth_ft']:.1f} \u2192 {r['dn_depth_ft']:.1f}",
+          'Discharge up\u2192dn (cfs)': f"{r['up_discharge_cfs']:,} \u2192 {r['dn_discharge_cfs']:,}",
+          'Drainage area up\u2192dn (mi\u00b2)': f"{r['up_area_sqmi']} \u2192 {r['dn_area_sqmi']}"} for r in _rows],
         use_container_width=True, hide_index=True)
 
 st.markdown('<div class="eyebrow">Incoming weather — forecast precipitation</div>', unsafe_allow_html=True)

@@ -492,23 +492,19 @@ with st.container(border=True):
         padding:3px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;">Demonstration</span>
     </div>""", unsafe_allow_html=True)
     try:
-        _ESRI_TOPO = ("https://server.arcgisonline.com/ArcGIS/rest/services/"
-                      "World_Topo_Map/MapServer/tile/{z}/{y}/{x}")
         _basin = flood_profile.BASIN_FEATURE
         _nodes = flood_profile.map_nodes()
         _reaches = flood_profile.map_reaches()
         _rlabels = flood_profile.map_reach_labels()
         _layers = [
-            # professional topographic basemap (Esri/USGS) — real streams + hillshade
-            pdk.Layer("TileLayer", data=_ESRI_TOPO, min_zoom=0, max_zoom=19, tile_size=256),
             # surveyed watershed boundary — crisp outline, faint fill
             pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
                       get_fill_color=[35, 79, 134, 12], get_line_color=[35, 79, 134, 190],
                       line_width_min_pixels=1.5, get_line_width=2, pickable=False),
             # reach severity zones — translucent, rounded
             pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
-                      get_width="width", width_units="pixels", width_min_pixels=5,
-                      width_max_pixels=16, cap_rounded=True, joint_rounded=True, pickable=True),
+                      get_width="width", width_units="pixels", width_min_pixels=4,
+                      width_max_pixels=11, cap_rounded=True, joint_rounded=True, pickable=True),
             # sensor nodes
             pdk.Layer("ScatterplotLayer", _nodes, get_position="position",
                       get_fill_color="color", get_radius=160, radius_min_pixels=7,
@@ -516,21 +512,20 @@ with st.container(border=True):
                       line_width_min_pixels=2, pickable=True),
             # stream-name labels at reach midpoints
             pdk.Layer("TextLayer", _rlabels, get_position="position", get_text="text",
-                      get_size=13, get_color=[19, 33, 46], get_pixel_offset=[0, -16],
-                      get_alignment_baseline="'bottom'", get_text_anchor="'middle'",
-                      font_weight=600, background=True,
-                      get_background_color=[255, 255, 255, 205],
+                      get_size=12, get_color=[19, 33, 46], get_pixel_offset="off",
+                      get_text_anchor="'middle'", font_weight=600, background=True,
+                      get_background_color=[255, 255, 255, 210],
                       background_padding=[6, 2, 6, 2], pickable=False),
             # node name + depth/discharge labels
             pdk.Layer("TextLayer", _nodes, get_position="position", get_text="label",
-                      get_size=11, get_color=[19, 33, 46], get_pixel_offset=[0, 16],
-                      get_alignment_baseline="'top'", get_text_anchor="'middle'",
-                      font_weight=700, background=True,
-                      get_background_color=[255, 255, 255, 225],
+                      get_size=10.5, get_color=[19, 33, 46], get_pixel_offset="off",
+                      get_text_anchor="'middle'", font_weight=700, background=True,
+                      get_background_color=[255, 255, 255, 230],
                       background_padding=[6, 3, 6, 3], pickable=False),
         ]
-        _view = pdk.ViewState(latitude=35.262, longitude=-83.197, zoom=11.3, bearing=0, pitch=0)
-        _deck = pdk.Deck(layers=_layers, initial_view_state=_view, map_style=None,
+        _view = pdk.ViewState(latitude=35.259, longitude=-83.202, zoom=10.7, bearing=0, pitch=0)
+        _deck = pdk.Deck(layers=_layers, initial_view_state=_view,
+                         map_provider="carto", map_style="light",
                          tooltip={"text": "{name}\n{tip}"})
         st.pydeck_chart(_deck, use_container_width=True)
     except Exception as _map_err:
@@ -545,7 +540,7 @@ with st.container(border=True):
         f'<div style="margin-top:10px;">{_leg}'
         '<span style="font-size:0.8rem;color:#8A97A4;">&middot; line thickness = discharge</span></div>'
         '<div style="font-size:0.74rem;color:#8A97A4;margin-top:6px;line-height:1.45;">'
-        'Topographic basemap &amp; streams: Esri / USGS. Surveyed watershed boundary and campus outlet are '
+        'Light basemap: Carto. Surveyed watershed boundary and campus outlet are '
         'real (StreamStats); upstream node pins are approximate (set to sensor GPS); reaches are straight '
         'connectors until the channel centerline is loaded. Cullowhee Creek is the USGS main stem; '
         'tributary names are placeholders to confirm.</div>', unsafe_allow_html=True)

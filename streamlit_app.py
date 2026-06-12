@@ -451,8 +451,6 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
             'and cannot affect the warning point.'
             '</div>', unsafe_allow_html=True)
 
-# incoming weather
-# corridor profile (simulated depth & discharge along the creek)
 # real-basemap watershed map (surveyed basin + reaches between sensor nodes)
 st.markdown('<div class="eyebrow">Watershed map \u2014 reaches on the surveyed basin</div>',
             unsafe_allow_html=True)
@@ -462,18 +460,19 @@ try:
     _reaches = flood_profile.map_reaches()
     _layers = [
         pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
-                  get_fill_color=[60, 130, 180, 28], get_line_color=[35, 79, 134, 200],
+                  get_fill_color=[60, 130, 180, 30], get_line_color=[35, 79, 134, 220],
                   line_width_min_pixels=2, pickable=False),
         pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
-                  get_width="width", width_units="pixels", width_min_pixels=3, pickable=True),
+                  get_width="width", width_units="pixels", width_min_pixels=3,
+                  width_max_pixels=9, pickable=True),
         pdk.Layer("ScatterplotLayer", _nodes, get_position="position",
-                  get_fill_color="color", get_radius="radius", radius_units="pixels",
-                  radius_min_pixels=6, stroked=True, get_line_color=[255, 255, 255],
+                  get_fill_color="color", get_radius=150, radius_min_pixels=6,
+                  radius_max_pixels=15, stroked=True, get_line_color=[255, 255, 255],
                   line_width_min_pixels=1, pickable=True),
     ]
-    _view = pdk.ViewState(latitude=35.255, longitude=-83.197, zoom=10.6)
+    _view = pdk.ViewState(latitude=35.255, longitude=-83.197, zoom=10)
     _deck = pdk.Deck(layers=_layers, initial_view_state=_view,
-                     map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+                     map_style=None,
                      tooltip={"text": "{name}\n{tip}"})
     st.pydeck_chart(_deck, use_container_width=True)
     st.markdown('<div class="site-detail" style="color:#8A97A4;">'

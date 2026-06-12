@@ -501,6 +501,14 @@ with st.container(border=True):
             pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
                       get_fill_color=[35, 79, 134, 12], get_line_color=[35, 79, 134, 190],
                       line_width_min_pixels=1.5, get_line_width=2, pickable=False),
+            # real USGS stream network — tributaries (lighter) then main stem (dark navy)
+            pdk.Layer("PathLayer", flood_profile.map_streams_trib(), get_path="path",
+                      get_color=[70, 120, 165, 205], get_width=1.4, width_units="pixels",
+                      width_min_pixels=1, width_max_pixels=2, pickable=False),
+            pdk.Layer("PathLayer", flood_profile.map_streams_main(), get_path="path",
+                      get_color=[13, 45, 85, 235], get_width=2.4, width_units="pixels",
+                      width_min_pixels=1.5, width_max_pixels=3.5, cap_rounded=True,
+                      joint_rounded=True, pickable=False),
             # reach severity zones — translucent, rounded
             pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
                       get_width="width", width_units="pixels", width_min_pixels=4,
@@ -540,7 +548,7 @@ with st.container(border=True):
         f'<div style="margin-top:10px;">{_leg}'
         '<span style="font-size:0.8rem;color:#8A97A4;">&middot; line thickness = discharge</span></div>'
         '<div style="font-size:0.74rem;color:#8A97A4;margin-top:6px;line-height:1.45;">'
-        'Basemap: Carto Voyager (streams emphasized). Surveyed watershed boundary and campus outlet are '
+        'Basemap: Carto. Stream network: USGS NHD (NLDI). Surveyed watershed boundary and campus outlet are '
         'real (StreamStats); upstream node pins are approximate (set to sensor GPS); reaches are straight '
         'connectors until the channel centerline is loaded. Cullowhee Creek is the USGS main stem; '
         'tributary names are placeholders to confirm.</div>', unsafe_allow_html=True)

@@ -241,6 +241,11 @@ NODE_COORDS = {
 }
 
 
+_NODE_OFFSET = {"belk": [0, -26], "speedwell": [98, 4],
+                "double_springs": [0, 20], "aahp": [0, 22]}
+_REACH_LABEL_OFFSET = {"speedwell": [72, 0], "double_springs": [82, 0], "aahp": [-8, -20]}
+
+
 def _hex_rgb(h):
     h = h.lstrip("#")
     return [int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)]
@@ -256,6 +261,7 @@ def map_nodes():
             "color": _hex_rgb(SEV[ns["level"]]) + [235],
             "radius": 6 + math.sqrt(max(ns["discharge_cfs"], 0)) * 0.22,
             "label": f'{DISP_NAME.get(nid, ns["name"])}\n{ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs',
+            "off": _NODE_OFFSET.get(nid, [0, 18]),
             "tip": f'{ns["level"]} \u00b7 {ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs'
                    + ("" if real else "  (approx location)"),
         })
@@ -272,7 +278,7 @@ def map_reaches():
         out.append({
             "name": r["name"], "level": r["level"], "path": [p, q],
             "color": _hex_rgb(SEV[r["level"]]) + [120],
-            "width": 6 + math.sqrt(max(meanQ, 0)) * 0.22,
+            "width": 4 + math.sqrt(max(meanQ, 0)) * 0.15,
             "label": f'{r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft  '
                      f'{r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs',
             "tip": f'{r["level"]} \u00b7 {r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft '
@@ -293,6 +299,7 @@ def map_reach_labels():
             "text": r["stream"],
             "level": r["level"],
             "color": _hex_rgb(SEV[r["level"]]) + [255],
+            "off": _REACH_LABEL_OFFSET.get(r["up"], [0, -16]),
         })
     return out
 

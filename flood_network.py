@@ -191,6 +191,112 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL",
 
 
 # =====================================================================
+# TWO-TIER POSTURE  (Outlook vs. Confirmation)
+# =====================================================================
+# The system serves SMALL ungauged headwaters above the gauged mainstem, so
+# the only forward signal before the creek responds is soil + forecast rain.
+# That evidence is allowed to raise an OUTLOOK to WATCH (lead-time, lower
+# confidence, false-alarm prone). WARNING / EMERGENCY require CONFIRMATION
+# from a measured headwater stage rise. The gauged downstream mainstem is a
+# validation reference and is intentionally NOT an input to either tier.
+WATCH_OUTLOOK_THRESHOLD = 0.45   # relative priming index that trips an Outlook [tunable]
+
+
+@dataclass
+class TieredPosture:
+    headline: str = "NORMAL"
+    driver: str = "none"               # "outlook" | "stream" | "none"
+    outlook_level: str = "NORMAL"      # NORMAL | WATCH  (capped at WATCH)
+    outlook_risk: float = 0.0          # RELATIVE index 0..1 (uncalibrated)
+    outlook_sites: list = field(default_factory=list)   # (name, value, eta_hr, kind)
+    outlook_note: str = ""
+    stream_level: str = "NORMAL"       # NORMAL..EMERGENCY (measured stage only)
+    stream_confirmed: bool = False
+    stream_sites: list = field(default_factory=list)    # (name, level, stage_ft, eta_hr)
+    stream_note: str = ""
+    lead_hr: float = None
+    headline_statement: str = ""
+
+
+def _sev_idx(level):
+    order = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
+    return order.index(level) if level in order else 0
+
+
+def tiered_posture(rw, warning_id="belk"):
+    """Split a RoutedWarning into the Outlook (forecast/soil) and Confirmation
+    (measured stream) tiers, enforcing: forecast/soil can reach at most WATCH;
+    WARNING/EMERGENCY require a measured stream rise."""
+    tp = TieredPosture(lead_hr=rw.lead_time_hr)
+
+    # ---- Confirmation tier: measured stage only --------------------------
+    stream_levels = []
+    if rw.local is not None:
+        tp.stream_confirmed = True
+        stream_levels.append(rw.local.level)
+        tp.stream_sites.append((SITES[warning_id]["name"], rw.local.level,
+                                getattr(rw.local, "stage_ft", None), 0.0))
+    for c in rw.upstream:
+        if c.level is not None:                      # has measured stage
+            tp.stream_confirmed = True
+            stream_levels.append(c.level)
+            tp.stream_sites.append((c.name, c.level, None, c.eta_hr))
+    tp.stream_level = max(stream_levels, key=_sev_idx) if stream_levels else "NORMAL"
+
+    # ---- Outlook tier: soil + forecast (+ pre-rain orographic) -----------
+    primings, rising_names = [], []
+    for c in rw.upstream:
+        if c.priming is not None:
+            primings.append(c.priming)
+            tp.outlook_sites.append((c.name, c.priming, c.eta_hr, "soil+rain"))
+            if c.priming >= WATCH_OUTLOOK_THRESHOLD:
+                rising_names.append(c.name)
+        if c.olp_index is not None:
+            primings.append(0.6 * c.olp_index)
+            tp.outlook_sites.append((c.name, c.olp_index, c.eta_hr, "orographic"))
+    tp.outlook_risk = _noisy_or(primings) if primings else 0.0
+    tp.outlook_level = "WATCH" if tp.outlook_risk >= WATCH_OUTLOOK_THRESHOLD else "NORMAL"
+
+    # ---- Combine: outlook capped at WATCH; stream sets the ceiling -------
+    tp.headline = max([tp.outlook_level, tp.stream_level], key=_sev_idx)
+    if tp.stream_level != "NORMAL" and _sev_idx(tp.stream_level) >= _sev_idx(tp.outlook_level):
+        tp.driver = "stream"
+    elif tp.outlook_level == "WATCH":
+        tp.driver = "outlook"
+    else:
+        tp.driver = "none"
+
+    # ---- Tier notes ------------------------------------------------------
+    if tp.outlook_level == "WATCH":
+        who = ", ".join(dict.fromkeys(rising_names)) or "upstream sub-basins"
+        lead = f" ~{tp.lead_hr:.1f} hr before the creek responds" if tp.lead_hr else ""
+        tp.outlook_note = (f"Saturated soils + forecast rain have primed {who}{lead}. "
+                           "Forecast-based and uncalibrated — treat as relative risk, not a "
+                           "calibrated probability.")
+    else:
+        tp.outlook_note = "Soil + forecast signal below outlook threshold."
+
+    if tp.stream_confirmed and tp.stream_level != "NORMAL":
+        names = ", ".join(n for n, lv, *_ in tp.stream_sites if lv != "NORMAL")
+        tp.stream_note = f"Measured stage rising at {names} — confirmed."
+    elif tp.stream_confirmed:
+        tp.stream_note = "Stage sensors online; no rise measured yet."
+    else:
+        tp.stream_note = ("No headwater stage sensor reporting yet — confirmation tier "
+                          "pending deployment. This is the data only NOAH provides.")
+
+    # ---- Headline statement by driver -----------------------------------
+    if tp.driver == "stream":
+        tp.headline_statement = f"Measured headwater stream rise — {tp.stream_level} confirmed."
+    elif tp.driver == "outlook":
+        tp.headline_statement = ("OUTLOOK: sub-basins primed by soil + forecast. Lead-time signal, "
+                                 "not yet confirmed by stream rise.")
+    else:
+        tp.headline_statement = "No flood threat indicated. Monitoring nominal."
+    return tp
+
+
+# =====================================================================
 # SELF-TEST
 # =====================================================================
 def _flat(stage, hours=2, dt_min=5):

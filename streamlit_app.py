@@ -129,6 +129,15 @@ html, body, [class*="css"] {font-family:'Inter',sans-serif; color:#1B2A38;}
          margin-top:22px; font-size:0.82rem; line-height:1.6;}
 .footer b {color:#fff;}
 .disclaimer {color:#E6B85C; margin-top:10px; font-size:0.8rem;}
+
+.tiers {display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0 4px;}
+.tier {background:#F7F9FB; border:1px solid #E2E8ED; border-left-width:5px; border-radius:7px; padding:10px 13px;}
+.tier-head {font-family:'Archivo',sans-serif; font-weight:700; font-size:0.7rem; letter-spacing:1px;
+            text-transform:uppercase; color:#6B7C8C;}
+.tier-cap {font-size:0.62rem; color:#92A0AE; font-weight:600; letter-spacing:0.3px;}
+.tier-level {font-family:'Archivo',sans-serif; font-weight:800; font-size:1.25rem; margin:3px 0;}
+.tier-detail {font-size:0.78rem; color:#5B6B7A; line-height:1.4;}
+@media (max-width:680px){.tiers{grid-template-columns:1fr;}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -370,22 +379,38 @@ demo = st.toggle("Scenario: demonstration (synthetic)", value=not any(live.value
 inputs = demo_inputs() if demo else live
 oro = demo_orographic() if demo else {}
 rw = flood_network.routed_assessment("belk", inputs, orographic_by_site=oro)
-lvl = overall_level(rw)
+tp = flood_network.tiered_posture(rw)
+lvl = tp.headline
 col = SEV[lvl]
 
-# threat status
+# threat status — two tiers: Outlook (forecast/soil) vs Confirmation (measured stream)
 wp_name = flood_network.SITES["belk"]["name"]
 lead = f"{round(rw.lead_time_hr * 60)} min" if rw.lead_time_hr is not None else "—"
+oc = SEV["WATCH"] if tp.outlook_level == "WATCH" else "#9AA8B5"
+scol = SEV[tp.stream_level] if tp.stream_level != "NORMAL" else "#9AA8B5"
 st.markdown(f"""
 <div class="threat" style="border-color:{col};">
   <div class="threat-level" style="color:{col};">{lvl}</div>
-  <div class="threat-statement">{STATEMENT[lvl]}</div>
+  <div class="threat-statement">{tp.headline_statement}</div>
+  <div class="tiers">
+    <div class="tier" style="border-left-color:{oc};">
+      <div class="tier-head">Outlook <span class="tier-cap">· soil + forecast · max WATCH</span></div>
+      <div class="tier-level" style="color:{oc};">{tp.outlook_level}</div>
+      <div class="tier-detail">Relative risk index <b>{tp.outlook_risk:.0%}</b> (uncalibrated). {tp.outlook_note}</div>
+    </div>
+    <div class="tier" style="border-left-color:{scol};">
+      <div class="tier-head">Confirmation <span class="tier-cap">· measured stream · drives WARNING/EMERGENCY</span></div>
+      <div class="tier-level" style="color:{scol};">{tp.stream_level}</div>
+      <div class="tier-detail">{tp.stream_note}</div>
+    </div>
+  </div>
   <div class="threat-metrics">
-    <span>Combined probability <b>{rw.combined_probability:.0%}</b></span>
-    <span>Estimated lead time to WCU Campus <b>{lead}</b></span>
+    <span>Lead time to WCU Campus <b>{lead}</b></span>
     <span>Warning point <b class="mono">{wp_name}</b></span>
   </div>
-  <div class="threat-note">{rw.note}</div>
+  <div class="threat-note">Watch can be raised by soil moisture + forecast rain (lead-time signal).
+  Warning and Emergency require a measured headwater stream rise (confirmation). The gauged
+  downstream mainstem is a validation reference, not an input to either tier.</div>
 </div>
 """, unsafe_allow_html=True)
 

@@ -451,6 +451,8 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
             'and cannot affect the warning point.'
             '</div>', unsafe_allow_html=True)
 
+# incoming weather
+# corridor profile (simulated depth & discharge along the creek)
 # real-basemap watershed map (surveyed basin + reaches between sensor nodes)
 st.markdown('<div class="eyebrow">Watershed map \u2014 reaches on the surveyed basin</div>',
             unsafe_allow_html=True)
@@ -458,19 +460,33 @@ try:
     _basin = flood_profile.BASIN_FEATURE
     _nodes = flood_profile.map_nodes()
     _reaches = flood_profile.map_reaches()
+    _USGS_TOPO = ("https://basemap.nationalmap.gov/arcgis/rest/services/"
+                  "USGSTopo/MapServer/tile/{z}/{y}/{x}")
     _layers = [
+        # real USGS topographic basemap — shows the actual streams underneath
+        pdk.Layer("TileLayer", data=_USGS_TOPO, min_zoom=0, max_zoom=16,
+                  tile_size=256, pickable=False),
+        # watershed outline (very light fill so the stream shows through)
         pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
-                  get_fill_color=[60, 130, 180, 30], get_line_color=[35, 79, 134, 220],
+                  get_fill_color=[60, 130, 180, 16], get_line_color=[35, 79, 134, 230],
                   line_width_min_pixels=2, pickable=False),
+        # reach severity zones — translucent bands over the creek
         pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
-                  get_width="width", width_units="pixels", width_min_pixels=3,
-                  width_max_pixels=9, pickable=True),
+                  get_width="width", width_units="pixels", width_min_pixels=6,
+                  width_max_pixels=18, pickable=True),
+        # sensor nodes
         pdk.Layer("ScatterplotLayer", _nodes, get_position="position",
                   get_fill_color="color", get_radius=150, radius_min_pixels=6,
-                  radius_max_pixels=15, stroked=True, get_line_color=[255, 255, 255],
+                  radius_max_pixels=14, stroked=True, get_line_color=[255, 255, 255],
                   line_width_min_pixels=1, pickable=True),
+        # depth / discharge labels on the map
+        pdk.Layer("TextLayer", _nodes, get_position="position", get_text="label",
+                  get_size=12, get_color=[20, 30, 45], get_pixel_offset=[0, 16],
+                  get_alignment_baseline="'top'", get_text_anchor="'middle'",
+                  background=True, get_background_color=[255, 255, 255, 220],
+                  background_padding=[4, 2, 4, 2], font_weight="bold", pickable=False),
     ]
-    _view = pdk.ViewState(latitude=35.255, longitude=-83.197, zoom=10)
+    _view = pdk.ViewState(latitude=35.255, longitude=-83.197, zoom=11)
     _deck = pdk.Deck(layers=_layers, initial_view_state=_view,
                      map_style=None,
                      tooltip={"text": "{name}\n{tip}"})

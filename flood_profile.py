@@ -40,8 +40,8 @@ NODE_THRESHOLDS = {
 # tributary names are editable placeholders, set them to the real USGS names. [SET]
 STREAM_NAMES = {
     "speedwell":      "Cullowhee Creek",        # main stem -> campus (USGS)
-    "double_springs": "Double Springs branch",  # [set actual USGS tributary name]
-    "aahp":           "AAHP tributary",         # [set actual USGS tributary name]
+    "double_springs": "Cullowhee Creek",        # upper main stem (USGS)
+    "aahp":           "Tilley Creek",           # tributary (USGS)
 }
 # Short display names for the schematic (full names can be long)
 DISP_NAME = {

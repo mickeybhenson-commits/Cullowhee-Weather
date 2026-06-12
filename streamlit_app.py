@@ -478,65 +478,91 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
 
 # incoming weather
 # corridor profile (simulated depth & discharge along the creek)
-# real-basemap watershed map (surveyed basin + reaches between sensor nodes)
-st.markdown('<div class="eyebrow">Watershed map \u2014 reaches on the surveyed basin</div>',
+# =========================================================================
+# CULLOWHEE CREEK CORRIDOR — one combined, professional watershed map
+# =========================================================================
+st.markdown('<div class="eyebrow">Cullowhee Creek corridor \u2014 watershed map</div>',
             unsafe_allow_html=True)
-try:
-    _basin = flood_profile.BASIN_FEATURE
-    _nodes = flood_profile.map_nodes()
-    _reaches = flood_profile.map_reaches()
-    _USGS_TOPO = ("https://basemap.nationalmap.gov/arcgis/rest/services/"
-                  "USGSTopo/MapServer/tile/{z}/{y}/{x}")
-    _layers = [
-        # real USGS topographic basemap — shows the actual streams underneath
-        pdk.Layer("TileLayer", data=_USGS_TOPO, min_zoom=0, max_zoom=16,
-                  tile_size=256, pickable=False),
-        # watershed outline (very light fill so the stream shows through)
-        pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
-                  get_fill_color=[60, 130, 180, 16], get_line_color=[35, 79, 134, 230],
-                  line_width_min_pixels=2, pickable=False),
-        # reach severity zones — translucent bands over the creek
-        pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
-                  get_width="width", width_units="pixels", width_min_pixels=6,
-                  width_max_pixels=18, pickable=True),
-        # sensor nodes
-        pdk.Layer("ScatterplotLayer", _nodes, get_position="position",
-                  get_fill_color="color", get_radius=150, radius_min_pixels=6,
-                  radius_max_pixels=14, stroked=True, get_line_color=[255, 255, 255],
-                  line_width_min_pixels=1, pickable=True),
-        # depth / discharge labels on the map
-        pdk.Layer("TextLayer", _nodes, get_position="position", get_text="label",
-                  get_size=12, get_color=[20, 30, 45], get_pixel_offset=[0, 16],
-                  get_alignment_baseline="'top'", get_text_anchor="'middle'",
-                  background=True, get_background_color=[255, 255, 255, 220],
-                  background_padding=[4, 2, 4, 2], font_weight="bold", pickable=False),
-    ]
-    _view = pdk.ViewState(latitude=35.255, longitude=-83.197, zoom=11)
-    _deck = pdk.Deck(layers=_layers, initial_view_state=_view,
-                     map_style=None,
-                     tooltip={"text": "{name}\n{tip}"})
-    st.pydeck_chart(_deck, use_container_width=True)
-    st.markdown('<div class="site-detail" style="color:#8A97A4;">'
-                'Surveyed watershed boundary and campus outlet are real (StreamStats). '
-                'Upstream node pins are approximate \u2014 replace with sensor GPS in NODE_COORDS. '
-                'Reaches drawn as straight connectors between nodes until the centerline is loaded.</div>',
-                unsafe_allow_html=True)
-except Exception as _map_err:
-    st.info(f"Map unavailable: {_map_err}")
+with st.container(border=True):
+    st.markdown("""
+    <div style="display:flex;justify-content:space-between;align-items:center;margin:2px 2px 10px;">
+      <div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:1.08rem;color:#13212E;">
+        Watershed corridor &middot; Watch / Warning / Emergency</div>
+      <span style="font-size:0.66rem;font-weight:600;color:#92633A;background:#F3E9DC;
+        padding:3px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;">Demonstration</span>
+    </div>""", unsafe_allow_html=True)
+    try:
+        _ESRI_TOPO = ("https://server.arcgisonline.com/ArcGIS/rest/services/"
+                      "World_Topo_Map/MapServer/tile/{z}/{y}/{x}")
+        _basin = flood_profile.BASIN_FEATURE
+        _nodes = flood_profile.map_nodes()
+        _reaches = flood_profile.map_reaches()
+        _rlabels = flood_profile.map_reach_labels()
+        _layers = [
+            # professional topographic basemap (Esri/USGS) — real streams + hillshade
+            pdk.Layer("TileLayer", data=_ESRI_TOPO, min_zoom=0, max_zoom=19, tile_size=256),
+            # surveyed watershed boundary — crisp outline, faint fill
+            pdk.Layer("PolygonLayer", _basin, get_polygon="polygon",
+                      get_fill_color=[35, 79, 134, 12], get_line_color=[35, 79, 134, 190],
+                      line_width_min_pixels=1.5, get_line_width=2, pickable=False),
+            # reach severity zones — translucent, rounded
+            pdk.Layer("PathLayer", _reaches, get_path="path", get_color="color",
+                      get_width="width", width_units="pixels", width_min_pixels=5,
+                      width_max_pixels=16, cap_rounded=True, joint_rounded=True, pickable=True),
+            # sensor nodes
+            pdk.Layer("ScatterplotLayer", _nodes, get_position="position",
+                      get_fill_color="color", get_radius=160, radius_min_pixels=7,
+                      radius_max_pixels=13, stroked=True, get_line_color=[255, 255, 255],
+                      line_width_min_pixels=2, pickable=True),
+            # stream-name labels at reach midpoints
+            pdk.Layer("TextLayer", _rlabels, get_position="position", get_text="text",
+                      get_size=13, get_color=[19, 33, 46], get_pixel_offset=[0, -16],
+                      get_alignment_baseline="'bottom'", get_text_anchor="'middle'",
+                      font_weight=600, background=True,
+                      get_background_color=[255, 255, 255, 205],
+                      background_padding=[6, 2, 6, 2], pickable=False),
+            # node name + depth/discharge labels
+            pdk.Layer("TextLayer", _nodes, get_position="position", get_text="label",
+                      get_size=11, get_color=[19, 33, 46], get_pixel_offset=[0, 16],
+                      get_alignment_baseline="'top'", get_text_anchor="'middle'",
+                      font_weight=700, background=True,
+                      get_background_color=[255, 255, 255, 225],
+                      background_padding=[6, 3, 6, 3], pickable=False),
+        ]
+        _view = pdk.ViewState(latitude=35.262, longitude=-83.197, zoom=11.3, bearing=0, pitch=0)
+        _deck = pdk.Deck(layers=_layers, initial_view_state=_view, map_style=None,
+                         tooltip={"text": "{name}\n{tip}"})
+        st.pydeck_chart(_deck, use_container_width=True)
+    except Exception as _map_err:
+        st.info(f"Map unavailable: {_map_err}")
 
-st.markdown('<div class="eyebrow">Corridor reaches \u2014 simulated depth &amp; discharge between sensor nodes</div>',
-            unsafe_allow_html=True)
-components.html(
-    '<div style="font-family:Inter,system-ui,sans-serif">' + flood_profile.corridor_svg() + '</div>',
-    height=470, scrolling=False)
-with st.expander('Reach table — simulated depth & discharge'):
+    # legend + provenance
+    _leg = "".join(
+        f'<span style="display:inline-flex;align-items:center;gap:6px;margin-right:16px;">'
+        f'<span style="width:13px;height:13px;border-radius:3px;background:{SEV[L]};"></span>'
+        f'<span style="font-size:0.8rem;color:#5B6B7A;">{L.title()}</span></span>' for L in ORDER)
+    st.markdown(
+        f'<div style="margin-top:10px;">{_leg}'
+        '<span style="font-size:0.8rem;color:#8A97A4;">&middot; line thickness = discharge</span></div>'
+        '<div style="font-size:0.74rem;color:#8A97A4;margin-top:6px;line-height:1.45;">'
+        'Topographic basemap &amp; streams: Esri / USGS. Surveyed watershed boundary and campus outlet are '
+        'real (StreamStats); upstream node pins are approximate (set to sensor GPS); reaches are straight '
+        'connectors until the channel centerline is loaded. Cullowhee Creek is the USGS main stem; '
+        'tributary names are placeholders to confirm.</div>', unsafe_allow_html=True)
+
+with st.expander("Reach detail \u2014 depth, discharge, drainage area"):
     _rows = flood_profile.reaches()
     st.dataframe(
-        [{'Reach': r['name'], 'Level': r['level'], 'Length (mi)': r['length_mi'],
+        [{'Stream': r['stream'], 'Reach': r['name'], 'Level': r['level'], 'Length (mi)': r['length_mi'],
           'Depth up\u2192dn (ft)': f"{r['up_depth_ft']:.1f} \u2192 {r['dn_depth_ft']:.1f}",
           'Discharge up\u2192dn (cfs)': f"{r['up_discharge_cfs']:,} \u2192 {r['dn_discharge_cfs']:,}",
           'Drainage area up\u2192dn (mi\u00b2)': f"{r['up_area_sqmi']} \u2192 {r['dn_area_sqmi']}"} for r in _rows],
         use_container_width=True, hide_index=True)
+
+with st.expander("Schematic view (no basemap)"):
+    components.html(
+        '<div style="font-family:Inter,system-ui,sans-serif">' + flood_profile.corridor_svg() + '</div>',
+        height=600, scrolling=False)
 
 st.markdown('<div class="eyebrow">Incoming weather — forecast precipitation</div>', unsafe_allow_html=True)
 fc = fetch_best_7day(); days = fc.get("days", [])

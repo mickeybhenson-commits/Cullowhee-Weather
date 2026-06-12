@@ -35,6 +35,21 @@ NODE_THRESHOLDS = {
     "double_springs": (4.0, 5.0, 6.0),    # [placeholder]
     "aahp":           (4.0, 5.0, 6.0),    # [placeholder]
 }
+# Stream name carried by each reach (keyed by the reach's UPSTREAM node).
+# The main stem to the campus is Cullowhee Creek (USGS) — confident; the two
+# tributary names are editable placeholders, set them to the real USGS names. [SET]
+STREAM_NAMES = {
+    "speedwell":      "Cullowhee Creek",        # main stem -> campus (USGS)
+    "double_springs": "Double Springs branch",  # [set actual USGS tributary name]
+    "aahp":           "AAHP tributary",         # [set actual USGS tributary name]
+}
+# Short display names for the schematic (full names can be long)
+DISP_NAME = {
+    "double_springs": "Double Springs",
+    "aahp":           "AAHP ridge",
+    "speedwell":      "Speedwell (confluence)",
+    "belk":           "WCU Campus",
+}
 LEVEL_ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
 SEV = {"NORMAL": "#1A7A52", "WATCH": "#C08A00", "WARNING": "#C2410C", "EMERGENCY": "#B42318"}
 
@@ -105,6 +120,7 @@ def reaches():
             "up_area_sqmi": u["area_sqmi"], "dn_area_sqmi": d["area_sqmi"],
             "up_level": u["level"], "dn_level": d["level"],
             "level": _worse(u["level"], d["level"]),
+            "stream": STREAM_NAMES.get(up, ""),
             "measured": u["measured"] and d["measured"],
         })
     return out
@@ -113,8 +129,8 @@ def reaches():
 # ---------------------------------------------------------------------
 # SCHEMATIC PLAN-VIEW SVG — reaches as channel segments
 # ---------------------------------------------------------------------
-_NODE_XY = {"double_springs": (70, 70), "aahp": (70, 360),
-            "speedwell": (440, 215), "belk": (710, 215)}
+_NODE_XY = {"double_springs": (95, 95), "aahp": (95, 495),
+            "speedwell": (485, 300), "belk": (825, 300)}
 
 
 def _depth_color(d):
@@ -128,14 +144,15 @@ def _reach_width(meanQ):
 
 def corridor_svg():
     rs = reaches()
-    s = ['<svg width="100%" viewBox="0 0 800 470" xmlns="http://www.w3.org/2000/svg" '
+    s = ['<svg width="100%" viewBox="0 0 940 600" xmlns="http://www.w3.org/2000/svg" '
          'font-family="Inter,system-ui,sans-serif">']
-    s.append('<text x="24" y="26" font-size="15" font-weight="700" fill="#1B2A38">'
+    s.append('<text x="28" y="30" font-size="16" font-weight="700" fill="#1B2A38">'
              'Corridor reaches \u2014 Watch / Warning / Emergency</text>')
-    s.append('<text x="24" y="44" font-size="11" fill="#6B7C8C">'
+    s.append('<text x="28" y="52" font-size="11.5" fill="#6B7C8C">'
              'Each reach takes the more severe of its two ends. '
-             'Per-reach thresholds (campus 7/9/11 ft; upstream placeholder).</text>')
-    # reach segments coloured by severity level, thickness by discharge
+             'Per-reach thresholds (campus 7 / 9 / 11 ft; upstream placeholder).</text>')
+
+    # --- reach segments ------------------------------------------------
     for r in rs:
         p, q = _NODE_XY[r["up"]], _NODE_XY[r["dn"]]
         meanQ = 0.5 * (r["up_discharge_cfs"] + r["dn_discharge_cfs"])
@@ -143,39 +160,57 @@ def corridor_svg():
         col = SEV[r["level"]]
         s.append(f'<line x1="{p[0]}" y1="{p[1]}" x2="{q[0]}" y2="{q[1]}" '
                  f'stroke="{col}" stroke-width="{w:.1f}" stroke-linecap="round"/>')
+
+    # --- reach label blocks (stream name / level / range), placed off the line
+    def reach_block(up, dn, side):
+        r = next(x for x in rs if x["up"] == up and x["dn"] == dn)
+        p, q = _NODE_XY[up], _NODE_XY[dn]
         mx, my = (p[0] + q[0]) / 2, (p[1] + q[1]) / 2
-        s.append(f'<text x="{mx:.0f}" y="{my - w/2 - 16:.0f}" font-size="10" font-weight="700" '
+        col = SEV[r["level"]]
+        if side == "above":   y0 = my - 44
+        elif side == "below": y0 = my + 18
+        else:                 y0 = my - 44
+        s.append(f'<text x="{mx:.0f}" y="{y0:.0f}" font-size="11.5" font-weight="700" '
+                 f'text-anchor="middle" fill="#1B2A38">{r["stream"]}</text>')
+        s.append(f'<text x="{mx:.0f}" y="{y0+16:.0f}" font-size="11" font-weight="700" '
                  f'text-anchor="middle" fill="{col}">{r["level"]}</text>')
-        s.append(f'<text x="{mx:.0f}" y="{my - w/2 - 5:.0f}" font-size="9" '
+        s.append(f'<text x="{mx:.0f}" y="{y0+31:.0f}" font-size="9.5" '
                  f'text-anchor="middle" fill="#3C4C5A">{r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft'
                  f' &#183; {r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs</text>')
+    reach_block("double_springs", "speedwell", "above")
+    reach_block("aahp", "speedwell", "below")
+    reach_block("speedwell", "belk", "above")
 
-    def node_marker(node, anchor):
-        ns = node_state(node)
-        cx, cy = _NODE_XY[node]
-        s.append(f'<circle cx="{cx}" cy="{cy}" r="6" fill="{SEV[ns['level']]}" stroke="#fff" stroke-width="1.5"/>')
-        tx = cx + (14 if anchor == "start" else -14)
-        s.append(f'<text x="{tx}" y="{cy-6}" font-size="12" font-weight="700" '
-                 f'fill="#1B2A38" text-anchor="{anchor}">{ns["name"]}</text>')
-        s.append(f'<text x="{tx}" y="{cy+9}" font-size="10.5" fill="#5B6B7A" '
-                 f'text-anchor="{anchor}">{ns["level"]} &#183; {ns["depth_ft"]:.1f} ft &#183; {ns["discharge_cfs"]:,} cfs</text>')
-    node_marker("double_springs", "start")
-    node_marker("aahp", "start")
-    sp = node_state("speedwell")
-    s.append(f'<circle cx="440" cy="215" r="6" fill="{SEV[sp['level']]}" stroke="#fff" stroke-width="1.5"/>')
-    s.append('<text x="440" y="250" font-size="12" font-weight="700" fill="#1B2A38" text-anchor="middle">Speedwell (confluence)</text>')
-    s.append(f'<text x="440" y="265" font-size="10.5" fill="#5B6B7A" text-anchor="middle">{sp["level"]} &#183; {sp["depth_ft"]:.1f} ft &#183; {sp["discharge_cfs"]:,} cfs</text>')
-    node_marker("belk", "end")
+    # --- node markers + labels ----------------------------------------
+    def node(nid, name_dy, val_dy, anchor, tx_off):
+        ns = node_state(nid)
+        cx, cy = _NODE_XY[nid]
+        s.append(f'<circle cx="{cx}" cy="{cy}" r="7" fill="{SEV[ns['level']]}" '
+                 f'stroke="#fff" stroke-width="2"/>')
+        tx = cx + tx_off
+        s.append(f'<text x="{tx}" y="{cy+name_dy}" font-size="13" font-weight="700" '
+                 f'fill="#1B2A38" text-anchor="{anchor}">{DISP_NAME[nid]}</text>')
+        s.append(f'<text x="{tx}" y="{cy+val_dy}" font-size="10.5" fill="#5B6B7A" '
+                 f'text-anchor="{anchor}">{ns["level"]} &#183; {ns["depth_ft"]:.1f} ft &#183; '
+                 f'{ns["discharge_cfs"]:,} cfs</text>')
+    # Double Springs: labels above the node (line leaves downward)
+    node("double_springs", -30, -14, "start", -6)
+    # AAHP ridge: labels below the node (line leaves upward)
+    node("aahp", 28, 44, "start", -6)
+    # Speedwell: labels below the node, centred
+    node("speedwell", 34, 50, "middle", 0)
+    # WCU Campus: name above, value below, centred (away from the reach label)
+    node("belk", -22, 26, "middle", 0)
 
-    # severity legend
-    x = 24
+    # --- severity legend ----------------------------------------------
+    x = 28
     for lv in LEVEL_ORDER:
-        s.append(f'<rect x="{x}" y="423" width="12" height="12" rx="2" fill="{SEV[lv]}"/>')
-        s.append(f'<text x="{x+17}" y="433" font-size="10" fill="#5B6B7A">{lv.title()}</text>')
-        x += 70 + 14 * (len(lv) - 5 if len(lv) > 5 else 0)
-    s.append('<text x="24" y="452" font-size="9.5" fill="#8A97A4" font-style="italic">'
-             'Simulated \u2014 endpoint depth from area scaling; per-reach thresholds placeholder upstream '
-             '(set from each reach bankfull / cross-section). Thickness = discharge.</text>')
+        s.append(f'<rect x="{x}" y="556" width="13" height="13" rx="2" fill="{SEV[lv]}"/>')
+        s.append(f'<text x="{x+19}" y="567" font-size="10.5" fill="#5B6B7A">{lv.title()}</text>')
+        x += 96
+    s.append('<text x="28" y="590" font-size="9.5" fill="#8A97A4" font-style="italic">'
+             'Simulated \u2014 endpoint depth from area scaling; line thickness = discharge. '
+             'Cullowhee Creek is the USGS main stem; tributary names are placeholders to confirm.</text>')
     s.append('</svg>')
     return "\n".join(s)
 
@@ -220,7 +255,7 @@ def map_nodes():
             "name": ns["name"], "position": xy, "level": ns["level"],
             "color": _hex_rgb(SEV[ns["level"]]) + [235],
             "radius": 6 + math.sqrt(max(ns["discharge_cfs"], 0)) * 0.22,
-            "label": f'{ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs',
+            "label": f'{DISP_NAME.get(nid, ns["name"])}\n{ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs',
             "tip": f'{ns["level"]} \u00b7 {ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs'
                    + ("" if real else "  (approx location)"),
         })
@@ -242,6 +277,22 @@ def map_reaches():
                      f'{r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs',
             "tip": f'{r["level"]} \u00b7 {r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft '
                    f'\u00b7 {r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs',
+        })
+    return out
+
+
+def map_reach_labels():
+    """Stream-name labels placed at each reach midpoint (for the map TextLayer)."""
+    out = []
+    for r in reaches():
+        p, q = NODE_COORDS.get(r["up"]), NODE_COORDS.get(r["dn"])
+        if not p or not q:
+            continue
+        out.append({
+            "position": [(p[0] + q[0]) / 2.0, (p[1] + q[1]) / 2.0],
+            "text": r["stream"],
+            "level": r["level"],
+            "color": _hex_rgb(SEV[r["level"]]) + [255],
         })
     return out
 

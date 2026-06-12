@@ -525,7 +525,7 @@ with st.container(border=True):
         ]
         _view = pdk.ViewState(latitude=35.259, longitude=-83.202, zoom=10.7, bearing=0, pitch=0)
         _deck = pdk.Deck(layers=_layers, initial_view_state=_view,
-                         map_provider="carto", map_style="light",
+                         map_provider="carto", map_style="road",
                          tooltip={"text": "{name}\n{tip}"})
         st.pydeck_chart(_deck, use_container_width=True)
     except Exception as _map_err:
@@ -540,7 +540,7 @@ with st.container(border=True):
         f'<div style="margin-top:10px;">{_leg}'
         '<span style="font-size:0.8rem;color:#8A97A4;">&middot; line thickness = discharge</span></div>'
         '<div style="font-size:0.74rem;color:#8A97A4;margin-top:6px;line-height:1.45;">'
-        'Light basemap: Carto. Surveyed watershed boundary and campus outlet are '
+        'Basemap: Carto Voyager (streams emphasized). Surveyed watershed boundary and campus outlet are '
         'real (StreamStats); upstream node pins are approximate (set to sensor GPS); reaches are straight '
         'connectors until the channel centerline is loaded. Cullowhee Creek is the USGS main stem; '
         'tributary names are placeholders to confirm.</div>', unsafe_allow_html=True)

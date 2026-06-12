@@ -218,8 +218,9 @@ def map_nodes():
         real = (nid == "belk")
         out.append({
             "name": ns["name"], "position": xy, "level": ns["level"],
-            "color": _hex_rgb(SEV[ns["level"]]) + [230],
+            "color": _hex_rgb(SEV[ns["level"]]) + [235],
             "radius": 6 + math.sqrt(max(ns["discharge_cfs"], 0)) * 0.22,
+            "label": f'{ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs',
             "tip": f'{ns["level"]} \u00b7 {ns["depth_ft"]:.1f} ft \u00b7 {ns["discharge_cfs"]:,} cfs'
                    + ("" if real else "  (approx location)"),
         })
@@ -235,8 +236,10 @@ def map_reaches():
         meanQ = 0.5 * (r["up_discharge_cfs"] + r["dn_discharge_cfs"])
         out.append({
             "name": r["name"], "level": r["level"], "path": [p, q],
-            "color": _hex_rgb(SEV[r["level"]]) + [230],
-            "width": 3 + math.sqrt(max(meanQ, 0)) * 0.18,
+            "color": _hex_rgb(SEV[r["level"]]) + [120],
+            "width": 6 + math.sqrt(max(meanQ, 0)) * 0.22,
+            "label": f'{r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft  '
+                     f'{r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs',
             "tip": f'{r["level"]} \u00b7 {r["up_depth_ft"]:.1f}\u2192{r["dn_depth_ft"]:.1f} ft '
                    f'\u00b7 {r["up_discharge_cfs"]:,}\u2192{r["dn_discharge_cfs"]:,} cfs',
         })

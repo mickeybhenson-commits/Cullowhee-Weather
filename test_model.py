@@ -38,6 +38,18 @@ BASINS = {
     "CC-MOUTH-2340":dict(DA=23.4, Tc=147, CN2=64, lead="adequate",w=60.0, d=2.90, n=0.045, s=0.0050, thr="bankfull"),
 }
 
+# Optional: override CN2 with imagery-derived, field-calibrated curve numbers
+# produced by landuse_cn.py (cn_overrides.json). Falls back silently to the
+# defaults above if the file isn't present.
+try:
+    import json as _json, os as _os
+    if _os.path.exists("cn_overrides.json"):
+        for _bid, _cn in _json.load(open("cn_overrides.json")).items():
+            if _bid in BASINS:
+                BASINS[_bid]["CN2"] = float(_cn)
+except Exception:
+    pass
+
 # Campus 7/9/11 ft posture ladder (depth above bed). For bankfull-type reaches,
 # WATCH = 0.75*bankfull for lead-limited (the offset from this project), WARNING
 # = bankfull, EMERGENCY = bankfull + freeboard placeholder (replace w/ surveyed

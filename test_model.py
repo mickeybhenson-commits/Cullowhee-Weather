@@ -54,13 +54,27 @@ except Exception:
 # WATCH = 0.75*bankfull for lead-limited (the offset from this project), WARNING
 # = bankfull, EMERGENCY = bankfull + freeboard placeholder (replace w/ surveyed
 # receptor elevation when you have benchmarks).
-CAMPUS_LADDER = dict(WATCH=7.0, WARNING=9.0, EMERGENCY=11.0)
-EMERGENCY_FREEBOARD_FT = 2.0   # placeholder above bankfull until receptor survey
+# Posture thresholds = stage (ft above bed) for WATCH / WARNING / EMERGENCY.
+# Campus uses the real 7/9/11 wall ladder. The bankfull reaches are SEEDED from
+# flood-frequency stages (WATCH≈2-yr, WARNING≈10-yr, EMERGENCY≈50-yr, at ARC-II);
+# lead-limited reaches' WATCH is dropped 0.75x to fire earlier.
+# >>> REPLACE each `emergency` with the surveyed lowest-receptor elevation
+#     (NAVD88, relative to bed) once you have benchmarks — that's the real number.
+THRESHOLDS = {
+    "CC-UP-503":    dict(watch=1.60, warning=4.63, emergency=7.37),
+    "CC-MS-1100":   dict(watch=1.84, warning=5.31, emergency=8.46),
+    "CC-TIL-705":   dict(watch=1.56, warning=4.48, emergency=7.14),
+    "CC-SPD-1830":  dict(watch=2.37, warning=6.82, emergency=10.88),
+    "CC-COX-097":   dict(watch=0.97, warning=2.54, emergency=3.97),
+    "CC-LB-171":    dict(watch=1.19, warning=3.18, emergency=4.90),
+    "CC-WCU-2260":  dict(watch=7.0,  warning=9.0,  emergency=11.0),   # real wall ladder
+    "CC-MOUTH-2340":dict(watch=5.81, warning=11.93, emergency=19.19),
+}
 
 # 24-hour design-storm depths (inches) for the Cullowhee valley. PLACEHOLDERS —
 # replace with NOAA Atlas-14 point values for the gauge location, then let
 # orographic.py scale them up by elevation per sub-basin.
-DESIGN_DEPTH_IN = {"2-yr": 3.2, "10-yr": 4.8, "25-yr": 5.8, "100-yr": 7.5}
+DESIGN_DEPTH_IN = {"2-yr": 3.2, "10-yr": 4.8, "25-yr": 5.8, "50-yr": 6.6, "100-yr": 7.5}
 
 GROWING_SEASON = True   # True May-Oct (higher ET, drier default); flips ARC thresholds
 
@@ -200,21 +214,15 @@ def stage_from_q(qp_cfs, b, dmax=40.0):
 # ----------------------------------------------------------------------------
 # 7. POSTURE  (compare stage to the ladder for this reach)
 # ----------------------------------------------------------------------------
-def posture(stage_ft, b):
-    if b["thr"] == "campus":
-        L = CAMPUS_LADDER
-        if stage_ft >= L["EMERGENCY"]: return "EMERGENCY"
-        if stage_ft >= L["WARNING"]:   return "WARNING"
-        if stage_ft >= L["WATCH"]:     return "WATCH"
-        return "NORMAL"
-    # bankfull-type reach
-    bf = b["d"]
-    watch = 0.75 * bf if b["lead"] == "limited" else bf
-    warning = bf
-    emergency = bf + EMERGENCY_FREEBOARD_FT
-    if stage_ft >= emergency: return "EMERGENCY"
-    if stage_ft >= warning:   return "WARNING"
-    if stage_ft >= watch:     return "WATCH"
+def posture(stage_ft, b, basin_id=None):
+    t = THRESHOLDS.get(basin_id) if basin_id else None
+    if t is None:   # fallback if a basin isn't in THRESHOLDS
+        bf = b["d"]
+        t = dict(watch=(0.75 * bf if b["lead"] == "limited" else bf),
+                 warning=bf, emergency=2.5 * bf)
+    if stage_ft >= t["emergency"]: return "EMERGENCY"
+    if stage_ft >= t["warning"]:   return "WARNING"
+    if stage_ft >= t["watch"]:     return "WATCH"
     return "NORMAL"
 
 
@@ -230,7 +238,7 @@ def run_case(total_depth_in, p5_in, PRF=484.0, dt_hr=0.25):
         Q = runoff_depth_in(total_depth_in, CN)
         qp = peak_discharge_cfs(hyeto, CN, b["DA"], b["Tc"] / 60.0, PRF=PRF, dt_hr=dt_hr)
         stage = stage_from_q(qp, b)
-        out[bid] = dict(CN=CN, Q=Q, qp=qp, stage=stage, posture=posture(stage, b))
+        out[bid] = dict(CN=CN, Q=Q, qp=qp, stage=stage, posture=posture(stage, b, bid))
     return arc, out
 
 

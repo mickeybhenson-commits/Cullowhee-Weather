@@ -3,7 +3,7 @@ Test Model — Streamlit page for the Cullowhee flood-engine test model.
 Imports test_model.py from the repo root (no logic duplicated here).
 
 Tabs: Single case (synthetic storm), Storm × antecedent sweep, Historical replay,
-and Live weather (real forecast + modeled antecedent, with animated radar).
+and Live weather (real forecast + modeled antecedent).
 Storm/antecedent controls live on the Single-case tab; only PRF is global.
 """
 
@@ -38,42 +38,6 @@ BASIN_PTS = {
     "CC-WCU-2260": (35.290, -83.185), "CC-MOUTH-2340": (35.300, -83.185),
 }
 
-# Animated precipitation radar (RainViewer, free, no key). Drawn in a pane
-# *below* the basin polygons so posture colors stay readable.
-RADAR_JS = """
-(function(){
-  function init(){
-    try{
-      if(typeof MAPVAR==='undefined'||typeof L==='undefined'){return setTimeout(init,300);}
-      var rmap=MAPVAR;
-      if(!rmap.getPane('radar')){
-        rmap.createPane('radar');
-        rmap.getPane('radar').style.zIndex=350;
-        rmap.getPane('radar').style.pointerEvents='none';
-      }
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(function(r){return r.json();})
-        .then(function(d){
-          var host=d.host||'https://tilecache.rainviewer.com';
-          var frames=[];
-          if(d.radar){frames=(d.radar.past||[]).concat(d.radar.nowcast||[]);}
-          if(!frames.length){return;}
-          var layers=frames.map(function(f){
-            return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/2/1_1.png',{opacity:0,pane:'radar'});
-          });
-          layers.forEach(function(l){l.addTo(rmap);});
-          var i=frames.length-1;
-          function show(k){layers.forEach(function(l,j){l.setOpacity(j===k?0.6:0);});}
-          show(i);
-          setInterval(function(){i=(i+1)%frames.length;show(i);},700);
-        })
-        .catch(function(e){console.log('radar error',e);});
-    }catch(e){console.log('radar init error',e);}
-  }
-  init();
-})();
-"""
-
 
 def color_posture(series):
     return [f"background-color:{POSTURE_COLOR.get(v,'')};color:white;font-weight:600"
@@ -102,9 +66,9 @@ def _label_marker(lat, lon, text):
             f'white-space:nowrap;text-align:center">{text}</div>')))
 
 
-def posture_map(postures, radar=False):
-    """Sub-basins colored by posture, framed to the whole watershed. Optional
-    animated radar overlay. Returns (map, have_geojson)."""
+def posture_map(postures):
+    """Sub-basins colored by posture, framed to the whole watershed.
+    Returns (map, have_geojson)."""
     m = folium.Map(location=[35.263, -83.201], zoom_start=12,
                    tiles="CartoDB positron", control_scale=True)
     try:
@@ -150,8 +114,6 @@ def posture_map(postures, radar=False):
         have = False
 
     m.fit_bounds(WATERSHED_BOUNDS)   # always frame the whole watershed
-    if radar:
-        m.get_root().script.add_child(folium.Element(RADAR_JS.replace("MAPVAR", m.get_name())))
     return m, have
 
 
@@ -264,7 +226,7 @@ with tab3:
 
 with tab4:
     st.subheader("Live — real forecast + modeled antecedent (no sensors)")
-    st.caption("Shadow mode: real weather, modeled soil wetness, animated radar. "
+    st.caption("Shadow mode: real weather, modeled soil wetness. "
                "Forecasts under-call mountain rainfall — for validation and awareness, "
                "not a basis for public warnings until rain gauges correct that bias.")
 
@@ -282,9 +244,8 @@ with tab4:
         for i, p in enumerate(["NORMAL", "WATCH", "WARNING", "EMERGENCY"]):
             cc[i].metric(p, sum(1 for v in live.values() if v["posture"] == p))
 
-        m, _ = posture_map(postures, radar=True)
-        legend(extra="<span style='margin-left:20px;font-size:12px;color:#666'>"
-                     "+ animated precip radar (RainViewer)</span>")
+        m, _ = posture_map(postures)
+        legend()
         st_folium(m, height=520, width=1150, returned_objects=[])
 
         rows = [{"sub-basin": disp(bid), "antecedent 5d (in)": v["antecedent_5day"],

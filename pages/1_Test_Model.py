@@ -41,6 +41,50 @@ BASIN_PTS = {
     "CC-WCU-2260": (35.290, -83.185), "CC-MOUTH-2340": (35.300, -83.185),
 }
 
+# Regional zoom for the incoming-weather map — wide enough to watch systems
+# approach (~135 km each way ≈ several hours of lead) with the watershed outlined.
+RADAR_ZOOM = 9
+
+# Modeled-wetness palette for the ARC column (dry -> wet). These are MODELED
+# values (from trailing rainfall), not soil-moisture sensor readings.
+WET_COLOR = {1: ("#E0CDA9", "#5A3A1A"), 2: ("#9CC3E0", "#16384D"), 3: ("#2E6CA4", "#FFFFFF")}
+
+# Animated precipitation radar (RainViewer, free, no key) for the dedicated
+# incoming-weather map. Drawn below the watershed outline.
+RADAR_JS = """
+(function(){
+  function init(){
+    try{
+      if(typeof MAPVAR==='undefined'||typeof L==='undefined'){return setTimeout(init,300);}
+      var rmap=MAPVAR;
+      if(!rmap.getPane('radar')){
+        rmap.createPane('radar');
+        rmap.getPane('radar').style.zIndex=350;
+        rmap.getPane('radar').style.pointerEvents='none';
+      }
+      fetch('https://api.rainviewer.com/public/weather-maps.json')
+        .then(function(r){return r.json();})
+        .then(function(d){
+          var host=d.host||'https://tilecache.rainviewer.com';
+          var frames=[];
+          if(d.radar){frames=(d.radar.past||[]).concat(d.radar.nowcast||[]);}
+          if(!frames.length){return;}
+          var layers=frames.map(function(f){
+            return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0,pane:'radar'});
+          });
+          layers.forEach(function(l){l.addTo(rmap);});
+          var i=frames.length-1;
+          function show(k){layers.forEach(function(l,j){l.setOpacity(j===k?0.7:0);});}
+          show(i);
+          setInterval(function(){i=(i+1)%frames.length;show(i);},700);
+        })
+        .catch(function(e){console.log('radar error',e);});
+    }catch(e){console.log('radar init error',e);}
+  }
+  init();
+})();
+"""
+
 
 def color_posture(series):
     return [f"background-color:{POSTURE_COLOR.get(v,'')};color:white;font-weight:600"
@@ -117,6 +161,52 @@ def posture_map(postures):
         have = False
 
     return m, have
+
+
+def radar_map():
+    """Incoming-weather map: animated RainViewer radar with the watershed outlined
+    for reference, at a regional zoom so approaching systems are visible. Kept
+    separate from the posture map so any radar issue can't affect it."""
+    m = folium.Map(location=WS_CENTER, zoom_start=RADAR_ZOOM,
+                   tiles="CartoDB positron", control_scale=True)
+    try:
+        with open("cullowhee_subbasins.geojson") as f:
+            geo = json.load(f)
+    except Exception:
+        geo = None
+    if geo:
+        mouth = next((f for f in geo.get("features", [])
+                      if f["properties"].get("basin_id") == "CC-MOUTH-2340"), None)
+        folium.GeoJson(mouth if mouth else geo, style_function=lambda f: {
+            "fillColor": "#1b1b1b", "fillOpacity": 0.05,
+            "color": "#111", "weight": 2.5}).add_to(m)
+        _label_marker(WS_CENTER[0], WS_CENTER[1], "Cullowhee Creek").add_to(m)
+    m.get_root().script.add_child(
+        folium.Element(RADAR_JS.replace("MAPVAR", m.get_name())))
+    return m
+
+
+def style_live(df):
+    """Color the modeled columns: predicted stage + posture by posture color,
+    soil-wetness by its own dry->wet scale. All MODELED, not measured."""
+    wl_to_arc = {"dry": 1, "normal": 2, "wet": 3}
+
+    def _row(row):
+        out = [""] * len(row)
+        idx = {c: i for i, c in enumerate(row.index)}
+        pc = POSTURE_COLOR.get(row.get("posture"), "")
+        if pc:
+            for c in ("posture", "pred. stage (ft)"):
+                if c in idx:
+                    out[idx[c]] = f"background-color:{pc};color:white;font-weight:600"
+        w = str(row.get("soil wetness (modeled)", "")).split()[0]
+        arc = wl_to_arc.get(w)
+        if arc and "soil wetness (modeled)" in idx:
+            bg, fg = WET_COLOR[arc]
+            out[idx["soil wetness (modeled)"]] = (
+                f"background-color:{bg};color:{fg};font-weight:600")
+        return out
+    return df.style.apply(_row, axis=1)
 
 
 def legend(extra=""):
@@ -253,15 +343,28 @@ with tab4:
         st_folium(m, center=WS_CENTER, zoom=WS_ZOOM,
                   height=520, width=1150, returned_objects=[])
 
-        rows = [{"sub-basin": disp(bid), "antecedent 5d (in)": v["antecedent_5day"],
-                 "forecast storm (in)": v["storm"], "ARC": v["arc"],
-                 "stage (ft)": v["stage"], "posture": v["posture"]}
+        wl = {1: "dry", 2: "normal", 3: "wet"}
+        rows = [{"sub-basin": disp(bid),
+                 "antecedent 5d (in)": v["antecedent_5day"],
+                 "soil wetness (modeled)": f"{wl[v['arc']]} ({v['arc']})",
+                 "forecast storm (in)": v["storm"],
+                 "pred. stage (ft)": v["stage"],
+                 "posture": v["posture"]}
                 for bid, v in live.items()]
-        st.dataframe(pd.DataFrame(rows).style.apply(color_posture, subset=["posture"]),
-                     width="stretch", hide_index=True)
-        st.caption("Antecedent = trailing 5-day rainfall (sets soil wetness / ARC); "
-                   "forecast storm = worst upcoming 24-hr total. Rain source: Open-Meteo. "
-                   "Cached 30 min — Refresh to force an update.")
+        st.dataframe(style_live(pd.DataFrame(rows)), width="stretch", hide_index=True)
+        st.caption("**Soil wetness** and **pred. stage** are MODELED, not measured. "
+                   "Soil wetness = ARC class from trailing 5-day rainfall; pred. stage = "
+                   "the engine's predicted depth (colored by posture). Both become real "
+                   "when sensors deploy — and can be cross-checked against NWM estimates "
+                   "in between. Rain source: Open-Meteo. Cached 30 min — Refresh to update.")
+
+        st.subheader("Incoming weather")
+        st.caption("Animated precipitation radar (RainViewer), regional view so you can "
+                   "watch systems approach the watershed. This is OBSERVED precip — a "
+                   "different feed from the forecast driving the postures above, so rain "
+                   "on radar before a basin changes color is the lead time, not a conflict.")
+        st_folium(radar_map(), center=WS_CENTER, zoom=RADAR_ZOOM,
+                  height=460, width=1150, returned_objects=[])
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
 

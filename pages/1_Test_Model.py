@@ -28,7 +28,10 @@ def disp(bid):
 
 # Fixed watershed framing (SW, NE) — guarantees the map shows the whole basin
 # and can never collapse to street zoom.
-WATERSHED_BOUNDS = [[35.200, -83.250], [35.325, -83.150]]
+# Fixed view — frames the whole Cullowhee Creek watershed. Passed straight to
+# st_folium (center/zoom), which honors it reliably; folium's fit_bounds does not.
+WS_CENTER = [35.263, -83.201]
+WS_ZOOM = 12
 
 # Fallback outlet markers (only if cullowhee_subbasins.geojson is missing).
 BASIN_PTS = {
@@ -69,7 +72,7 @@ def _label_marker(lat, lon, text):
 def posture_map(postures):
     """Sub-basins colored by posture, framed to the whole watershed.
     Returns (map, have_geojson)."""
-    m = folium.Map(location=[35.263, -83.201], zoom_start=12,
+    m = folium.Map(location=WS_CENTER, zoom_start=WS_ZOOM,
                    tiles="CartoDB positron", control_scale=True)
     try:
         with open("cullowhee_subbasins.geojson") as f:
@@ -113,7 +116,6 @@ def posture_map(postures):
             _label_marker(lat, lon, NAMES.get(bid, bid)).add_to(m)
         have = False
 
-    m.fit_bounds(WATERSHED_BOUNDS)   # always frame the whole watershed
     return m, have
 
 
@@ -177,7 +179,8 @@ with tab1:
     postures = {bid: r["posture"] for bid, r in res.items()}
     m, have_geo = posture_map(postures)
     legend()
-    st_folium(m, height=520, width=1150, returned_objects=[])
+    st_folium(m, center=WS_CENTER, zoom=WS_ZOOM,
+              height=520, width=1150, returned_objects=[])
     if not have_geo:
         st.caption("Showing outlet markers. Add cullowhee_subbasins.geojson "
                    "(at the repo root) to fill each sub-watershed.")
@@ -216,7 +219,8 @@ with tab3:
         postures = {bid: r["posture"] for bid, r in res_h.items()}
         mh, _ = posture_map(postures)
         legend()
-        st_folium(mh, height=480, width=1150, returned_objects=[])
+        st_folium(mh, center=WS_CENTER, zoom=WS_ZOOM,
+                  height=480, width=1150, returned_objects=[])
         rows = [{"sub-basin": disp(bid), "stage (ft)": round(r["stage"], 2),
                  "posture": r["posture"]} for bid, r in res_h.items()]
         st.dataframe(pd.DataFrame(rows).style.apply(color_posture, subset=["posture"]),
@@ -246,7 +250,8 @@ with tab4:
 
         m, _ = posture_map(postures)
         legend()
-        st_folium(m, height=520, width=1150, returned_objects=[])
+        st_folium(m, center=WS_CENTER, zoom=WS_ZOOM,
+                  height=520, width=1150, returned_objects=[])
 
         rows = [{"sub-basin": disp(bid), "antecedent 5d (in)": v["antecedent_5day"],
                  "forecast storm (in)": v["storm"], "ARC": v["arc"],

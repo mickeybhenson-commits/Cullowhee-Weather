@@ -9,6 +9,7 @@ Storm/antecedent controls live on the Single-case tab; only PRF is global.
 
 import json
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
@@ -62,23 +63,39 @@ RADAR_JS = """
         rmap.getPane('radar').style.zIndex=350;
         rmap.getPane('radar').style.pointerEvents='none';
       }
+      var lbl=document.createElement('div');
+      lbl.style.cssText='position:absolute;bottom:10px;left:10px;z-index:1000;'+
+        'background:rgba(0,0,0,.65);color:#fff;font:600 12px sans-serif;'+
+        'padding:3px 9px;border-radius:4px;pointer-events:none';
+      lbl.textContent='loading radar…';
+      rmap.getContainer().appendChild(lbl);
       fetch('https://api.rainviewer.com/public/weather-maps.json')
         .then(function(r){return r.json();})
         .then(function(d){
           var host=d.host||'https://tilecache.rainviewer.com';
-          var frames=[];
-          if(d.radar){frames=(d.radar.past||[]).concat(d.radar.nowcast||[]);}
-          if(!frames.length){return;}
+          var past=(d.radar&&d.radar.past)?d.radar.past:[];
+          var now=(d.radar&&d.radar.nowcast)?d.radar.nowcast:[];
+          var frames=past.concat(now);
+          if(!frames.length){lbl.textContent='no radar data';return;}
+          var fcstStart=now.length?now[0].time:Infinity;
           var layers=frames.map(function(f){
-            return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/4/1_1.png',{opacity:0,pane:'radar'});
+            return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/4/1_1.png',
+                               {opacity:0,pane:'radar'});
           });
           layers.forEach(function(l){l.addTo(rmap);});
           var i=frames.length-1;
-          function show(k){layers.forEach(function(l,j){l.setOpacity(j===k?0.7:0);});}
+          function show(k){
+            layers.forEach(function(l,j){l.setOpacity(j===k?0.7:0);});
+            var t=new Date(frames[k].time*1000);
+            var h=t.getHours(), m=('0'+t.getMinutes()).slice(-2);
+            var ap=h>=12?'PM':'AM'; h=h%12||12;
+            lbl.textContent='Radar '+h+':'+m+' '+ap+
+              (frames[k].time>=fcstStart?' (forecast)':'');
+          }
           show(i);
           setInterval(function(){i=(i+1)%frames.length;show(i);},700);
         })
-        .catch(function(e){console.log('radar error',e);});
+        .catch(function(e){lbl.textContent='radar unavailable';console.log('radar error',e);});
     }catch(e){console.log('radar init error',e);}
   }
   init();
@@ -393,8 +410,7 @@ with tab4:
                    "watch systems approach the watershed. This is OBSERVED precip — a "
                    "different feed from the forecast driving the postures above, so rain "
                    "on radar before a basin changes color is the lead time, not a conflict.")
-        st_folium(radar_map(), center=WS_CENTER, zoom=RADAR_ZOOM,
-                  height=460, width=1150, returned_objects=[])
+        components.html(radar_map().get_root().render(), height=480)
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
 

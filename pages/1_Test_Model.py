@@ -450,12 +450,13 @@ with tab4:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
 
     st.subheader("Approach rainfall — recent totals in every direction")
-    st.caption("Recent rainfall in a ring of sentinel towns in all eight directions "
-               "around the watershed, listed clockwise from north — whichever direction "
-               "is lit up is where weather is coming from, so this catches an approach "
-               "from ANY direction, not just the usual SW/W. The **local airport gauge** "
-               "(real, logged) sits in the ring at its own position. Distance (miles) is "
-               "a rough lead-time sense.")
+    st.caption("A ring of sentinel towns in all eight directions around the watershed, "
+               "listed clockwise from north — whichever direction is lit up is where "
+               "weather is coming from, so this catches an approach from ANY direction, "
+               "not just the usual SW/W. Below the ring sit the **real logged gauges** "
+               "(airport AWOS + any Ambient stations on your account), nearest first — "
+               "measured ground truth versus the modeled town ring. Distance (miles) is a "
+               "rough lead-time sense.")
 
     @st.cache_data(ttl=600, show_spinner="Fetching approach rainfall…")
     def _upwind():
@@ -467,8 +468,21 @@ with tab4:
         import live_rainfall as lr
         return lr.airport_rainfall()
 
+    @st.cache_data(ttl=600, show_spinner="Reading Ambient stations…")
+    def _ambient():
+        import live_rainfall as lr
+        try:
+            app = st.secrets.get("AMBIENT_APP_KEY")
+            api = st.secrets.get("AMBIENT_API_KEY")
+        except Exception:
+            app = api = None
+        return lr.ambient_rainfall(app_key=app, api_key=api)
+
     def _mi(km):
         return round(km * 0.621371, 1)
+
+    def _v(x):
+        return x if x is not None else "—"           # blank-safe cell
 
     try:
         up = _upwind()
@@ -476,33 +490,52 @@ with tab4:
             ap = _airport()
         except Exception:
             ap = None
+        try:
+            amb = _ambient()
+        except Exception:
+            amb = []
 
-        # Towns clockwise from north; the airport bears ~353deg (nearly due north), so
-        # it sorts to the END of the ring — appended after the last town (Bryson City, NW).
+        # Model town ring, clockwise from north.
         urows = [{"area": f"{r['area']} ({r['dir']})", "distance (mi)": _mi(r["dist_km"]),
                   "last 1h (in)": r["h1"], "last 3h (in)": r["h3"],
                   "last 6h (in)": r["h6"], "last 24h (in)": r["h24"]} for r in up]
+        # Real logged gauges (airport AWOS + any AWN stations on your account) grouped
+        # after the ring, nearest first — these are MEASURED, the towns are MODELED.
+        real = []
         if ap:
-            urows.append({"area": f"{ap['area']} ({ap['station']}, logged)",
-                          "distance (mi)": _mi(ap["dist_km"]),
-                          "last 1h (in)": ap["h1"], "last 3h (in)": ap["h3"],
-                          "last 6h (in)": ap["h6"], "last 24h (in)": ap["h24"]})
+            real.append({"area": f"{ap['area']} ({ap['station']}, logged)",
+                         "distance (mi)": _mi(ap["dist_km"]),
+                         "last 1h (in)": ap["h1"], "last 3h (in)": ap["h3"],
+                         "last 6h (in)": ap["h6"], "last 24h (in)": ap["h24"]})
+        for a in (amb or []):
+            real.append({"area": f"{a['area']} (AWN, logged)",
+                         "distance (mi)": _mi(a["dist_km"]),
+                         "last 1h (in)": _v(a["h1"]), "last 3h (in)": _v(a["h3"]),
+                         "last 6h (in)": _v(a["h6"]), "last 24h (in)": _v(a["h24"])})
+        real.sort(key=lambda x: x["distance (mi)"])
+        urows += real
         show_table(style_upwind(pd.DataFrame(urows)), left=("area",))
 
         cap = ("Heavier recent totals in a direction = more water already loaded into a "
                "system approaching from there. Town rows are Open-Meteo (model/observation "
                "blend) — same orographic caveat as the basin feed. ")
+        gauges = []
         if ap:
-            cap += (f"**The airport row is a real gauge** — Jackson County Airport AWOS "
-                    f"({ap['station']}), actual logged precip, last ob {ap['latest']}. "
-                    f"It sits at the end of the ring because it's almost due north of the "
-                    f"watershed. It's the one measured rainfall in this view; an AWOS "
-                    f"tipping bucket can under-catch heavy or frozen precip and drop the "
-                    f"odd hour, so it's ground truth with that caveat — and exactly the gap "
-                    f"a SKYE gauge fills. ")
+            gauges.append(f"Jackson County Airport AWOS ({ap['station']}, last ob "
+                          f"{ap['latest']})")
+        if amb:
+            gauges.append(f"{len(amb)} Ambient station{'s' if len(amb) != 1 else ''} on "
+                          f"your account")
+        if gauges:
+            cap += (f"**The rows tagged 'logged' are real gauges** — {', and '.join(gauges)} "
+                    f"— grouped below the town ring, nearest first. These are the MEASURED "
+                    f"rainfall in this view (the towns are modeled). A single gauge can "
+                    f"under-catch heavy or frozen precip and drop the odd reading, so treat "
+                    f"them as ground truth with that caveat — and as exactly the gap a denser "
+                    f"SKYE network fills. ")
         else:
-            cap += ("(Airport gauge K24A unavailable right now — IEM throttle or a sensor "
-                    "gap; the town ring is still shown.) ")
+            cap += ("(No real gauge available right now — IEM throttle / sensor gap, and no "
+                    "Ambient keys in Streamlit secrets yet; the town ring is still shown.) ")
         cap += "Cached 10 min."
         st.caption(cap)
     except Exception as e:

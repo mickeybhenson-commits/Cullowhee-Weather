@@ -299,7 +299,8 @@ if __name__ == "__main__":
     try:
         ap = airport_rainfall()
         if ap:
-            print(f"  {ap['area']} ({ap['station']}, {ap['dist_km']} km) — "
+            print(f"  {ap['area']} ({ap['station']}, "
+                  f"{round(ap['dist_km']*0.621371,1)} mi) — "
                   f"1h {ap['h1']}\"  3h {ap['h3']}\"  6h {ap['h6']}\"  24h {ap['h24']}\"  "
                   f"(last ob {ap['latest']}, {ap['hours_logged']} hrs logged)")
         else:

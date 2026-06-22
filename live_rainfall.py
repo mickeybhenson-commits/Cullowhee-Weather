@@ -18,8 +18,10 @@ Run (in a networked environment):  python live_rainfall.py
 Deps: standard library only (urllib, json).
 """
 
+import os
 import json
 import math
+import time
 import datetime
 import urllib.request
 import urllib.parse
@@ -282,6 +284,107 @@ def airport_rainfall(station="24A", hours=30, timeout=30):
     return res
 
 
+# ---------------------------------------------------------------------------
+# AMBIENT WEATHER NETWORK: real LOGGED precip from your OWN AWN station(s)
+# ---------------------------------------------------------------------------
+# The AWN REST API is account-scoped: the application + API keys read every device
+# on YOUR account. We pull them, keep the ones near the watershed, and report
+# trailing rain — 1 h and 24 h come straight from AWN's own fields (hourlyrainin,
+# 24hourrainin); 3 h / 6 h are integrated from the 5-min history. Keys come from the
+# environment or are passed in from Streamlit secrets — NEVER hardcode them; the
+# repo is public. Regenerate keys at ambientweather.net/account if they ever leak.
+AMBIENT_API = "https://api.ambientweather.net/v1"
+AMBIENT_NEAR_KM = 40        # ignore account devices farther than this from the watershed
+_RAIN_KEYS = ("hourlyrainin", "dailyrainin", "24hourrainin")
+
+
+def _ambient_get(path, params, timeout):
+    url = AMBIENT_API + path + "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={"User-Agent": "cullowhee-flood/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return json.load(r)
+
+
+def _ambient_trailing(records):
+    """3-h / 6-h trailing totals (in) integrated from an AWN device's 5-min history
+    via dailyrainin deltas (handles the local-midnight reset); also returns 1-h/24-h
+    as fallbacks. None if the station logs no dailyrainin (i.e. has no rain gauge)."""
+    recs = sorted((r for r in records if r.get("dateutc") is not None),
+                  key=lambda r: r["dateutc"])
+    incs, prev = [], None
+    for r in recs:
+        d = r.get("dailyrainin")
+        if d is None:
+            continue
+        inc = 0.0 if prev is None else (d if d < prev else d - prev)   # reset-aware
+        incs.append((r["dateutc"], max(0.0, inc)))
+        prev = d
+    if not incs:
+        return None
+    latest = incs[-1][0]
+
+    def trail(hours):
+        cut = latest - hours * 3600 * 1000
+        return round(sum(i for t, i in incs if t > cut), 2)
+
+    now_ms = datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
+    return dict(h1=trail(1), h3=trail(3), h6=trail(6), h24=trail(24),
+                age_min=round((now_ms - latest) / 60000))
+
+
+def ambient_rainfall(app_key=None, api_key=None, near_km=AMBIENT_NEAR_KM, timeout=30):
+    """Real logged precip from AWN stations on your account, within near_km of the
+    watershed. Returns a list of row dicts (possibly empty). Key precedence: arg > env."""
+    app_key = app_key or os.environ.get("AMBIENT_APP_KEY")
+    api_key = api_key or os.environ.get("AMBIENT_API_KEY")
+    if not (app_key and api_key):
+        return []                                       # not configured -> no rows
+
+    base = {"applicationKey": app_key, "apiKey": api_key}
+    devices = _ambient_get("/devices", base, timeout)
+    if not isinstance(devices, list):
+        return []
+
+    rows = []
+    for dev in devices:
+        info = dev.get("info", {}) or {}
+        coords = ((info.get("coords") or {}).get("coords")) or {}
+        lat, lon = coords.get("lat"), coords.get("lon")
+        if lat is None or lon is None:
+            continue
+        dist = _haversine_km(WATERSHED_CENTER, (lat, lon))
+        if dist > near_km:
+            continue
+        last = dev.get("lastData", {}) or {}
+        if not any(k in last for k in _RAIN_KEYS):      # no rain gauge -> skip
+            continue
+        mac = dev.get("macAddress")
+        if not mac:
+            continue
+        time.sleep(1.1)                                 # respect AWN's 1 req/sec/apiKey
+        try:
+            hist = _ambient_get("/devices/" + urllib.parse.quote(mac),
+                                dict(base, limit=288), timeout)   # ~24 h of 5-min recs
+        except Exception:
+            hist = []
+        tr = _ambient_trailing(hist)
+        h1 = last.get("hourlyrainin")                   # AWN's own rolling 1-h total
+        h24 = last.get("24hourrainin")                  # AWN's own trailing 24-h total
+        if tr:
+            h1 = h1 if h1 is not None else tr["h1"]
+            h24 = h24 if h24 is not None else tr["h24"]
+            h3, h6, age = tr["h3"], tr["h6"], tr["age_min"]
+        else:
+            h3 = h6 = age = None
+        name = (info.get("name") or "AWN station").strip()
+        rows.append(dict(area=name, dir="AWN", dist_km=dist,
+                         h1=round(h1, 2) if h1 is not None else None, h3=h3, h6=h6,
+                         h24=round(h24, 2) if h24 is not None else None,
+                         age_min=age, source="AWN (logged)"))
+    rows.sort(key=lambda r: r["dist_km"])
+    return rows
+
+
 if __name__ == "__main__":
     try:
         results = run_live()
@@ -307,3 +410,19 @@ if __name__ == "__main__":
             print("  no usable precip rows returned (sensor gap or station offline)")
     except Exception as e:
         print(f"  airport gauge fetch failed (need network to mesonet.agron.iastate.edu): {e}")
+
+    print(f"\nAmbient Weather Network — your account stations within {AMBIENT_NEAR_KM} km "
+          "(REAL logged precip):")
+    try:
+        arows = ambient_rainfall()      # reads AMBIENT_APP_KEY / AMBIENT_API_KEY from env
+        if not arows:
+            print("  (set AMBIENT_APP_KEY + AMBIENT_API_KEY in env; or no rain-reporting "
+                  "station on the account within range)")
+        for a in arows:
+            def _s(v):
+                return f"{v:5.2f}" if isinstance(v, (int, float)) else "  n/a"
+            age = f"{a['age_min']}m ago" if a["age_min"] is not None else "age n/a"
+            print(f"  {a['area'][:22]:22s} ({a['dist_km']:>2} km)  1h {_s(a['h1'])}  "
+                  f"3h {_s(a['h3'])}  6h {_s(a['h6'])}  24h {_s(a['h24'])}  ({age})")
+    except Exception as e:
+        print(f"  AWN fetch failed (need network + valid keys): {e}")

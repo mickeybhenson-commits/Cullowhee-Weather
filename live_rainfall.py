@@ -37,19 +37,22 @@ BASIN_POINTS = {
     "CC-MOUTH-2340":(35.300, -83.185),
 }
 
-# Upwind "approach corridor" — observed rainfall here is a lead-time read on what
-# an incoming system has already dropped before it reaches Cullowhee. Covers the
-# S / SW / W directions WNC storms usually arrive from. (Fixed corridor for now;
-# not yet steered by live storm motion.)
+# Ring of sentinel points in all 8 directions around the watershed. Whichever
+# direction shows recent rain is where weather is approaching from — so this works
+# for ANY approach (east, north, etc.), not just the prevailing SW/W track. Each
+# is a recognizable WNC town ~20-60 km out, giving some lead time.
 WATERSHED_CENTER = (35.263, -83.201)
 UPWIND_POINTS = {
-    "Franklin":     (35.18, -83.38, "SSW"),
-    "Highlands":    (35.05, -83.20, "S"),
-    "Andrews":      (35.20, -83.83, "WSW"),
-    "Murphy":       (35.09, -84.03, "SW"),
-    "Robbinsville": (35.32, -83.81, "W"),
-    "Bryson City":  (35.43, -83.45, "WNW"),
+    "Maggie Valley": (35.52, -83.10, "N"),
+    "Waynesville":   (35.49, -82.99, "NE"),
+    "Brevard":       (35.23, -82.73, "E"),
+    "Lake Toxaway":  (35.13, -82.93, "SE"),
+    "Highlands":     (35.05, -83.20, "S"),
+    "Franklin":      (35.18, -83.38, "SW"),
+    "Andrews":       (35.20, -83.83, "W"),
+    "Bryson City":   (35.43, -83.45, "NW"),
 }
+_DIR_ORDER = {"N": 0, "NE": 1, "E": 2, "SE": 3, "S": 4, "SW": 5, "W": 6, "NW": 7}
 
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
 PAST_DAYS = 30          # longer history so the soil-moisture bucket can spin up
@@ -189,7 +192,7 @@ def upwind_compute(data, points=UPWIND_POINTS):
         out.append(dict(area=name, dir=dirn,
                         dist_km=_haversine_km(WATERSHED_CENTER, (lat, lon)),
                         h1=trail(1), h3=trail(3), h6=trail(6), h24=trail(24)))
-    out.sort(key=lambda r: r["dist_km"])   # nearest (most imminent) first
+    out.sort(key=lambda r: _DIR_ORDER.get(r["dir"], 99))   # clockwise from north
     return out
 
 

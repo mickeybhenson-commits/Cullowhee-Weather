@@ -216,6 +216,38 @@ def sm_color(pct):
     return ("#2E6CA4", "#FFFFFF")
 
 
+def rain_color(inches):
+    """Rainfall-amount scale: trace -> heavy (heavy reads alarm-red)."""
+    if inches < 0.1:
+        return ("", "")
+    if inches < 0.5:
+        return ("#CFE8F5", "#0B3D5C")
+    if inches < 1.0:
+        return ("#7FB8DB", "#06263A")
+    if inches < 2.0:
+        return ("#2E6CA4", "#FFFFFF")
+    return ("#B0282B", "#FFFFFF")
+
+
+def style_upwind(df):
+    """Color each recent-rainfall column by amount."""
+    rain_cols = [c for c in df.columns if "(in)" in c]
+
+    def _row(row):
+        out = [""] * len(row)
+        idx = {c: i for i, c in enumerate(row.index)}
+        for c in rain_cols:
+            try:
+                v = float(row[c])
+            except Exception:
+                v = 0.0
+            bg, fg = rain_color(v)
+            if bg:
+                out[idx[c]] = f"background-color:{bg};color:{fg};font-weight:600"
+        return out
+    return df.style.apply(_row, axis=1)
+
+
 def style_live(df):
     """Color the MODELED columns: predicted depth + posture by posture color,
     soil moisture by its dry->saturated scale. None of these are measured."""
@@ -416,6 +448,30 @@ with tab4:
         components.html(radar_map().get_root().render(), height=480)
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
+
+    st.subheader("Upwind rainfall — what's already fallen where weather arrives from")
+    st.caption("Recent observed rainfall in the S/SW/W approach corridor (the directions "
+               "WNC storms usually come from). When a system on the radar above is tracking "
+               "toward the watershed, this is how much it has already dropped upstream — a "
+               "lead-time read. Sorted nearest-first. Fixed corridor; not yet steered by "
+               "live storm motion.")
+
+    @st.cache_data(ttl=600, show_spinner="Fetching upwind rainfall…")
+    def _upwind():
+        import live_rainfall as lr
+        return lr.upwind_rainfall()
+
+    try:
+        up = _upwind()
+        urows = [{"area": f"{r['area']} ({r['dir']})", "distance (km)": r["dist_km"],
+                  "last 1h (in)": r["h1"], "last 3h (in)": r["h3"],
+                  "last 6h (in)": r["h6"], "last 24h (in)": r["h24"]} for r in up]
+        show_table(style_upwind(pd.DataFrame(urows)), left=("area",))
+        st.caption("Heavier recent totals upwind = more water already loaded into an "
+                   "approaching system. Rain source: Open-Meteo (model/observation blend) — "
+                   "same orographic caveat as the basin feed. Cached 10 min.")
+    except Exception as e:
+        st.error(f"Couldn't fetch upwind rainfall: {e}")
 
 st.divider()
 st.caption("Tabletop model: triangular UH + rectangular Manning rating + HDc. "

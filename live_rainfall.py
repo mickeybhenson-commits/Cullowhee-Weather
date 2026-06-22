@@ -18,10 +18,8 @@ Run (in a networked environment):  python live_rainfall.py
 Deps: standard library only (urllib, json).
 """
 
-import os
 import json
 import math
-import time
 import datetime
 import urllib.request
 import urllib.parse
@@ -161,6 +159,15 @@ def _haversine_km(a, b):
     return round(2 * R * math.asin(math.sqrt(h)))
 
 
+def _bearing(a, b):
+    """Initial compass bearing from a to b in degrees (0 = N, clockwise)."""
+    lat1, lat2 = math.radians(a[0]), math.radians(b[0])
+    dlon = math.radians(b[1] - a[1])
+    x = math.sin(dlon) * math.cos(lat2)
+    y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(dlon)
+    return (math.degrees(math.atan2(x, y)) + 360) % 360
+
+
 def _current_hour_index(times, now):
     ci = None
     for i, t in enumerate(times):
@@ -193,6 +200,7 @@ def upwind_compute(data, points=UPWIND_POINTS):
 
         out.append(dict(area=name, dir=dirn,
                         dist_km=_haversine_km(WATERSHED_CENTER, (lat, lon)),
+                        bearing=round(_bearing(WATERSHED_CENTER, (lat, lon))),
                         h1=trail(1), h3=trail(3), h6=trail(6), h24=trail(24)))
     out.sort(key=lambda r: _DIR_ORDER.get(r["dir"], 99))   # clockwise from north
     return out
@@ -210,6 +218,67 @@ def upwind_rainfall(points=UPWIND_POINTS, timeout=30):
         data = json.load(r)
     data = data if isinstance(data, list) else [data]
     return upwind_compute(data, points)
+
+
+# ---------------------------------------------------------------------------
+# STEERING FLOW: storm-motion proxy from the ~700 mb wind, and per-town arrival
+# ETA. MODELED, not a tracked storm: storms broadly follow the mid-level steering
+# wind, but in these mountains terrain channels the low-level flow and convection
+# can propagate off the steering vector — so treat ETAs as planning estimates.
+# ---------------------------------------------------------------------------
+STEERING_LEVEL = "700hPa"     # ~3 km; classic single-level storm-steering proxy
+UPWIND_CONE_DEG = 60          # a town gets an ETA only if within this of the upwind dir
+_COMPASS16 = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+              "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+
+
+def _compass(deg):
+    return _COMPASS16[int((deg % 360) / 22.5 + 0.5) % 16]
+
+
+def _ang_diff(a, b):
+    d = abs((a - b) % 360)
+    return min(d, 360 - d)
+
+
+def steering_flow(center=WATERSHED_CENTER, level=STEERING_LEVEL, timeout=30):
+    """Storm-motion proxy from the steering wind over the watershed. Returns
+    {from_deg, from_compass, toward_deg, toward_compass, speed_mph} or None.
+    Wind direction is meteorological (the direction it blows FROM); storms move
+    toward the opposite heading. MODELED (Open-Meteo), not a tracked storm."""
+    q = {"latitude": center[0], "longitude": center[1],
+         "hourly": f"wind_speed_{level},wind_direction_{level}",
+         "wind_speed_unit": "mph", "timezone": "America/New_York", "forecast_days": 1}
+    url = OPEN_METEO + "?" + urllib.parse.urlencode(q, safe=",")
+    req = urllib.request.Request(url, headers={"User-Agent": "cullowhee-flood/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        data = json.load(r)
+    hourly = data.get("hourly", {})
+    times = hourly.get("time", [])
+    spd = hourly.get(f"wind_speed_{level}", [])
+    drc = hourly.get(f"wind_direction_{level}", [])
+    ci = _current_hour_index(times, datetime.datetime.now())
+    if ci is None or ci >= len(spd) or ci >= len(drc):
+        return None
+    speed, frm = spd[ci], drc[ci]
+    if speed is None or frm is None:
+        return None
+    toward = (frm + 180) % 360
+    return dict(from_deg=round(frm), from_compass=_compass(frm),
+                toward_deg=round(toward), toward_compass=_compass(toward),
+                speed_mph=round(speed))
+
+
+def arrival_eta(steering, bearing, dist_km, cone_deg=UPWIND_CONE_DEG):
+    """Minutes until rain over an upwind point reaches the watershed center, given
+    the steering flow. None if the point isn't upwind (storm isn't coming from there)
+    or the flow is too weak for motion to be defined. A MODELED planning estimate."""
+    if not steering or steering["speed_mph"] < 3:      # near-calm -> motion ill-defined
+        return None
+    if _ang_diff(bearing, steering["from_deg"]) > cone_deg:
+        return None                                    # point isn't upwind
+    speed_kmh = steering["speed_mph"] * 1.60934
+    return max(1, round(dist_km / speed_kmh * 60))
 
 
 # ---------------------------------------------------------------------------
@@ -284,119 +353,6 @@ def airport_rainfall(station="24A", hours=30, timeout=30):
     return res
 
 
-# ---------------------------------------------------------------------------
-# AMBIENT WEATHER NETWORK: real LOGGED precip from your OWN AWN station(s)
-# ---------------------------------------------------------------------------
-# The AWN REST API is account-scoped: the application + API keys read every device
-# on YOUR account. We pull them, keep the ones near the watershed, and report
-# trailing rain — 1 h and 24 h come straight from AWN's own fields (hourlyrainin,
-# 24hourrainin); 3 h / 6 h are integrated from the 5-min history. Keys come from the
-# environment or are passed in from Streamlit secrets — NEVER hardcode them; the
-# repo is public. Regenerate keys at ambientweather.net/account if they ever leak.
-AMBIENT_API = "https://api.ambientweather.net/v1"
-AMBIENT_NEAR_KM = 40        # ignore account devices farther than this from the watershed
-_RAIN_KEYS = ("hourlyrainin", "dailyrainin", "24hourrainin")
-
-
-def _ambient_get(path, params, timeout):
-    url = AMBIENT_API + path + "?" + urllib.parse.urlencode(params)
-    req = urllib.request.Request(url, headers={"User-Agent": "cullowhee-flood/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.load(r)
-
-
-def _ambient_trailing(records):
-    """3-h / 6-h trailing totals (in) integrated from an AWN device's 5-min history
-    via dailyrainin deltas (handles the local-midnight reset); also returns 1-h/24-h
-    as fallbacks. None if the station logs no dailyrainin (i.e. has no rain gauge)."""
-    recs = sorted((r for r in records if r.get("dateutc") is not None),
-                  key=lambda r: r["dateutc"])
-    incs, prev = [], None
-    for r in recs:
-        d = r.get("dailyrainin")
-        if d is None:
-            continue
-        inc = 0.0 if prev is None else (d if d < prev else d - prev)   # reset-aware
-        incs.append((r["dateutc"], max(0.0, inc)))
-        prev = d
-    if not incs:
-        return None
-    latest = incs[-1][0]
-
-    def trail(hours):
-        cut = latest - hours * 3600 * 1000
-        return round(sum(i for t, i in incs if t > cut), 2)
-
-    now_ms = datetime.datetime.now(datetime.timezone.utc).timestamp() * 1000
-    return dict(h1=trail(1), h3=trail(3), h6=trail(6), h24=trail(24),
-                age_min=round((now_ms - latest) / 60000))
-
-
-def ambient_rainfall(app_key=None, api_key=None, near_km=AMBIENT_NEAR_KM, timeout=30):
-    """Real logged precip from AWN stations on your account, within near_km of the
-    watershed. Returns {"rows": [...], "status": {...}} — status carries diagnostics
-    (configured?, device count, nearby stations, any error) so the app can show why
-    rows did or didn't appear. Key precedence: arg > env."""
-    app_key = app_key or os.environ.get("AMBIENT_APP_KEY")
-    api_key = api_key or os.environ.get("AMBIENT_API_KEY")
-    status = {"configured": bool(app_key and api_key), "near_km": near_km,
-              "devices": 0, "near": [], "error": None}
-    if not status["configured"]:
-        return {"rows": [], "status": status}
-
-    base = {"applicationKey": app_key, "apiKey": api_key}
-    try:
-        devices = _ambient_get("/devices", base, timeout)
-    except Exception as e:
-        status["error"] = str(e)[:160]
-        return {"rows": [], "status": status}
-    if not isinstance(devices, list):
-        status["error"] = "unexpected /devices response (check that both keys are valid)"
-        return {"rows": [], "status": status}
-    status["devices"] = len(devices)
-
-    rows = []
-    for dev in devices:
-        info = dev.get("info", {}) or {}
-        coords = ((info.get("coords") or {}).get("coords")) or {}
-        lat, lon = coords.get("lat"), coords.get("lon")
-        if lat is None or lon is None:
-            continue
-        dist = _haversine_km(WATERSHED_CENTER, (lat, lon))
-        if dist > near_km:
-            continue
-        last = dev.get("lastData", {}) or {}
-        has_rain = any(k in last for k in _RAIN_KEYS)
-        name = (info.get("name") or "AWN station").strip()
-        status["near"].append({"name": name, "dist_km": dist, "rain": has_rain})
-        if not has_rain:                                # no rain gauge -> no row
-            continue
-        mac = dev.get("macAddress")
-        if not mac:
-            continue
-        time.sleep(1.1)                                 # respect AWN's 1 req/sec/apiKey
-        try:
-            hist = _ambient_get("/devices/" + urllib.parse.quote(mac),
-                                dict(base, limit=288), timeout)   # ~24 h of 5-min recs
-        except Exception:
-            hist = []
-        tr = _ambient_trailing(hist)
-        h1 = last.get("hourlyrainin")                   # AWN's own rolling 1-h total
-        h24 = last.get("24hourrainin")                  # AWN's own trailing 24-h total
-        if tr:
-            h1 = h1 if h1 is not None else tr["h1"]
-            h24 = h24 if h24 is not None else tr["h24"]
-            h3, h6, age = tr["h3"], tr["h6"], tr["age_min"]
-        else:
-            h3 = h6 = age = None
-        rows.append(dict(area=name, dir="AWN", dist_km=dist,
-                         h1=round(h1, 2) if h1 is not None else None, h3=h3, h6=h6,
-                         h24=round(h24, 2) if h24 is not None else None,
-                         age_min=age, source="AWN (logged)"))
-    rows.sort(key=lambda r: r["dist_km"])
-    return {"rows": rows, "status": status}
-
-
 if __name__ == "__main__":
     try:
         results = run_live()
@@ -410,6 +366,24 @@ if __name__ == "__main__":
               f"{r['storm']:6.2f} {r['forecast_total']:6.2f} {r['arc']:>4} "
               f"{r['stage']:6.2f}  {r['posture']}")
 
+    print("\nSteering flow (storm-motion proxy, 700 mb wind — MODELED):")
+    try:
+        sf = steering_flow()
+        if sf is None:
+            print("  unavailable (no 700 mb wind in the model response)")
+        elif sf["speed_mph"] < 3:
+            print(f"  light / variable ({sf['speed_mph']} mph) — motion ill-defined, "
+                  "no ETAs")
+        else:
+            print(f"  from {sf['from_compass']} at {sf['speed_mph']} mph -> storms "
+                  f"tracking {sf['toward_compass']}")
+            for r in upwind_rainfall():
+                eta = arrival_eta(sf, r["bearing"], r["dist_km"])
+                if eta is not None:
+                    print(f"    {r['area']:14s} ({r['dir']:>2}) ~{eta} min out")
+    except Exception as e:
+        print(f"  steering fetch failed: {e}")
+
     print("\nLocal airport gauge (REAL logged precip, IEM/AWOS K24A):")
     try:
         ap = airport_rainfall()
@@ -422,27 +396,3 @@ if __name__ == "__main__":
             print("  no usable precip rows returned (sensor gap or station offline)")
     except Exception as e:
         print(f"  airport gauge fetch failed (need network to mesonet.agron.iastate.edu): {e}")
-
-    print(f"\nAmbient Weather Network — your account stations within {AMBIENT_NEAR_KM} km "
-          "(REAL logged precip):")
-    try:
-        res = ambient_rainfall()        # reads AMBIENT_APP_KEY / AMBIENT_API_KEY from env
-        st_, arows = res["status"], res["rows"]
-        if not st_["configured"]:
-            print("  not configured — set AMBIENT_APP_KEY + AMBIENT_API_KEY in env")
-        elif st_["error"]:
-            print(f"  API error: {st_['error']}")
-        else:
-            print(f"  account devices: {st_['devices']}  |  within range: "
-                  f"{len(st_['near'])}")
-            for n in sorted(st_["near"], key=lambda x: x["dist_km"]):
-                print(f"    - {n['name'][:24]:24s} {n['dist_km']:>2} km  "
-                      f"{'rain gauge' if n['rain'] else 'NO rain gauge'}")
-        for a in arows:
-            def _s(v):
-                return f"{v:5.2f}" if isinstance(v, (int, float)) else "  n/a"
-            age = f"{a['age_min']}m ago" if a["age_min"] is not None else "age n/a"
-            print(f"  {a['area'][:22]:22s} ({a['dist_km']:>2} km)  1h {_s(a['h1'])}  "
-                  f"3h {_s(a['h3'])}  6h {_s(a['h6'])}  24h {_s(a['h24'])}  ({age})")
-    except Exception as e:
-        print(f"  AWN fetch failed (need network + valid keys): {e}")

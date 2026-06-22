@@ -50,8 +50,9 @@ RADAR_ZOOM = 9
 # values (from trailing rainfall), not soil-moisture sensor readings.
 WET_COLOR = {1: ("#E0CDA9", "#5A3A1A"), 2: ("#9CC3E0", "#16384D"), 3: ("#2E6CA4", "#FFFFFF")}
 
-# Animated precipitation radar (RainViewer, free, no key) for the dedicated
-# incoming-weather map. Drawn below the watershed outline.
+# Live precipitation radar — NWS NEXRAD base reflectivity via Iowa State Mesonet.
+# Reliable at every zoom (RainViewer returned "zoom not supported" regionally).
+# Shows the current composite, refreshed every few minutes. Drawn below the outline.
 RADAR_JS = """
 (function(){
   function init(){
@@ -69,33 +70,22 @@ RADAR_JS = """
         'padding:3px 9px;border-radius:4px;pointer-events:none';
       lbl.textContent='loading radar…';
       rmap.getContainer().appendChild(lbl);
-      fetch('https://api.rainviewer.com/public/weather-maps.json')
-        .then(function(r){return r.json();})
-        .then(function(d){
-          var host=d.host||'https://tilecache.rainviewer.com';
-          var past=(d.radar&&d.radar.past)?d.radar.past:[];
-          var now=(d.radar&&d.radar.nowcast)?d.radar.nowcast:[];
-          var frames=past.concat(now);
-          if(!frames.length){lbl.textContent='no radar data';return;}
-          var fcstStart=now.length?now[0].time:Infinity;
-          var layers=frames.map(function(f){
-            return L.tileLayer(host+f.path+'/256/{z}/{x}/{y}/4/1_1.png',
-                               {opacity:0,pane:'radar'});
-          });
-          layers.forEach(function(l){l.addTo(rmap);});
-          var i=frames.length-1;
-          function show(k){
-            layers.forEach(function(l,j){l.setOpacity(j===k?0.7:0);});
-            var t=new Date(frames[k].time*1000);
-            var h=t.getHours(), m=('0'+t.getMinutes()).slice(-2);
-            var ap=h>=12?'PM':'AM'; h=h%12||12;
-            lbl.textContent='Radar '+h+':'+m+' '+ap+
-              (frames[k].time>=fcstStart?' (forecast)':'');
-          }
-          show(i);
-          setInterval(function(){i=(i+1)%frames.length;show(i);},700);
-        })
-        .catch(function(e){lbl.textContent='radar unavailable';console.log('radar error',e);});
+      var TRANSP='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+      var tmpl='https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/'+
+               'nexrad-n0q-900913/{z}/{x}/{y}.png';
+      var layer=null;
+      function refresh(){
+        var nl=L.tileLayer(tmpl+'?_='+Date.now(),
+                 {opacity:0.75,pane:'radar',errorTileUrl:TRANSP});
+        nl.addTo(rmap);
+        if(layer){var old=layer;setTimeout(function(){rmap.removeLayer(old);},900);}
+        layer=nl;
+        var t=new Date(),h=t.getHours(),m=('0'+t.getMinutes()).slice(-2);
+        var ap=h>=12?'PM':'AM'; h=h%12||12;
+        lbl.textContent='NWS NEXRAD radar · '+h+':'+m+' '+ap;
+      }
+      refresh();
+      setInterval(refresh,240000);   // refresh every 4 min
     }catch(e){console.log('radar init error',e);}
   }
   init();
@@ -406,10 +396,11 @@ with tab4:
                    "Rain/ET source: Open-Meteo. Cached 30 min — Refresh to update.")
 
         st.subheader("Incoming weather")
-        st.caption("Animated precipitation radar (RainViewer), regional view so you can "
-                   "watch systems approach the watershed. This is OBSERVED precip — a "
-                   "different feed from the forecast driving the postures above, so rain "
-                   "on radar before a basin changes color is the lead time, not a conflict.")
+        st.caption("Live precipitation radar (NWS NEXRAD, via Iowa State Mesonet), "
+                   "regional view so you can see where rain is relative to the watershed. "
+                   "OBSERVED precip — a different feed from the forecast driving the "
+                   "postures above, so rain on radar before a basin changes color is the "
+                   "lead time, not a conflict. Current composite, refreshing every few min.")
         components.html(radar_map().get_root().render(), height=480)
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")

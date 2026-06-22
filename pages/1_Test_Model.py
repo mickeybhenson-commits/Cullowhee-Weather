@@ -50,42 +50,54 @@ RADAR_ZOOM = 9
 # values (from trailing rainfall), not soil-moisture sensor readings.
 WET_COLOR = {1: ("#E0CDA9", "#5A3A1A"), 2: ("#9CC3E0", "#16384D"), 3: ("#2E6CA4", "#FFFFFF")}
 
-# Live precipitation radar — NWS NEXRAD base reflectivity via Iowa State Mesonet.
-# Reliable at every zoom (RainViewer returned "zoom not supported" regionally).
-# Shows the current composite, refreshed every few minutes. Drawn below the outline.
+# Looping NWS NEXRAD radar via Iowa State Mesonet. ~50-min loop of 5-min
+# composite frames + the guaranteed current frame; frame list refreshes every
+# 2 min. If the archived frames don't load, it degrades to the current frame
+# only (never worse than the static version). Drawn below the watershed outline.
 RADAR_JS = """
 (function(){
+  var TRANSP='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+  function pad(n){return ('0'+n).slice(-2);}
+  function iemTs(d){var mi=Math.floor(d.getUTCMinutes()/5)*5;
+    return ''+d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+
+           pad(d.getUTCHours())+pad(mi);}
+  function hm(d){var h=d.getHours(),m=pad(d.getMinutes()),ap=h>=12?'PM':'AM';
+    h=h%12||12;return h+':'+m+' '+ap;}
   function init(){
     try{
       if(typeof MAPVAR==='undefined'||typeof L==='undefined'){return setTimeout(init,300);}
       var rmap=MAPVAR;
-      if(!rmap.getPane('radar')){
-        rmap.createPane('radar');
+      if(!rmap.getPane('radar')){rmap.createPane('radar');
         rmap.getPane('radar').style.zIndex=350;
-        rmap.getPane('radar').style.pointerEvents='none';
-      }
+        rmap.getPane('radar').style.pointerEvents='none';}
       var lbl=document.createElement('div');
       lbl.style.cssText='position:absolute;bottom:10px;left:10px;z-index:1000;'+
         'background:rgba(0,0,0,.65);color:#fff;font:600 12px sans-serif;'+
         'padding:3px 9px;border-radius:4px;pointer-events:none';
-      lbl.textContent='loading radar…';
-      rmap.getContainer().appendChild(lbl);
-      var TRANSP='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
-      var tmpl='https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/'+
-               'nexrad-n0q-900913/{z}/{x}/{y}.png';
-      var layer=null;
-      function refresh(){
-        var nl=L.tileLayer(tmpl+'?_='+Date.now(),
-                 {opacity:0.75,pane:'radar',errorTileUrl:TRANSP});
-        nl.addTo(rmap);
-        if(layer){var old=layer;setTimeout(function(){rmap.removeLayer(old);},900);}
-        layer=nl;
-        var t=new Date(),h=t.getHours(),m=('0'+t.getMinutes()).slice(-2);
-        var ap=h>=12?'PM':'AM'; h=h%12||12;
-        lbl.textContent='NWS NEXRAD radar · '+h+':'+m+' '+ap;
+      lbl.textContent='loading radar…';rmap.getContainer().appendChild(lbl);
+      var base='https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/';
+      var N=10,STEP=5,layers=[],times=[],idx=0;
+      function build(){
+        layers.forEach(function(l){rmap.removeLayer(l);});
+        layers=[];times=[];
+        var now=new Date();
+        for(var k=N;k>=1;k--){                       // history frames (5-min steps)
+          var d=new Date(now.getTime()-(k*STEP+5)*60000);
+          layers.push(L.tileLayer(base+'ridge::USCOMP-N0Q-'+iemTs(d)+'/{z}/{x}/{y}.png',
+            {opacity:0,pane:'radar',errorTileUrl:TRANSP}));
+          times.push(hm(d));
+        }
+        layers.push(L.tileLayer(base+'nexrad-n0q-900913/{z}/{x}/{y}.png?_='+Date.now(),
+          {opacity:0,pane:'radar',errorTileUrl:TRANSP}));   // guaranteed current frame
+        times.push(hm(now)+' · now');
+        layers.forEach(function(l){l.addTo(rmap);});
+        idx=layers.length-1;
       }
-      refresh();
-      setInterval(refresh,240000);   // refresh every 4 min
+      function show(k){layers.forEach(function(l,j){l.setOpacity(j===k?0.75:0);});
+        lbl.textContent='NEXRAD '+times[k];}
+      build();show(idx);
+      setInterval(function(){idx=(idx+1)%layers.length;show(idx);},600);   // loop
+      setInterval(function(){build();show(idx);},120000);                  // refresh 2 min
     }catch(e){console.log('radar init error',e);}
   }
   init();
@@ -396,11 +408,11 @@ with tab4:
                    "Rain/ET source: Open-Meteo. Cached 30 min — Refresh to update.")
 
         st.subheader("Incoming weather")
-        st.caption("Live precipitation radar (NWS NEXRAD, via Iowa State Mesonet), "
-                   "regional view so you can see where rain is relative to the watershed. "
-                   "OBSERVED precip — a different feed from the forecast driving the "
-                   "postures above, so rain on radar before a basin changes color is the "
-                   "lead time, not a conflict. Current composite, refreshing every few min.")
+        st.caption("Looping precipitation radar (NWS NEXRAD, via Iowa State Mesonet) — "
+                   "~50 min of motion so you can see which way systems are tracking, "
+                   "refreshing every 2 min. OBSERVED precip — a different feed from the "
+                   "forecast driving the postures above, so rain on radar before a basin "
+                   "changes color is the lead time, not a conflict.")
         components.html(radar_map().get_root().render(), height=480)
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")

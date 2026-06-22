@@ -186,24 +186,32 @@ def radar_map():
     return m
 
 
-def style_live(df):
-    """Color the modeled columns: predicted stage + posture by posture color,
-    soil-wetness by its own dry->wet scale. All MODELED, not measured."""
-    wl_to_arc = {"dry": 1, "normal": 2, "wet": 3}
+def sm_color(pct):
+    """Soil-moisture scale: dry (tan) -> saturated (deep blue)."""
+    if pct < 40:
+        return ("#E0CDA9", "#5A3A1A")
+    if pct < 70:
+        return ("#9CC3E0", "#16384D")
+    if pct < 90:
+        return ("#4A90C2", "#FFFFFF")
+    return ("#2E6CA4", "#FFFFFF")
 
+
+def style_live(df):
+    """Color the MODELED columns: predicted depth + posture by posture color,
+    soil moisture by its dry->saturated scale. None of these are measured."""
     def _row(row):
         out = [""] * len(row)
         idx = {c: i for i, c in enumerate(row.index)}
         pc = POSTURE_COLOR.get(row.get("posture"), "")
         if pc:
-            for c in ("posture", "pred. stage (ft)"):
+            for c in ("posture", "pred. depth (ft)"):
                 if c in idx:
                     out[idx[c]] = f"background-color:{pc};color:white;font-weight:600"
-        w = str(row.get("soil wetness (modeled)", "")).split()[0]
-        arc = wl_to_arc.get(w)
-        if arc and "soil wetness (modeled)" in idx:
-            bg, fg = WET_COLOR[arc]
-            out[idx["soil wetness (modeled)"]] = (
+        sm = str(row.get("soil moisture (est. %)", "")).rstrip("%")
+        if sm.isdigit() and "soil moisture (est. %)" in idx:
+            bg, fg = sm_color(int(sm))
+            out[idx["soil moisture (est. %)"]] = (
                 f"background-color:{bg};color:{fg};font-weight:600")
         return out
     return df.style.apply(_row, axis=1)
@@ -346,17 +354,20 @@ with tab4:
         wl = {1: "dry", 2: "normal", 3: "wet"}
         rows = [{"sub-basin": disp(bid),
                  "antecedent 5d (in)": v["antecedent_5day"],
-                 "soil wetness (modeled)": f"{wl[v['arc']]} ({v['arc']})",
+                 "soil moisture (est. %)": (f"{v['soil_moisture_pct']}%"
+                                            if "soil_moisture_pct" in v else "n/a"),
                  "forecast storm (in)": v["storm"],
-                 "pred. stage (ft)": v["stage"],
+                 "pred. depth (ft)": v["stage"],
                  "posture": v["posture"]}
                 for bid, v in live.items()]
         st.dataframe(style_live(pd.DataFrame(rows)), width="stretch", hide_index=True)
-        st.caption("**Soil wetness** and **pred. stage** are MODELED, not measured. "
-                   "Soil wetness = ARC class from trailing 5-day rainfall; pred. stage = "
-                   "the engine's predicted depth (colored by posture). Both become real "
-                   "when sensors deploy — and can be cross-checked against NWM estimates "
-                   "in between. Rain source: Open-Meteo. Cached 30 min — Refresh to update.")
+        st.caption("**Soil moisture** and **pred. depth** are MODELED, not measured. "
+                   "Soil moisture = single-layer water-balance estimate (real rainfall − "
+                   "real ET, % of assumed capacity) — trust the trend more than the exact "
+                   "number until probes calibrate the capacity. Pred. depth = the engine's "
+                   "predicted channel depth (colored by posture). Both can be cross-checked "
+                   "against NWM next, and become real when sensors deploy. "
+                   "Rain/ET source: Open-Meteo. Cached 30 min — Refresh to update.")
 
         st.subheader("Incoming weather")
         st.caption("Animated precipitation radar (RainViewer), regional view so you can "

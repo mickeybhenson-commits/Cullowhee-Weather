@@ -227,6 +227,26 @@ def legend(extra=""):
                 unsafe_allow_html=True)
 
 
+def show_table(styler, left=("sub-basin",)):
+    """Render a styled table as HTML so numeric cells center properly (the
+    interactive grid right-aligns numbers and ignores text-align). All columns
+    except the label columns in `left` are centered; colored cells are kept."""
+    center = [c for c in list(styler.data.columns) if c not in left]
+    styler = styler.hide(axis="index")
+    if center:
+        styler = styler.set_properties(subset=center, **{"text-align": "center"})
+    styler = styler.set_table_styles([
+        {"selector": "table", "props": [("width", "100%"), ("border-collapse", "collapse"),
+                                        ("font-size", "0.92rem")]},
+        {"selector": "th", "props": [("padding", "6px 10px"), ("text-align", "center"),
+                                     ("border-bottom", "1px solid rgba(128,128,128,0.40)"),
+                                     ("font-weight", "600"), ("white-space", "nowrap")]},
+        {"selector": "td", "props": [("padding", "6px 10px"),
+                                     ("border-bottom", "1px solid rgba(128,128,128,0.18)")]},
+    ], overwrite=False)
+    st.markdown(styler.to_html(), unsafe_allow_html=True)
+
+
 st.title("Cullowhee Creek flood engine — tabletop test")
 st.caption("Synthetic storms + antecedent moisture. No sensors required. "
            "Placeholders live in test_model.py — replace with confirmed values.")
@@ -283,8 +303,7 @@ with tab1:
         st.caption("Showing outlet markers. Add cullowhee_subbasins.geojson "
                    "(at the repo root) to fill each sub-watershed.")
 
-    st.dataframe(df.style.apply(color_posture, subset=["posture"]),
-                 width="stretch", hide_index=True)
+    show_table(df.style.apply(color_posture, subset=["posture"]))
 
 with tab2:
     st.subheader("Posture grid — storms (rows) × antecedent (cols)")
@@ -321,8 +340,7 @@ with tab3:
                   height=480, width=1150, returned_objects=[])
         rows = [{"sub-basin": disp(bid), "stage (ft)": round(r["stage"], 2),
                  "posture": r["posture"]} for bid, r in res_h.items()]
-        st.dataframe(pd.DataFrame(rows).style.apply(color_posture, subset=["posture"]),
-                     width="stretch", hide_index=True)
+        show_table(pd.DataFrame(rows).style.apply(color_posture, subset=["posture"]))
     except ValueError:
         st.error("Enter comma-separated numbers, e.g. 0.3, 0.8, 1.2, ...")
 
@@ -360,7 +378,7 @@ with tab4:
                  "pred. depth (ft)": v["stage"],
                  "posture": v["posture"]}
                 for bid, v in live.items()]
-        st.dataframe(style_live(pd.DataFrame(rows)), width="stretch", hide_index=True)
+        show_table(style_live(pd.DataFrame(rows)))
         st.caption("**Soil moisture** and **pred. depth** are MODELED, not measured. "
                    "Soil moisture = single-layer water-balance estimate (real rainfall − "
                    "real ET, % of assumed capacity) — trust the trend more than the exact "

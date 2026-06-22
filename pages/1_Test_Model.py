@@ -491,9 +491,13 @@ with tab4:
         except Exception:
             ap = None
         try:
-            amb = _ambient()
+            amb_res = _ambient()
         except Exception:
-            amb = []
+            amb_res = {"rows": [], "status": {"configured": False, "devices": 0,
+                                              "near": [], "near_km": 40,
+                                              "error": "fetch failed"}}
+        amb = amb_res["rows"]
+        amb_status = amb_res["status"]
 
         # Model town ring, clockwise from north.
         urows = [{"area": f"{r['area']} ({r['dir']})", "distance (mi)": _mi(r["dist_km"]),
@@ -534,10 +538,40 @@ with tab4:
                     f"them as ground truth with that caveat — and as exactly the gap a denser "
                     f"SKYE network fills. ")
         else:
-            cap += ("(No real gauge available right now — IEM throttle / sensor gap, and no "
-                    "Ambient keys in Streamlit secrets yet; the town ring is still shown.) ")
+            cap += ("(No real gauge available right now — the airport feed and any Ambient "
+                    "stations both came back empty; see the diagnostics below. The town ring "
+                    "is still shown.) ")
         cap += "Cached 10 min."
         st.caption(cap)
+
+        with st.expander("Ambient gauge diagnostics", expanded=False):
+            s = amb_status
+            if not s.get("configured"):
+                st.markdown("**No Ambient keys detected** in Streamlit secrets. Add "
+                            "`AMBIENT_APP_KEY` and `AMBIENT_API_KEY` under Settings → "
+                            "Secrets, then reboot. (Also make sure the updated "
+                            "live_rainfall.py / test_app.py are deployed.)")
+            elif s.get("error"):
+                st.markdown(f"**Keys detected, but the API call failed:** {s['error']}  \n"
+                            "If the two keys are swapped, the call fails rather than "
+                            "returning bad data — try flipping the secret values.")
+            else:
+                near = s.get("near", [])
+                st.markdown(f"**Keys detected ✓** — your account has "
+                            f"**{s.get('devices', 0)}** device(s); **{len(near)}** within "
+                            f"{s.get('near_km', 40)} km of the watershed.")
+                for n in sorted(near, key=lambda x: x["dist_km"]):
+                    tag = "rain gauge ✓ (added)" if n["rain"] else "no rain gauge — not added"
+                    st.markdown(f"- {n['name']} — {round(n['dist_km'] * 0.621371, 1)} mi "
+                                f"— {tag}")
+                if s.get("devices") and not near:
+                    st.markdown("None of your stations fall within range — widen "
+                                "`AMBIENT_NEAR_KM` in live_rainfall.py if one sits just "
+                                "outside.")
+                if not s.get("devices"):
+                    st.markdown("Your account returned **zero devices** — so the dashboards "
+                                "you shared are public stations you don't own. The supported "
+                                "API can't reach those; that would take the paid Data Suite.")
     except Exception as e:
         st.error(f"Couldn't fetch approach rainfall: {e}")
 

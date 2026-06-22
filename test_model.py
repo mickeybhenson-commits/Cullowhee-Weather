@@ -71,6 +71,28 @@ THRESHOLDS = {
     "CC-MOUTH-2340":dict(watch=5.81, warning=11.93, emergency=19.19),
 }
 
+# Baseflow depth (ft) per reach — the dry-weather water already in the channel,
+# so predicted depth reads like a stream gauge (baseflow + storm rise), not 0.
+# GUESSED + adjusted to sit clear of each reach's WATCH threshold (the flashy
+# small tributaries were trimmed; mainstem/campus/mouth kept as provided).
+# >>> REPLACE with field-measured baseflow on a clear day. Measure the tributary
+#     channel cross-sections at the same time — both are placeholders here.
+BASEFLOW_DEPTH = {
+    "CC-UP-503": 0.5, "CC-MS-1100": 1.0, "CC-TIL-705": 0.8, "CC-SPD-1830": 1.3,
+    "CC-COX-097": 0.45, "CC-LB-171": 0.6, "CC-WCU-2260": 4.0, "CC-MOUTH-2340": 4.5,
+}
+
+# Posture compares TOTAL depth (baseflow + storm) to these thresholds.
+# Campus 7/9/11 are real total depths, so the campus now triggers correctly on
+# total depth (baseflow + rise). The bankfull reaches are still seeded from
+# STORM-only flood-frequency stages (placeholders); with baseflow now in the
+# stage they fire slightly EARLY — a conservative bias consistent with the
+# project's "fire early on flashy reaches" intent. Each trimmed baseflow sits
+# below its reach's WATCH, so a dry day reads NORMAL. Replace these with SURVEYED
+# total depths (top-of-bank / receptor elevation) to remove the early-fire bias.
+EFFECTIVE_THRESHOLDS = {bid: (dict(THRESHOLDS[bid]) if bid in THRESHOLDS else None)
+                        for bid in BASINS}
+
 # 24-hour design-storm depths (inches) for the Cullowhee valley. PLACEHOLDERS —
 # replace with NOAA Atlas-14 point values for the gauge location, then let
 # orographic.py scale them up by elevation per sub-basin.
@@ -215,8 +237,8 @@ def stage_from_q(qp_cfs, b, dmax=40.0):
 # 7. POSTURE  (compare stage to the ladder for this reach)
 # ----------------------------------------------------------------------------
 def posture(stage_ft, b, basin_id=None):
-    t = THRESHOLDS.get(basin_id) if basin_id else None
-    if t is None:   # fallback if a basin isn't in THRESHOLDS
+    t = EFFECTIVE_THRESHOLDS.get(basin_id) if basin_id else None
+    if not t:   # fallback if a basin isn't in THRESHOLDS
         bf = b["d"]
         t = dict(watch=(0.75 * bf if b["lead"] == "limited" else bf),
                  warning=bf, emergency=2.5 * bf)
@@ -237,8 +259,11 @@ def run_case(total_depth_in, p5_in, PRF=484.0, dt_hr=0.25):
         CN = cn_adjust(b["CN2"], arc)
         Q = runoff_depth_in(total_depth_in, CN)
         qp = peak_discharge_cfs(hyeto, CN, b["DA"], b["Tc"] / 60.0, PRF=PRF, dt_hr=dt_hr)
-        stage = stage_from_q(qp, b)
-        out[bid] = dict(CN=CN, Q=Q, qp=qp, stage=stage, posture=posture(stage, b, bid))
+        q_bf = manning_q(BASEFLOW_DEPTH.get(bid, 0.0), b)   # baseflow as discharge
+        stage = stage_from_q(qp + q_bf, b)                  # total depth = baseflow + storm
+        out[bid] = dict(CN=CN, Q=Q, qp=qp, q_bf=round(q_bf),
+                        baseflow_ft=BASEFLOW_DEPTH.get(bid, 0.0),
+                        stage=stage, posture=posture(stage, b, bid))
     return arc, out
 
 

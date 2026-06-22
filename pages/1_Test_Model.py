@@ -229,8 +229,19 @@ def rain_color(inches):
     return ("#B0282B", "#FFFFFF")
 
 
+def eta_color(minutes):
+    """Arrival-urgency scale: imminent reads red, fading to neutral with lead time."""
+    if minutes < 20:
+        return ("#B0282B", "#FFFFFF")     # imminent
+    if minutes < 45:
+        return ("#D2691E", "#FFFFFF")     # soon
+    if minutes < 90:
+        return ("#EBA833", "#06263A")     # on the way
+    return ("", "")                       # plenty of lead time
+
+
 def style_upwind(df):
-    """Color each recent-rainfall column by amount."""
+    """Color recent-rainfall columns by amount, and the ETA column by urgency."""
     rain_cols = [c for c in df.columns if "(in)" in c]
 
     def _row(row):
@@ -244,6 +255,16 @@ def style_upwind(df):
             bg, fg = rain_color(v)
             if bg:
                 out[idx[c]] = f"background-color:{bg};color:{fg};font-weight:600"
+        if "ETA (min)" in idx:
+            try:
+                m = float(row["ETA (min)"])
+            except Exception:
+                m = None
+            if m is not None:
+                bg, fg = eta_color(m)
+                if bg:
+                    out[idx["ETA (min)"]] = (
+                        f"background-color:{bg};color:{fg};font-weight:600")
         return out
     return df.style.apply(_row, axis=1)
 
@@ -449,14 +470,15 @@ with tab4:
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
 
-    st.subheader("Approach rainfall — recent totals in every direction")
+    st.subheader("Approach rainfall — recent totals + storm motion")
     st.caption("A ring of sentinel towns in all eight directions around the watershed, "
                "listed clockwise from north — whichever direction is lit up is where "
                "weather is coming from, so this catches an approach from ANY direction, "
-               "not just the usual SW/W. Below the ring sit the **real logged gauges** "
-               "(airport AWOS + any Ambient stations on your account), nearest first — "
-               "measured ground truth versus the modeled town ring. Distance (miles) is a "
-               "rough lead-time sense.")
+               "not just the usual SW/W. The **ETA** column estimates how many minutes "
+               "until an upwind town's rain reaches the watershed, using the modeled "
+               "steering wind (a planning estimate, not a tracked storm). Below the ring "
+               "sits the **local airport gauge** (real, logged) — measured ground truth "
+               "versus the modeled town ring.")
 
     @st.cache_data(ttl=600, show_spinner="Fetching approach rainfall…")
     def _upwind():
@@ -468,15 +490,10 @@ with tab4:
         import live_rainfall as lr
         return lr.airport_rainfall()
 
-    @st.cache_data(ttl=600, show_spinner="Reading Ambient stations…")
-    def _ambient():
+    @st.cache_data(ttl=600, show_spinner="Reading steering flow…")
+    def _steering():
         import live_rainfall as lr
-        try:
-            app = st.secrets.get("AMBIENT_APP_KEY")
-            api = st.secrets.get("AMBIENT_API_KEY")
-        except Exception:
-            app = api = None
-        return lr.ambient_rainfall(app_key=app, api_key=api)
+        return lr.steering_flow()
 
     def _mi(km):
         return round(km * 0.621371, 1)
@@ -485,37 +502,44 @@ with tab4:
         return x if x is not None else "—"           # blank-safe cell
 
     try:
+        import live_rainfall as lr
         up = _upwind()
         try:
             ap = _airport()
         except Exception:
             ap = None
         try:
-            amb_res = _ambient()
+            steering = _steering()
         except Exception:
-            amb_res = {"rows": [], "status": {"configured": False, "devices": 0,
-                                              "near": [], "near_km": 40,
-                                              "error": "fetch failed"}}
-        amb = amb_res["rows"]
-        amb_status = amb_res["status"]
+            steering = None
 
-        # Model town ring, clockwise from north.
+        # Storm-motion summary line (one regional number, so it lives here, not a column).
+        if steering and steering["speed_mph"] >= 3:
+            st.markdown(f"**Storm motion (modeled):** steering flow from "
+                        f"**{steering['from_compass']}** at **{steering['speed_mph']} mph** "
+                        f"→ storms tracking **{steering['toward_compass']}**. The ETA column "
+                        f"fills in only for the towns the storms are coming from.")
+        elif steering:
+            st.markdown("**Storm motion (modeled):** steering flow is light / variable — "
+                        "motion is ill-defined right now, so no arrival ETAs this hour.")
+        else:
+            st.markdown("**Storm motion:** steering wind unavailable from the model right "
+                        "now — ETA column is blank.")
+
+        # Model town ring, clockwise from north. ETA = modeled minutes until that town's
+        # rain reaches the watershed (only for towns the steering flow is coming from).
         urows = [{"area": f"{r['area']} ({r['dir']})", "distance (mi)": _mi(r["dist_km"]),
+                  "ETA (min)": _v(lr.arrival_eta(steering, r["bearing"], r["dist_km"])),
                   "last 1h (in)": r["h1"], "last 3h (in)": r["h3"],
                   "last 6h (in)": r["h6"], "last 24h (in)": r["h24"]} for r in up]
-        # Real logged gauges (airport AWOS + any AWN stations on your account) grouped
-        # after the ring, nearest first — these are MEASURED, the towns are MODELED.
+        # Real logged gauge (airport AWOS) after the ring — MEASURED, towns are MODELED.
+        # No ETA for the gauge: it's an on-the-ground measurement, not an approach forecast.
         real = []
         if ap:
             real.append({"area": f"{ap['area']} ({ap['station']}, logged)",
-                         "distance (mi)": _mi(ap["dist_km"]),
+                         "distance (mi)": _mi(ap["dist_km"]), "ETA (min)": "—",
                          "last 1h (in)": ap["h1"], "last 3h (in)": ap["h3"],
                          "last 6h (in)": ap["h6"], "last 24h (in)": ap["h24"]})
-        for a in (amb or []):
-            real.append({"area": f"{a['area']} (AWN, logged)",
-                         "distance (mi)": _mi(a["dist_km"]),
-                         "last 1h (in)": _v(a["h1"]), "last 3h (in)": _v(a["h3"]),
-                         "last 6h (in)": _v(a["h6"]), "last 24h (in)": _v(a["h24"])})
         real.sort(key=lambda x: x["distance (mi)"])
         urows += real
         show_table(style_upwind(pd.DataFrame(urows)), left=("area",))
@@ -523,55 +547,17 @@ with tab4:
         cap = ("Heavier recent totals in a direction = more water already loaded into a "
                "system approaching from there. Town rows are Open-Meteo (model/observation "
                "blend) — same orographic caveat as the basin feed. ")
-        gauges = []
         if ap:
-            gauges.append(f"Jackson County Airport AWOS ({ap['station']}, last ob "
-                          f"{ap['latest']})")
-        if amb:
-            gauges.append(f"{len(amb)} Ambient station{'s' if len(amb) != 1 else ''} on "
-                          f"your account")
-        if gauges:
-            cap += (f"**The rows tagged 'logged' are real gauges** — {', and '.join(gauges)} "
-                    f"— grouped below the town ring, nearest first. These are the MEASURED "
-                    f"rainfall in this view (the towns are modeled). A single gauge can "
-                    f"under-catch heavy or frozen precip and drop the odd reading, so treat "
-                    f"them as ground truth with that caveat — and as exactly the gap a denser "
-                    f"SKYE network fills. ")
+            cap += (f"**The airport row is a real gauge** — Jackson County Airport AWOS "
+                    f"({ap['station']}), actual logged precip, last ob {ap['latest']}. "
+                    f"It's the one measured rainfall in this view (the towns are modeled); "
+                    f"an AWOS tipping bucket can under-catch heavy or frozen precip and drop "
+                    f"the odd hour, so it's ground truth with that caveat. ")
         else:
-            cap += ("(No real gauge available right now — the airport feed and any Ambient "
-                    "stations both came back empty; see the diagnostics below. The town ring "
-                    "is still shown.) ")
+            cap += ("(Airport gauge K24A unavailable right now — IEM throttle or a sensor "
+                    "gap; the town ring is still shown.) ")
         cap += "Cached 10 min."
         st.caption(cap)
-
-        with st.expander("Ambient gauge diagnostics", expanded=False):
-            s = amb_status
-            if not s.get("configured"):
-                st.markdown("**No Ambient keys detected** in Streamlit secrets. Add "
-                            "`AMBIENT_APP_KEY` and `AMBIENT_API_KEY` under Settings → "
-                            "Secrets, then reboot. (Also make sure the updated "
-                            "live_rainfall.py / test_app.py are deployed.)")
-            elif s.get("error"):
-                st.markdown(f"**Keys detected, but the API call failed:** {s['error']}  \n"
-                            "If the two keys are swapped, the call fails rather than "
-                            "returning bad data — try flipping the secret values.")
-            else:
-                near = s.get("near", [])
-                st.markdown(f"**Keys detected ✓** — your account has "
-                            f"**{s.get('devices', 0)}** device(s); **{len(near)}** within "
-                            f"{s.get('near_km', 40)} km of the watershed.")
-                for n in sorted(near, key=lambda x: x["dist_km"]):
-                    tag = "rain gauge ✓ (added)" if n["rain"] else "no rain gauge — not added"
-                    st.markdown(f"- {n['name']} — {round(n['dist_km'] * 0.621371, 1)} mi "
-                                f"— {tag}")
-                if s.get("devices") and not near:
-                    st.markdown("None of your stations fall within range — widen "
-                                "`AMBIENT_NEAR_KM` in live_rainfall.py if one sits just "
-                                "outside.")
-                if not s.get("devices"):
-                    st.markdown("Your account returned **zero devices** — so the dashboards "
-                                "you shared are public stations you don't own. The supported "
-                                "API can't reach those; that would take the paid Data Suite.")
     except Exception as e:
         st.error(f"Couldn't fetch approach rainfall: {e}")
 

@@ -19,6 +19,7 @@ Deps: standard library only (urllib, json).
 """
 
 import json
+import math
 import datetime
 import urllib.request
 import urllib.parse
@@ -34,6 +35,20 @@ BASIN_POINTS = {
     "CC-LB-171":    (35.305, -83.195),
     "CC-WCU-2260":  (35.290, -83.185),
     "CC-MOUTH-2340":(35.300, -83.185),
+}
+
+# Upwind "approach corridor" — observed rainfall here is a lead-time read on what
+# an incoming system has already dropped before it reaches Cullowhee. Covers the
+# S / SW / W directions WNC storms usually arrive from. (Fixed corridor for now;
+# not yet steered by live storm motion.)
+WATERSHED_CENTER = (35.263, -83.201)
+UPWIND_POINTS = {
+    "Franklin":     (35.18, -83.38, "SSW"),
+    "Highlands":    (35.05, -83.20, "S"),
+    "Andrews":      (35.20, -83.83, "WSW"),
+    "Murphy":       (35.09, -84.03, "SW"),
+    "Robbinsville": (35.32, -83.81, "W"),
+    "Bryson City":  (35.43, -83.45, "WNW"),
 }
 
 OPEN_METEO = "https://api.open-meteo.com/v1/forecast"
@@ -128,6 +143,68 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
 # ---------------------------------------------------------------------------
 def run_live(points=BASIN_POINTS, PRF=484.0):
     return compute_from_response(fetch_all(points), points, PRF)
+
+
+# ---------------------------------------------------------------------------
+# UPWIND RAINFALL: recent observed totals in the storm-approach corridor
+# ---------------------------------------------------------------------------
+def _haversine_km(a, b):
+    R = 6371.0
+    lat1, lon1, lat2, lon2 = map(math.radians, [a[0], a[1], b[0], b[1]])
+    h = (math.sin((lat2 - lat1) / 2) ** 2 +
+         math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2)
+    return round(2 * R * math.asin(math.sqrt(h)))
+
+
+def _current_hour_index(times, now):
+    ci = None
+    for i, t in enumerate(times):
+        try:
+            dt = datetime.datetime.fromisoformat(t)
+        except Exception:
+            continue
+        if dt <= now:
+            ci = i
+        else:
+            break
+    return ci
+
+
+def upwind_compute(data, points=UPWIND_POINTS):
+    """Pure: API response -> recent-rainfall rows per upwind area. No network."""
+    out = []
+    now = datetime.datetime.now()
+    for (name, val), loc in zip(points.items(), data):
+        lat, lon, dirn = val
+        hourly = loc.get("hourly", {})
+        times = hourly.get("time", [])
+        pr = [(x if x is not None else 0.0) for x in hourly.get("precipitation", [])]
+        ci = _current_hour_index(times, now)
+
+        def trail(h):
+            if ci is None:
+                return 0.0
+            return round(sum(pr[max(0, ci - h + 1):ci + 1]), 2)
+
+        out.append(dict(area=name, dir=dirn,
+                        dist_km=_haversine_km(WATERSHED_CENTER, (lat, lon)),
+                        h1=trail(1), h3=trail(3), h6=trail(6), h24=trail(24)))
+    out.sort(key=lambda r: r["dist_km"])   # nearest (most imminent) first
+    return out
+
+
+def upwind_rainfall(points=UPWIND_POINTS, timeout=30):
+    lats = ",".join(f"{v[0]}" for v in points.values())
+    lons = ",".join(f"{v[1]}" for v in points.values())
+    q = {"latitude": lats, "longitude": lons, "hourly": "precipitation",
+         "past_days": 2, "forecast_days": 1, "precipitation_unit": "inch",
+         "timezone": "America/New_York"}
+    url = OPEN_METEO + "?" + urllib.parse.urlencode(q, safe=",")
+    req = urllib.request.Request(url, headers={"User-Agent": "cullowhee-flood/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        data = json.load(r)
+    data = data if isinstance(data, list) else [data]
+    return upwind_compute(data, points)
 
 
 if __name__ == "__main__":

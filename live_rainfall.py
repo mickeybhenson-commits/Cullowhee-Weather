@@ -334,16 +334,26 @@ def _ambient_trailing(records):
 
 def ambient_rainfall(app_key=None, api_key=None, near_km=AMBIENT_NEAR_KM, timeout=30):
     """Real logged precip from AWN stations on your account, within near_km of the
-    watershed. Returns a list of row dicts (possibly empty). Key precedence: arg > env."""
+    watershed. Returns {"rows": [...], "status": {...}} — status carries diagnostics
+    (configured?, device count, nearby stations, any error) so the app can show why
+    rows did or didn't appear. Key precedence: arg > env."""
     app_key = app_key or os.environ.get("AMBIENT_APP_KEY")
     api_key = api_key or os.environ.get("AMBIENT_API_KEY")
-    if not (app_key and api_key):
-        return []                                       # not configured -> no rows
+    status = {"configured": bool(app_key and api_key), "near_km": near_km,
+              "devices": 0, "near": [], "error": None}
+    if not status["configured"]:
+        return {"rows": [], "status": status}
 
     base = {"applicationKey": app_key, "apiKey": api_key}
-    devices = _ambient_get("/devices", base, timeout)
+    try:
+        devices = _ambient_get("/devices", base, timeout)
+    except Exception as e:
+        status["error"] = str(e)[:160]
+        return {"rows": [], "status": status}
     if not isinstance(devices, list):
-        return []
+        status["error"] = "unexpected /devices response (check that both keys are valid)"
+        return {"rows": [], "status": status}
+    status["devices"] = len(devices)
 
     rows = []
     for dev in devices:
@@ -356,7 +366,10 @@ def ambient_rainfall(app_key=None, api_key=None, near_km=AMBIENT_NEAR_KM, timeou
         if dist > near_km:
             continue
         last = dev.get("lastData", {}) or {}
-        if not any(k in last for k in _RAIN_KEYS):      # no rain gauge -> skip
+        has_rain = any(k in last for k in _RAIN_KEYS)
+        name = (info.get("name") or "AWN station").strip()
+        status["near"].append({"name": name, "dist_km": dist, "rain": has_rain})
+        if not has_rain:                                # no rain gauge -> no row
             continue
         mac = dev.get("macAddress")
         if not mac:
@@ -376,13 +389,12 @@ def ambient_rainfall(app_key=None, api_key=None, near_km=AMBIENT_NEAR_KM, timeou
             h3, h6, age = tr["h3"], tr["h6"], tr["age_min"]
         else:
             h3 = h6 = age = None
-        name = (info.get("name") or "AWN station").strip()
         rows.append(dict(area=name, dir="AWN", dist_km=dist,
                          h1=round(h1, 2) if h1 is not None else None, h3=h3, h6=h6,
                          h24=round(h24, 2) if h24 is not None else None,
                          age_min=age, source="AWN (logged)"))
     rows.sort(key=lambda r: r["dist_km"])
-    return rows
+    return {"rows": rows, "status": status}
 
 
 if __name__ == "__main__":
@@ -414,10 +426,18 @@ if __name__ == "__main__":
     print(f"\nAmbient Weather Network — your account stations within {AMBIENT_NEAR_KM} km "
           "(REAL logged precip):")
     try:
-        arows = ambient_rainfall()      # reads AMBIENT_APP_KEY / AMBIENT_API_KEY from env
-        if not arows:
-            print("  (set AMBIENT_APP_KEY + AMBIENT_API_KEY in env; or no rain-reporting "
-                  "station on the account within range)")
+        res = ambient_rainfall()        # reads AMBIENT_APP_KEY / AMBIENT_API_KEY from env
+        st_, arows = res["status"], res["rows"]
+        if not st_["configured"]:
+            print("  not configured — set AMBIENT_APP_KEY + AMBIENT_API_KEY in env")
+        elif st_["error"]:
+            print(f"  API error: {st_['error']}")
+        else:
+            print(f"  account devices: {st_['devices']}  |  within range: "
+                  f"{len(st_['near'])}")
+            for n in sorted(st_["near"], key=lambda x: x["dist_km"]):
+                print(f"    - {n['name'][:24]:24s} {n['dist_km']:>2} km  "
+                      f"{'rain gauge' if n['rain'] else 'NO rain gauge'}")
         for a in arows:
             def _s(v):
                 return f"{v:5.2f}" if isinstance(v, (int, float)) else "  n/a"

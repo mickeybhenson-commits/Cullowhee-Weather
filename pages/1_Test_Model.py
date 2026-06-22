@@ -449,14 +449,14 @@ with tab4:
     except Exception as e:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
 
-    st.subheader("Upwind rainfall — what's already fallen where weather arrives from")
-    st.caption("Recent observed rainfall in the S/SW/W approach corridor (the directions "
-               "WNC storms usually come from). When a system on the radar above is tracking "
-               "toward the watershed, this is how much it has already dropped upstream — a "
-               "lead-time read. Sorted nearest-first. Fixed corridor; not yet steered by "
-               "live storm motion.")
+    st.subheader("Approach rainfall — recent totals in every direction")
+    st.caption("Recent observed rainfall at a ring of sentinel towns in all eight "
+               "directions around the watershed. Whichever direction is lit up is where "
+               "weather is coming from — so this catches an approach from ANY direction, "
+               "not just the usual SW/W. Listed clockwise from north; distance gives a "
+               "rough lead-time sense.")
 
-    @st.cache_data(ttl=600, show_spinner="Fetching upwind rainfall…")
+    @st.cache_data(ttl=600, show_spinner="Fetching approach rainfall…")
     def _upwind():
         import live_rainfall as lr
         return lr.upwind_rainfall()
@@ -467,11 +467,12 @@ with tab4:
                   "last 1h (in)": r["h1"], "last 3h (in)": r["h3"],
                   "last 6h (in)": r["h6"], "last 24h (in)": r["h24"]} for r in up]
         show_table(style_upwind(pd.DataFrame(urows)), left=("area",))
-        st.caption("Heavier recent totals upwind = more water already loaded into an "
-                   "approaching system. Rain source: Open-Meteo (model/observation blend) — "
-                   "same orographic caveat as the basin feed. Cached 10 min.")
+        st.caption("Heavier recent totals in a direction = more water already loaded into "
+                   "a system approaching from there. Rain source: Open-Meteo (model/"
+                   "observation blend) — same orographic caveat as the basin feed. "
+                   "Cached 10 min.")
     except Exception as e:
-        st.error(f"Couldn't fetch upwind rainfall: {e}")
+        st.error(f"Couldn't fetch approach rainfall: {e}")
 
 st.divider()
 st.caption("Tabletop model: triangular UH + rectangular Manning rating + HDc. "

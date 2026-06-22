@@ -210,6 +210,78 @@ def upwind_rainfall(points=UPWIND_POINTS, timeout=30):
     return upwind_compute(data, points)
 
 
+# ---------------------------------------------------------------------------
+# LOCAL GAUGE: real LOGGED precip from the Jackson County Airport AWOS (K24A)
+# ---------------------------------------------------------------------------
+# This is the one MEASURED rainfall point in the system: an actual heated-gauge
+# AWOS-III at the airport (~6 km N, right by the Body Farm gateway site), not a
+# model. Source = Iowa Environmental Mesonet's ASOS archive (same service as the
+# radar tiles), field `p01i` = logged precip in the prior hour, in inches. We sum
+# it over trailing windows to match the approach-rainfall columns.
+# Honest caveat: a single AWOS tipping bucket can under-catch in heavy/frozen
+# precip and occasionally drop hours — ground truth, but not infallible.
+IEM_ASOS = "https://mesonet.agron.iastate.edu/cgi-bin/request/asos.py"
+AIRPORT = {"id": "24A", "name": "Jackson Co. Airport", "lat": 35.3172, "lon": -83.2097}
+
+
+def airport_compute(csv_text):
+    """Pure: IEM asos.py CSV (station,valid,p01i) -> trailing rainfall totals.
+    p01i is the logged precip in the hour before each ob; we keep one value per
+    clock hour (max) and sum trailing windows. Returns None if no usable rows."""
+    by_hour, latest = {}, None
+    for line in csv_text.splitlines():
+        parts = line.split(",")
+        if len(parts) < 3:
+            continue
+        ts = parts[1].strip()
+        try:                                   # skips header ('valid') + '#' lines
+            dt = datetime.datetime.strptime(ts[:16], "%Y-%m-%d %H:%M")
+        except ValueError:
+            continue
+        pval = parts[2].strip()
+        if pval in ("M", "", "None", "null"):  # missing — skip (don't count as 0)
+            continue
+        p = 0.0001 if pval == "T" else None    # trace
+        if p is None:
+            try:
+                p = float(pval)
+            except ValueError:
+                continue
+        hk = dt.replace(minute=0, second=0, microsecond=0)
+        by_hour[hk] = max(by_hour.get(hk, 0.0), p)   # one (max) value per hour
+        latest = dt if latest is None or dt > latest else latest
+    if not by_hour:
+        return None
+    end_hour = latest.replace(minute=0, second=0, microsecond=0)
+
+    def trail(n):
+        return round(sum(by_hour.get(end_hour - datetime.timedelta(hours=k), 0.0)
+                         for k in range(n)), 2)
+
+    return dict(h1=trail(1), h3=trail(3), h6=trail(6), h24=trail(24),
+                latest=latest.strftime("%I:%M %p").lstrip("0"),
+                hours_logged=len(by_hour))
+
+
+def airport_rainfall(station="24A", hours=30, timeout=30):
+    """Fetch + compute logged precip totals for the airport AWOS. Returns a row
+    dict (area/dir/dist_km/h1/h3/h6/h24/latest/source) or None if unavailable."""
+    q = {"station": station, "data": "p01i", "hours": hours,
+         "tz": "America/New_York", "format": "onlycomma",
+         "missing": "M", "trace": "0.0001", "latlon": "no"}
+    url = IEM_ASOS + "?" + urllib.parse.urlencode(q)
+    req = urllib.request.Request(url, headers={"User-Agent": "cullowhee-flood/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        txt = r.read().decode("utf-8", "replace")
+    res = airport_compute(txt)
+    if res is None:
+        return None
+    res.update(area=AIRPORT["name"], dir="local", station=f"K{station}",
+               dist_km=_haversine_km(WATERSHED_CENTER, (AIRPORT["lat"], AIRPORT["lon"])),
+               source=f"AWOS K{station} (logged)")
+    return res
+
+
 if __name__ == "__main__":
     try:
         results = run_live()
@@ -222,3 +294,15 @@ if __name__ == "__main__":
         print(f"{bid:14s} {r['antecedent_5day']:7.2f} {r['soil_moisture_pct']:5d}% "
               f"{r['storm']:6.2f} {r['forecast_total']:6.2f} {r['arc']:>4} "
               f"{r['stage']:6.2f}  {r['posture']}")
+
+    print("\nLocal airport gauge (REAL logged precip, IEM/AWOS K24A):")
+    try:
+        ap = airport_rainfall()
+        if ap:
+            print(f"  {ap['area']} ({ap['station']}, {ap['dist_km']} km) — "
+                  f"1h {ap['h1']}\"  3h {ap['h3']}\"  6h {ap['h6']}\"  24h {ap['h24']}\"  "
+                  f"(last ob {ap['latest']}, {ap['hours_logged']} hrs logged)")
+        else:
+            print("  no usable precip rows returned (sensor gap or station offline)")
+    except Exception as e:
+        print(f"  airport gauge fetch failed (need network to mesonet.agron.iastate.edu): {e}")

@@ -364,9 +364,10 @@ with tab4:
         st.caption("**Soil moisture** and **pred. depth** are MODELED, not measured. "
                    "Soil moisture = single-layer water-balance estimate (real rainfall − "
                    "real ET, % of assumed capacity) — trust the trend more than the exact "
-                   "number until probes calibrate the capacity. Pred. depth = the engine's "
-                   "predicted channel depth (colored by posture). Both can be cross-checked "
-                   "against NWM next, and become real when sensors deploy. "
+                   "number until probes calibrate the capacity. Pred. depth = baseflow + "
+                   "predicted storm rise (total channel depth, as a gauge would read; "
+                   "baseflow is a field-anchored estimate per reach). Both cross-checkable "
+                   "against NWM next, real when sensors deploy. "
                    "Rain/ET source: Open-Meteo. Cached 30 min — Refresh to update.")
 
         st.subheader("Incoming weather")

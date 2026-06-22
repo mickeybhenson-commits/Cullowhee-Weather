@@ -450,27 +450,56 @@ with tab4:
         st.error(f"Couldn't fetch live weather (needs internet to api.open-meteo.com): {e}")
 
     st.subheader("Approach rainfall — recent totals in every direction")
-    st.caption("Recent observed rainfall at a ring of sentinel towns in all eight "
-               "directions around the watershed. Whichever direction is lit up is where "
-               "weather is coming from — so this catches an approach from ANY direction, "
-               "not just the usual SW/W. Listed clockwise from north; distance gives a "
-               "rough lead-time sense.")
+    st.caption("First row is the **local airport rain gauge** (real, logged). Below it, "
+               "recent rainfall at a ring of sentinel towns in all eight directions around "
+               "the watershed — whichever direction is lit up is where weather is coming "
+               "from, so this catches an approach from ANY direction, not just the usual "
+               "SW/W. Towns listed clockwise from north; distance gives a rough lead-time "
+               "sense.")
 
     @st.cache_data(ttl=600, show_spinner="Fetching approach rainfall…")
     def _upwind():
         import live_rainfall as lr
         return lr.upwind_rainfall()
 
+    @st.cache_data(ttl=600, show_spinner="Reading airport gauge…")
+    def _airport():
+        import live_rainfall as lr
+        return lr.airport_rainfall()
+
     try:
         up = _upwind()
-        urows = [{"area": f"{r['area']} ({r['dir']})", "distance (km)": r["dist_km"],
-                  "last 1h (in)": r["h1"], "last 3h (in)": r["h3"],
-                  "last 6h (in)": r["h6"], "last 24h (in)": r["h24"]} for r in up]
+        try:
+            ap = _airport()
+        except Exception:
+            ap = None
+
+        urows = []
+        if ap:                                    # real logged gauge first
+            urows.append({"area": f"{ap['area']} ({ap['station']}, logged)",
+                          "distance (km)": ap["dist_km"],
+                          "last 1h (in)": ap["h1"], "last 3h (in)": ap["h3"],
+                          "last 6h (in)": ap["h6"], "last 24h (in)": ap["h24"]})
+        urows += [{"area": f"{r['area']} ({r['dir']})", "distance (km)": r["dist_km"],
+                   "last 1h (in)": r["h1"], "last 3h (in)": r["h3"],
+                   "last 6h (in)": r["h6"], "last 24h (in)": r["h24"]} for r in up]
         show_table(style_upwind(pd.DataFrame(urows)), left=("area",))
-        st.caption("Heavier recent totals in a direction = more water already loaded into "
-                   "a system approaching from there. Rain source: Open-Meteo (model/"
-                   "observation blend) — same orographic caveat as the basin feed. "
-                   "Cached 10 min.")
+
+        cap = ("Heavier recent totals in a direction = more water already loaded into a "
+               "system approaching from there. Town rows are Open-Meteo (model/observation "
+               "blend) — same orographic caveat as the basin feed. ")
+        if ap:
+            cap += (f"**The top row is a real gauge** — Jackson County Airport AWOS "
+                    f"({ap['station']}), actual logged precip, last ob {ap['latest']}. "
+                    f"It's the one measured rainfall in this view; an AWOS tipping bucket "
+                    f"can under-catch heavy or frozen precip and drop the odd hour, so it's "
+                    f"ground truth with that caveat — and exactly the gap a SKYE gauge "
+                    f"fills. ")
+        else:
+            cap += ("(Airport gauge K24A unavailable right now — IEM throttle or a sensor "
+                    "gap; the town ring is still shown.) ")
+        cap += "Cached 10 min."
+        st.caption(cap)
     except Exception as e:
         st.error(f"Couldn't fetch approach rainfall: {e}")
 

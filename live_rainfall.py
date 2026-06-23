@@ -24,6 +24,7 @@ import datetime
 import urllib.request
 import urllib.parse
 import test_model as tm
+import sources as src
 
 # Basin representative points (lat, lon). Centroids/pour points of each sub-basin.
 BASIN_POINTS = {
@@ -117,8 +118,16 @@ def soil_moisture_pct(precip, et0, end_idx, et0_unit="mm",
 
 
 def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
-                          forecast_days=FORECAST_DAYS):
-    """Map the API response to per-basin posture. Pure: no network calls."""
+                          forecast_days=FORECAST_DAYS, now=None):
+    """Map the API response to per-basin posture. Pure: no network calls.
+
+    Every sensor-replaceable quantity (storm rain, antecedent rain, soil
+    moisture, stage) is routed through sources.resolve(): today it returns the
+    MODELED value, but once a sensor feeds Firestore for a basin, that value
+    flips to MEASURED automatically (gated by freshness + range). Stage is
+    special -- a real stage sensor is the most direct truth, so when MEASURED it
+    drives the posture directly instead of the rating-derived stage. Each row
+    carries provenance tags (src_*) so the UI can badge measured vs modeled."""
     out = {}
     for (bid, _), loc in zip(points.items(), data):
         daily = loc.get("daily", {})
@@ -126,18 +135,38 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
         precip = daily.get("precipitation_sum", [])
         et0 = daily.get("et0_fao_evapotranspiration", []) or []
         et0_unit = loc.get("daily_units", {}).get("et0_fao_evapotranspiration", "mm")
-        p5, storm, fcst_total = _split(dates, precip, forecast_days)
+        m_p5, m_storm, fcst_total = _split(dates, precip, forecast_days)
 
         today = datetime.date.today().isoformat()
         ti = dates.index(today) if today in dates else max(0, len(precip) - forecast_days)
-        sm = soil_moisture_pct(precip, et0, ti, et0_unit)
+        m_sm = soil_moisture_pct(precip, et0, ti, et0_unit)
 
-        arc, res = tm.run_case(storm, p5, PRF=PRF)       # res[bid] used bid's storm/p5
+        # --- source resolution: sensor replaces model when present/fresh/in-range
+        rain = src.resolve(src.Q_RAIN_STORM, bid, m_storm, now=now)
+        ant = src.resolve(src.Q_RAIN_5DAY, bid, m_p5, now=now)
+        soil = src.resolve(src.Q_SOIL, bid, m_sm, now=now)
+
+        # engine runs on whatever rainfall won (measured gauge or model)
+        arc, res = tm.run_case(rain.value, ant.value, PRF=PRF)
         r = res[bid]
-        out[bid] = dict(antecedent_5day=p5, storm=storm, forecast_total=fcst_total,
-                        soil_moisture_pct=sm, arc=arc, CN=round(r["CN"]),
-                        runoff=round(r["Q"], 2), peak=round(r["qp"]),
-                        stage=round(r["stage"], 2), posture=r["posture"])
+        m_stage = round(r["stage"], 2)
+
+        # stage sensor (NOAH) is the most direct truth: if MEASURED it governs
+        stage = src.resolve(src.Q_STAGE, bid, m_stage, now=now)
+        b = tm.BASINS[bid]
+        posture = (tm.posture(stage.value, b, bid)
+                   if stage.tier == src.MEASURED else r["posture"])
+
+        out[bid] = dict(
+            antecedent_5day=ant.value, storm=rain.value, forecast_total=fcst_total,
+            soil_moisture_pct=soil.value, arc=arc, CN=round(r["CN"]),
+            runoff=round(r["Q"], 2), peak=round(r["qp"]),
+            stage=stage.value, posture=posture,
+            # provenance for UI badges + the monitoring/forecasting split
+            src_rain=rain.tier, src_rain_name=rain.source, src_rain_note=rain.note,
+            src_ant=ant.tier, src_soil=soil.tier,
+            src_stage=stage.tier, src_stage_name=stage.source, src_stage_note=stage.note,
+        )
     return out
 
 

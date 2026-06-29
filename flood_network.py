@@ -161,26 +161,31 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL",
             if a.level != "NORMAL":
                 etas.append(eta)
         else:
-            prim = priming_index(inp)
-            if prim is not None:
-                c.priming = prim
-                probs.append(prim)
-                if prim >= 0.5:
+            # No measured stage: forecast is the only forward signal. Use the
+            # calibrated engine where the gateway maps to a CC-* basin; fall back
+            # to the relative priming index where it doesn't.
+            qpf, p5 = inp.get("storm_rain_in"), inp.get("antecedent_5day")
+            fc = forecast_site(sid, qpf, p5) if (qpf is not None and p5 is not None) else None
+            if fc is not None:
+                c.calib_outlook = fc["outlook_level"]
+                c.forecast_stage_ft = fc["forecast_stage_ft"]
+                watch = _sev_idx(c.calib_outlook) >= _sev_idx("WATCH")
+                probs.append(0.5 if watch else 0.0)
+                if watch:
                     etas.append(eta)
+            else:
+                prim = priming_index(inp)
+                if prim is not None:
+                    c.priming = prim
+                    probs.append(prim)
+                    if prim >= 0.5:
+                        etas.append(eta)
         olp = orographic_by_site.get(sid)
         if olp is not None:
             c.olp_index = round(olp, 3)
             probs.append(0.6 * olp)
             if olp >= 0.5:
                 oro_flag = True
-        # calibrated Outlook: replaces the relative priming index where the gateway
-        # maps to a CC-* basin (forecast_site returns None for unmapped sites).
-        qpf, p5 = inp.get("storm_rain_in"), inp.get("antecedent_5day")
-        if qpf is not None and p5 is not None:
-            fc = forecast_site(sid, qpf, p5)
-            if fc is not None:
-                c.calib_outlook = fc["outlook_level"]
-                c.forecast_stage_ft = fc["forecast_stage_ft"]
         ups.append(c)
 
     combined = _noisy_or(probs) if probs else 0.0
@@ -288,9 +293,13 @@ def tiered_posture(rw, warning_id="belk"):
     if tp.outlook_level == "WATCH":
         who = ", ".join(dict.fromkeys(rising_names)) or "upstream sub-basins"
         lead = f" ~{tp.lead_hr:.1f} hr before the creek responds" if tp.lead_hr else ""
-        tp.outlook_note = (f"Saturated soils + forecast rain have primed {who}{lead}. "
-                           "Forecast-based and uncalibrated — treat as relative risk, not a "
-                           "calibrated probability.")
+        if calib_watch:
+            tp.outlook_note = (f"Calibrated forecast (StreamStats-anchored) puts {who} at WATCH{lead}. "
+                               "Forecast rainfall under-calls orographic totals, so this is a lead-time "
+                               "outlook, not a confirmed stage — WARNING/EMERGENCY need a measured rise.")
+        else:
+            tp.outlook_note = (f"Saturated soils + forecast rain have primed {who}{lead}. "
+                               "Relative priming index (uncalibrated) — treat as relative risk.")
     else:
         tp.outlook_note = "Soil + forecast signal below outlook threshold."
 

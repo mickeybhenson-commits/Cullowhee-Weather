@@ -19,6 +19,7 @@ Lead time to the campus is the SUM of a site's segments along the path
 from dataclasses import dataclass, field
 
 import flood_engine as fe
+from outlook_engine import forecast_site   # calibrated gateway forecast (capped at WATCH)
 
 # ---------------------------------------------------------------------
 # TOPOLOGY
@@ -121,6 +122,8 @@ class UpstreamContribution:
     ew_prob: float = None
     priming: float = None
     olp_index: float = None
+    calib_outlook: str = None          # calibrated forecast posture (capped WATCH) if basin-mapped
+    forecast_stage_ft: float = None    # forecast stage from the calibrated engine
 
 
 @dataclass
@@ -170,6 +173,14 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL",
             probs.append(0.6 * olp)
             if olp >= 0.5:
                 oro_flag = True
+        # calibrated Outlook: replaces the relative priming index where the gateway
+        # maps to a CC-* basin (forecast_site returns None for unmapped sites).
+        qpf, p5 = inp.get("storm_rain_in"), inp.get("antecedent_5day")
+        if qpf is not None and p5 is not None:
+            fc = forecast_site(sid, qpf, p5)
+            if fc is not None:
+                c.calib_outlook = fc["outlook_level"]
+                c.forecast_stage_ft = fc["forecast_stage_ft"]
         ups.append(c)
 
     combined = _noisy_or(probs) if probs else 0.0
@@ -243,10 +254,15 @@ def tiered_posture(rw, warning_id="belk"):
             tp.stream_sites.append((c.name, c.level, None, c.eta_hr))
     tp.stream_level = max(stream_levels, key=_sev_idx) if stream_levels else "NORMAL"
 
-    # ---- Outlook tier: soil + forecast (+ pre-rain orographic) -----------
-    primings, rising_names = [], []
+    # ---- Outlook tier: calibrated forecast where mapped, else relative index ----
+    primings, rising_names, calib_levels = [], [], []
     for c in rw.upstream:
-        if c.priming is not None:
+        if c.calib_outlook is not None:                  # basin-mapped: calibrated forecast wins
+            calib_levels.append(c.calib_outlook)
+            tp.outlook_sites.append((c.name, c.forecast_stage_ft, c.eta_hr, "calibrated"))
+            if _sev_idx(c.calib_outlook) >= _sev_idx("WATCH"):
+                rising_names.append(c.name)
+        elif c.priming is not None:                      # unmapped: relative priming fallback
             primings.append(c.priming)
             tp.outlook_sites.append((c.name, c.priming, c.eta_hr, "soil+rain"))
             if c.priming >= WATCH_OUTLOOK_THRESHOLD:
@@ -255,7 +271,9 @@ def tiered_posture(rw, warning_id="belk"):
             primings.append(0.6 * c.olp_index)
             tp.outlook_sites.append((c.name, c.olp_index, c.eta_hr, "orographic"))
     tp.outlook_risk = _noisy_or(primings) if primings else 0.0
-    tp.outlook_level = "WATCH" if tp.outlook_risk >= WATCH_OUTLOOK_THRESHOLD else "NORMAL"
+    calib_watch = any(_sev_idx(l) >= _sev_idx("WATCH") for l in calib_levels)
+    relative_watch = tp.outlook_risk >= WATCH_OUTLOOK_THRESHOLD
+    tp.outlook_level = "WATCH" if (calib_watch or relative_watch) else "NORMAL"
 
     # ---- Combine: outlook capped at WATCH; stream sets the ceiling -------
     tp.headline = max([tp.outlook_level, tp.stream_level], key=_sev_idx)

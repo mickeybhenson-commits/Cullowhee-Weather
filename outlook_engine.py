@@ -9,12 +9,14 @@ basins.py + flood_rating.py, for any gateway site that maps to a CC-* basin.
 Respects flood_network's two-tier rule: the Outlook is capped at WATCH. Only a
 measured stage rise (Confirmation tier) may reach WARNING / EMERGENCY.
 
-MAPPING STATUS
-  belk -> CC-WCU-2260 is the one confirmed gateway<->basin mapping (both are the
-  campus warning point). The headwater SENSOR sites (double_springs, aahp) are
-  not CC-* delineations; fill SITE_TO_BASIN once you decide which basin each
-  gauge draws from. Until then forecast_site() returns None for them and the
-  caller keeps priming_index.
+MAPPING STATUS  (resolved by point-in-polygon vs the StreamStats delineations)
+  belk -> CC-WCU-2260 (160 m inside the campus basin) and aahp -> CC-TIL-705
+  (544 m inside Tilley) are clean interior fits. double_springs falls ~34 m
+  OUTSIDE every polygon, on the upper-mainstem divide where the MS / Speedwell /
+  mouth boundaries meet -> mapped to CC-MS-1100 as a boundary node (within
+  GPS/DEM noise; confirm it represents MS-1100 forcing vs being a pure relay).
+  Sites with no mapping still return None from forecast_site() (caller keeps
+  priming_index).
 
 HOOK (in flood_network.tiered_posture, Outlook tier):
     from outlook_engine import forecast_site
@@ -30,10 +32,12 @@ import test_model as tm
 from flood_rating import posture as _posture   # noqa: F401  (kept for callers)
 
 # Gateway/sensor site -> CC-* basin whose calibration + rating to apply.
+# Resolved by point-in-polygon of each gateway against the StreamStats basin
+# delineations (CC-*.geojson); see MAPPING STATUS above.
 SITE_TO_BASIN = {
-    "belk": "CC-WCU-2260",
-    # "double_springs": "CC-????",   # PENDING: which CC-* basin feeds this gauge
-    # "aahp":           "CC-????",   # PENDING
+    "belk":           "CC-WCU-2260",  # campus warning point (160 m interior)
+    "double_springs": "CC-MS-1100",   # upper mainstem; gateway ~34 m off the divide
+    "aahp":           "CC-TIL-705",   # Tilley Creek (544 m interior)
 }
 
 _ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]

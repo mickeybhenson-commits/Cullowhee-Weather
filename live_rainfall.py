@@ -153,8 +153,7 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
 
         # stage sensor (NOAH) is the most direct truth: if MEASURED it governs
         stage = src.resolve(src.Q_STAGE, bid, m_stage, now=now)
-        b = tm.BASINS[bid]
-        posture = (tm.posture(stage.value, b, bid)
+        posture = (tm.posture(stage.value, bid)              # flood_rating.posture(depth, bid)
                    if stage.tier == src.MEASURED else r["posture"])
 
         out[bid] = dict(

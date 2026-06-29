@@ -333,8 +333,8 @@ def demo_inputs():
     for k in range(n):
         t = now - timedelta(minutes=(n-k)*step); frac = (k+1)/n
         rising.append((int(t.timestamp()), round(base + (peak-base)*(frac**1.6), 3)))
-    return {"double_springs": {"stage_series": rising, "storm_rain_in": 1.0, "soil_pct": 88.0},
-            "aahp": {"storm_rain_in": 1.5, "soil_pct": 88.0}}
+    return {"double_springs": {"stage_series": rising, "storm_rain_in": 1.0, "soil_pct": 88.0, "antecedent_5day": 2.5},
+            "aahp": {"storm_rain_in": 1.5, "soil_pct": 88.0, "antecedent_5day": 2.5}}
 
 def demo_orographic():
     a = orographic.lift_potential("aahp", 66, 95, 26.6, 25, 135)
@@ -377,6 +377,20 @@ flood_network.recompute_travel_times()
 live = assemble_live_inputs()
 demo = st.toggle("Scenario: demonstration (synthetic)", value=not any(live.values()))
 inputs = demo_inputs() if demo else live
+# live per-basin forcing (storm + 5-day antecedent) for the calibrated Outlook hook;
+# shadow-mode (Open-Meteo under-calls orographic rain) — see live_rainfall caveat.
+if not demo:
+    try:
+        import live_rainfall as lr
+        from outlook_engine import SITE_TO_BASIN
+        _wx = lr.compute_from_response(lr.fetch_all())
+        for _sid, _bid in SITE_TO_BASIN.items():
+            _b = _wx.get(_bid)
+            if _b is not None:
+                inputs.setdefault(_sid, {}).update(
+                    storm_rain_in=_b["storm"], antecedent_5day=_b["antecedent_5day"])
+    except Exception:
+        pass  # forcing unavailable (no network / sources) — hook falls back to priming
 oro = demo_orographic() if demo else {}
 rw = flood_network.routed_assessment("belk", inputs, orographic_by_site=oro)
 tp = flood_network.tiered_posture(rw)

@@ -132,3 +132,19 @@ if __name__ == "__main__":
     print("Discharge halved-ish across the board (calibrated to regression); the 6 tributaries")
     print("now rate IN-BANK on the rectangle, only the campus uses TVA. Postures are sound on the")
     print("campus (receptor-validated) and provisional on the rest (placeholder thresholds).")
+
+# --- inverse rating: discharge (cfs) at a given depth above bed ----------------
+def q_from_depth(depth_ft, bid):
+    """Inverse of depth_from_q. Discharge (cfs) at a stage (depth above bed):
+    TVA power-law for the campus, rectangular Manning for the tributaries, None
+    for out-of-scope reaches. Use for stage->discharge display (e.g. capacity at
+    the wall thresholds). Mirrors the rating selection in depth_from_q."""
+    rec = BASINS[bid]
+    if depth_ft is None or depth_ft <= 0:
+        return 0.0
+    if rec["rating"] == "tva":
+        C, B = _tva_rating(rec)
+        return C * depth_ft ** B
+    if rec["rating"] == "rectangular":
+        return _rect_q(depth_ft, rec["section"])
+    return None

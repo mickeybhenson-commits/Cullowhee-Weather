@@ -18,7 +18,8 @@ Two phases, runnable independently:
                 from live 'om-best' rows.
 
   --mrms        Hourly MultiSensor_QPE_01H_Pass2 from mtarchive, reusing the
-                fetch_mrms machinery. SIZE WARNING: ~22,000 hourly CONUS files
+                fetch_mrms machinery (eccodes decoder — pip install eccodes).
+                SIZE WARNING: ~22,000 hourly CONUS files
                 at a few MB each — tens of GB of transfer (files are processed
                 and discarded immediately; disk use stays small). Run it on a
                 workstation connection, expect several hours to a day, and
@@ -37,7 +38,7 @@ RUN (from the repo root):
     python3 scripts/backfill_ledger.py --db ./qpf_ledger.db --mrms
 then copy the .db to the VM (see README_ledger.md).
 
-Deps: standard library + wgrib2 binary (for --mrms only).
+Deps: standard library; --mrms additionally needs eccodes (pip).
 """
 
 import argparse
@@ -122,7 +123,7 @@ def backfill_forecasts(conn, start, end):
 
 
 def backfill_mrms(conn, start, end):
-    basins, bbox = fetch_mrms.load_masks()
+    basins, _ = fetch_mrms.load_masks()
     when = dt.datetime.combine(start, dt.time(1), tzinfo=dt.timezone.utc)
     stop = dt.datetime.combine(end + dt.timedelta(days=1), dt.time(0),
                                tzinfo=dt.timezone.utc)
@@ -133,7 +134,7 @@ def backfill_mrms(conn, start, end):
     while when <= stop:
         valid = when.strftime("%Y-%m-%dT%H:00:00")
         if not ledger_db.have_observation(conn, valid, fetch_mrms.SOURCE):
-            ok = fetch_mrms.process_hour(conn, when, basins, bbox, quiet=True)
+            ok = fetch_mrms.process_hour(conn, when, basins, quiet=True)
             done += ok
             missed += (not ok)
             if (done + missed) % 500 == 0:
@@ -169,8 +170,8 @@ def main():
     if args.forecasts:
         backfill_forecasts(conn, start, end)
     if args.mrms:
-        if not fetch_mrms.wgrib2_available():
-            sys.exit("wgrib2 not found — apt install wgrib2")
+        if not fetch_mrms.decoder_available():
+            sys.exit("eccodes not importable — pip install eccodes")
         backfill_mrms(conn, dt.date.fromisoformat(args.start), end)
     conn.close()
 

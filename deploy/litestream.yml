@@ -1,0 +1,22 @@
+# Continuous replication of the SQLite files to object storage.
+# Keys go in the environment, not here:
+#   LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY
+dbs:
+  - path: /var/lib/noah/noah.db
+    replicas:
+      - type: s3
+        bucket: noah-stage-backup
+        path: noah.db
+        endpoint: s3.us-east-005.backblazeb2.com   # Backblaze B2 example; or AWS/GCS S3 endpoint
+        retention: 720h
+
+  # QPF-bias verification ledger (see ledger/README_ledger.md).
+  # Separate DB, separate lifecycle from the ops ingest DB; same bucket,
+  # distinct replica path so restores can't collide.
+  - path: /var/lib/noah/qpf_ledger.db
+    replicas:
+      - type: s3
+        bucket: noah-stage-backup
+        path: qpf_ledger.db
+        endpoint: s3.us-east-005.backblazeb2.com   # keep identical to the stanza above
+        retention: 720h

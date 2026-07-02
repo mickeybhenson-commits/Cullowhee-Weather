@@ -8,17 +8,24 @@ trigger path, so quality beats latency) from the Iowa State mtarchive.
 
 PIPELINE per hour:
   1. download  MultiSensor_QPE_01H_Pass2_00.00_YYYYMMDD-HH0000.grib2.gz
-  2. gunzip
-  3. wgrib2 -small_grib <bbox>          clip CONUS to the watershed (tiny)
-  4. wgrib2 -csv                        dump lon,lat,value of clipped cells
-  5. weighted mean per basin from ledger/mrms_masks.json cell weights
+  2. gunzip in memory
+  3. eccodes decodes the GRIB2 message from bytes (no temp files)
+  4. direct index math pulls ONLY the ~90 cells in ledger/mrms_masks.json
+     from the CONUS grid (regular lat-lon; row/col computed from the grid
+     header each time — never assumed)
+  5. weighted mean per basin
   6. INSERT into observations (mm)
 
-MISSING DATA: MRMS flags no-coverage/missing as negative values. Negative
-cells are dropped and remaining weights renormalized; valid_frac records the
-surviving weight fraction. If valid_frac < MIN_VALID for a basin, that
-basin-hour is skipped (better a gap than a fabricated mean). Analysis should
-additionally filter min_valid_frac >= 0.8.
+DECODER NOTE: wgrib2 is not packaged for Ubuntu 24.04, so this uses ECMWF
+eccodes instead (`pip install eccodes` — self-contained wheel, bundles the
+C library, pulls numpy). Cleaner anyway: no subprocess, no bbox clip.
+
+MISSING DATA: MRMS flags no-coverage/missing as negative values (and eccodes
+may surface encoded missing as a large sentinel). Such cells are dropped and
+remaining weights renormalized; valid_frac records the surviving weight
+fraction. If valid_frac < MIN_VALID for a basin, that basin-hour is skipped
+(better a gap than a fabricated mean). Analysis should additionally filter
+min_valid_frac >= 0.8.
 
 GAP REPAIR: each run first processes the target hour (now - LAG), then sweeps
 the previous LOOKBACK_H hours and fills any basin-hours missing from the DB
@@ -27,7 +34,7 @@ sweep — the unit exits 0 so systemd does not flap.
 
 Run: hourly from systemd (deploy/qpf-mrms.timer), or by hand:
     python3 fetch_mrms.py [--db PATH] [--hour YYYY-MM-DDTHH] [--no-sweep]
-Deps: standard library + the `wgrib2` binary (apt install wgrib2).
+Deps: eccodes (pip), numpy (pulled by eccodes). Run inside the project venv.
 """
 
 import argparse
@@ -35,13 +42,16 @@ import datetime as dt
 import gzip
 import json
 import os
-import shutil
-import subprocess
 import sys
-import tempfile
 import urllib.request
 
 import ledger_db
+
+try:
+    import eccodes
+    _DECODER_OK = True
+except Exception:                                     # noqa: BLE001
+    _DECODER_OK = False
 
 MASKS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                           "mrms_masks.json")
@@ -52,47 +62,66 @@ SOURCE = "mrms-p2"
 LAG_H = 2          # Pass2 latency margin
 LOOKBACK_H = 48    # gap-repair sweep depth
 MIN_VALID = 0.5    # minimum surviving weight fraction to accept a basin-hour
+BIG = 1.0e10       # anything at/above this is an encoded-missing sentinel
 
 
 def load_masks():
     with open(MASKS_FILE) as f:
         m = json.load(f)
-    return m["basins"], m["bbox_wgrib2"]
+    return m["basins"], m.get("bbox_wgrib2")
 
 
-def wgrib2_available():
-    return shutil.which("wgrib2") is not None
+def decoder_available():
+    return _DECODER_OK
 
 
-def grid_values(grib_gz_bytes, bbox, workdir):
-    """gz GRIB2 bytes -> {(lat, lon_e): value} over the watershed bbox."""
-    raw = os.path.join(workdir, "full.grib2")
-    small = os.path.join(workdir, "small.grib2")
-    csvf = os.path.join(workdir, "vals.csv")
-    with open(raw, "wb") as f:
-        f.write(gzip.decompress(grib_gz_bytes))
-    subprocess.run(
-        ["wgrib2", raw, "-small_grib",
-         f"{bbox['lon_w']}:{bbox['lon_e']}", f"{bbox['lat_s']}:{bbox['lat_n']}",
-         small],
-        check=True, capture_output=True)
-    subprocess.run(["wgrib2", small, "-csv", csvf],
-                   check=True, capture_output=True)
-    vals = {}
-    with open(csvf) as f:
-        for line in f:
-            parts = line.rstrip("\n").split(",")
-            if len(parts) < 3:
-                continue
-            try:
-                lon, lat, v = (float(parts[-3]), float(parts[-2]),
-                               float(parts[-1]))
-            except ValueError:
-                continue
-            vals[(round(lat, 3), round(lon, 3))] = v
-    if not vals:
-        raise RuntimeError("wgrib2 produced no cell values")
-    return vals
+def _wanted_cells(basins):
+    """Union of (lat, lon_e) cell centers across all basin masks."""
+    cells = set()
+    for b in basins.values():
+        for c in b["cells"]:
+            cells.add((c["lat"], c["lon_e"]))
+    return cells
+
+
+def grid_values(grib_gz_bytes, basins):
+    """gz GRIB2 bytes -> {(lat, lon_e): value} for exactly the mask cells.
+
+    Grid geometry (origin, increments, scan direction, row-major order) is
+    read from the message header on every call — nothing about the MRMS grid
+    is hard-coded, so a grid change upstream fails loudly instead of silently
+    misregistering."""
+    gid = eccodes.codes_new_from_message(gzip.decompress(grib_gz_bytes))
+    try:
+        ni = eccodes.codes_get(gid, "Ni")
+        nj = eccodes.codes_get(gid, "Nj")
+        lat1 = eccodes.codes_get(gid, "latitudeOfFirstGridPointInDegrees")
+        lon1 = eccodes.codes_get(gid, "longitudeOfFirstGridPointInDegrees")
+        di = eccodes.codes_get(gid, "iDirectionIncrementInDegrees")
+        dj = eccodes.codes_get(gid, "jDirectionIncrementInDegrees")
+        jpos = eccodes.codes_get(gid, "jScansPositively")
+        ipos = eccodes.codes_get(gid, "iScansNegatively") == 0
+        values = eccodes.codes_get_values(gid)        # 1-D, row-major (j, i)
+    finally:
+        eccodes.codes_release(gid)
+
+    if len(values) != ni * nj:
+        raise RuntimeError(f"grid size mismatch: {len(values)} != {ni}*{nj}")
+
+    out = {}
+    for lat, lon_e in _wanted_cells(basins):
+        col = (lon_e - lon1) / di if ipos else (lon1 - lon_e) / di
+        row = (lat - lat1) / dj if jpos else (lat1 - lat) / dj
+        ic, ir = round(col), round(row)
+        if abs(col - ic) > 0.25 or abs(row - ir) > 0.25:
+            raise RuntimeError(
+                f"cell ({lat},{lon_e}) off-lattice for this grid "
+                f"(col {col:.3f}, row {row:.3f}) — masks/grid mismatch")
+        if 0 <= ic < ni and 0 <= ir < nj:
+            out[(lat, lon_e)] = float(values[ir * ni + ic])
+    if not out:
+        raise RuntimeError("no mask cells fell inside the GRIB grid")
+    return out
 
 
 def basin_means(vals, basins):
@@ -102,7 +131,7 @@ def basin_means(vals, basins):
         num = wsum = 0.0
         for c in b["cells"]:
             v = vals.get((c["lat"], c["lon_e"]))
-            if v is None or v < 0.0:          # missing / no coverage
+            if v is None or v < 0.0 or v >= BIG:      # missing / no coverage
                 continue
             num += c["w"] * v
             wsum += c["w"]
@@ -111,7 +140,7 @@ def basin_means(vals, basins):
     return out
 
 
-def process_hour(conn, when, basins, bbox, quiet=False):
+def process_hour(conn, when, basins, quiet=False):
     """Fetch + ingest one valid hour (accumulation ending at `when`, UTC).
     Returns True on success, False if the file is not (yet) available."""
     url = URL.format(y=when.year, m=when.month, d=when.day, h=when.hour)
@@ -129,8 +158,7 @@ def process_hour(conn, when, basins, bbox, quiet=False):
             print(f"  {when:%Y-%m-%dT%H}Z: fetch error: {e}")
         return False
 
-    with tempfile.TemporaryDirectory() as td:
-        vals = grid_values(gz, bbox, td)
+    vals = grid_values(gz, basins)
     means = basin_means(vals, basins)
     valid = when.strftime("%Y-%m-%dT%H:00:00")
     ledger_db.insert_observations(
@@ -153,10 +181,11 @@ def main():
                     help="skip the gap-repair lookback sweep")
     args = ap.parse_args()
 
-    if not wgrib2_available():
-        sys.exit("wgrib2 not found — apt install wgrib2")
+    if not decoder_available():
+        sys.exit("eccodes not importable — pip install eccodes "
+                 "(inside the project venv)")
 
-    basins, bbox = load_masks()
+    basins, _ = load_masks()
     conn = ledger_db.connect(args.db)
 
     if args.hour:
@@ -168,7 +197,7 @@ def main():
             minute=0, second=0, microsecond=0)
 
     print(f"target hour {target:%Y-%m-%dT%H}Z")
-    process_hour(conn, target, basins, bbox)
+    process_hour(conn, target, basins)
 
     if not args.no_sweep and not args.hour:
         filled = 0
@@ -177,7 +206,7 @@ def main():
             valid = when.strftime("%Y-%m-%dT%H:00:00")
             if ledger_db.have_observation(conn, valid, SOURCE):
                 continue
-            if process_hour(conn, when, basins, bbox, quiet=True):
+            if process_hour(conn, when, basins, quiet=True):
                 filled += 1
         if filled:
             print(f"gap sweep: back-filled {filled} hour(s)")

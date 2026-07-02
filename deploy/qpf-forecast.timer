@@ -1,0 +1,11 @@
+# qpf-forecast.timer — fire 20 min after each global-model synoptic cycle
+[Unit]
+Description=NOAH QPF ledger: 6-hourly forecast archive
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:20:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

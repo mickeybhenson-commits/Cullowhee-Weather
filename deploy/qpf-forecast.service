@@ -1,0 +1,16 @@
+# qpf-forecast.service — archive Open-Meteo QPF for the bias ledger
+# Adjust WorkingDirectory/User to match the existing NOAH deployment layout.
+[Unit]
+Description=NOAH QPF ledger: archive Open-Meteo forecast horizon
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=noah
+WorkingDirectory=/opt/cullowhee-weather/ledger
+Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
+ExecStart=/usr/bin/python3 fetch_forecast.py
+# transient network failures: let the timer catch the next cycle
+SuccessExitStatus=0
+Nice=10

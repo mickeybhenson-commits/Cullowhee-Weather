@@ -8,9 +8,9 @@ After=network-online.target
 [Service]
 Type=oneshot
 User=noah
-WorkingDirectory=/opt/cullowhee-weather/ledger
+WorkingDirectory=/opt/noah/ledger
 Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
-ExecStart=/usr/bin/python3 fetch_forecast.py
+ExecStart=/opt/noah/venv/bin/python3 fetch_forecast.py
 # transient network failures: let the timer catch the next cycle
 SuccessExitStatus=0
 Nice=10

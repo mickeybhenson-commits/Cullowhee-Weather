@@ -1,0 +1,12 @@
+# qpf-mrms.timer — hourly at :35, giving Pass2 (~1 h latency) headroom on top
+# of the 2 h LAG built into fetch_mrms.py; the 48 h gap sweep catches stragglers
+[Unit]
+Description=NOAH QPF ledger: hourly MRMS ingest
+
+[Timer]
+OnCalendar=*-*-* *:35:00 UTC
+Persistent=true
+RandomizedDelaySec=60
+
+[Install]
+WantedBy=timers.target

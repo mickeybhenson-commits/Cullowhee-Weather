@@ -1,0 +1,3 @@
+# QPF-bias ledger runtime deps (fetch_forecast is stdlib-only;
+# eccodes is for fetch_mrms and backfill --mrms; pulls numpy)
+eccodes>=2.40

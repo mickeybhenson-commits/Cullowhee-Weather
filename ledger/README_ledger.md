@@ -7,7 +7,7 @@ for the SKYE outlook tier. Fully independent of the sensor ingest path.
 ## File map (repo `cullowhee-weather`)
 
     scripts/build_mrms_masks.py    one-time, workstation (needs shapely+pyproj)
-    scripts/backfill_ledger.py     one-time, workstation (needs wgrib2 for --mrms)
+    scripts/backfill_ledger.py     one-time, workstation (needs eccodes for --mrms)
     ledger/ledger_db.py            shared DB module (stdlib)
     ledger/fetch_forecast.py       runtime, 6-hourly (stdlib)
     ledger/fetch_mrms.py           runtime, hourly (stdlib + wgrib2 binary)
@@ -33,7 +33,7 @@ ingest DB — different lifecycle, second Litestream stanza).
 Backfill (seeds ~2.5 years incl. Helene; forecasts floor is 2024-01-01
 because the Open-Meteo Previous Runs precipitation archive starts there):
 
-    sudo apt install wgrib2
+    pip install eccodes
     python3 scripts/backfill_ledger.py --db ./qpf_ledger.db --forecasts
     python3 scripts/backfill_ledger.py --db ./qpf_ledger.db --mrms
     # --mrms is tens of GB of transfer over many hours; interruptible,
@@ -42,7 +42,11 @@ because the Open-Meteo Previous Runs precipitation archive starts there):
 
 ## VM setup
 
-    sudo apt install wgrib2
+(wgrib2 is NOT used — it is not packaged for Ubuntu 24.04; the MRMS decoder
+is eccodes, installed into the project venv below.)
+
+    sudo python3 -m venv /opt/noah/venv        # skip if the venv exists
+    sudo /opt/noah/venv/bin/pip install -r /opt/noah/ledger/requirements_ledger.txt
     sudo install -d -o noah -g noah /var/lib/noah
     sudo cp deploy/qpf-*.{service,timer} /etc/systemd/system/
     #   edit User= / WorkingDirectory= if the deployment layout differs
@@ -54,17 +58,14 @@ because the Open-Meteo Previous Runs precipitation archive starts there):
       "SELECT source, COUNT(*) FROM forecasts GROUP BY 1;
        SELECT COUNT(*) FROM observations;"
 
-Litestream — repo file is `deploy/litestream.yml` (covers both noah.db and
-qpf_ledger.db). Deploy it to the stock service's default config path:
+Litestream — ADD this stanza to the existing litestream.yml `dbs:` list
+(do not replace the ops DB entry; adjust the replica URL to match):
 
-    sudo cp deploy/litestream.yml /etc/litestream.yml
-    sudo systemctl restart litestream
+    - path: /var/lib/noah/qpf_ledger.db
+      replicas:
+        - url: <same-object-storage-bucket>/qpf_ledger
 
-Credentials (LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY) go in
-the litestream service environment on the VM, never in the committed file.
-If a Litestream config already exists on the VM at a different path
-(check `systemctl cat litestream | grep ExecStart`), merge the qpf_ledger
-stanza into that file instead and mirror the result back to the repo.
+then `sudo systemctl restart litestream`.
 
 ## Analysis conventions (bake into any bias fit)
 

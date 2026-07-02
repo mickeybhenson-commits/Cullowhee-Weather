@@ -1,0 +1,16 @@
+# qpf-mrms.service — ingest hourly MRMS Pass2 basin means for the bias ledger
+# Adjust WorkingDirectory/User to match the existing NOAH deployment layout.
+# Requires: apt install wgrib2
+[Unit]
+Description=NOAH QPF ledger: ingest MRMS MultiSensor QPE Pass2
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=noah
+WorkingDirectory=/opt/cullowhee-weather/ledger
+Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
+ExecStart=/usr/bin/python3 fetch_mrms.py
+SuccessExitStatus=0
+Nice=10

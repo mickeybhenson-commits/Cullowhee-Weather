@@ -54,14 +54,17 @@ because the Open-Meteo Previous Runs precipitation archive starts there):
       "SELECT source, COUNT(*) FROM forecasts GROUP BY 1;
        SELECT COUNT(*) FROM observations;"
 
-Litestream — ADD this stanza to the existing litestream.yml `dbs:` list
-(do not replace the ops DB entry; adjust the replica URL to match):
+Litestream — repo file is `deploy/litestream.yml` (covers both noah.db and
+qpf_ledger.db). Deploy it to the stock service's default config path:
 
-    - path: /var/lib/noah/qpf_ledger.db
-      replicas:
-        - url: <same-object-storage-bucket>/qpf_ledger
+    sudo cp deploy/litestream.yml /etc/litestream.yml
+    sudo systemctl restart litestream
 
-then `sudo systemctl restart litestream`.
+Credentials (LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY) go in
+the litestream service environment on the VM, never in the committed file.
+If a Litestream config already exists on the VM at a different path
+(check `systemctl cat litestream | grep ExecStart`), merge the qpf_ledger
+stanza into that file instead and mirror the result back to the repo.
 
 ## Analysis conventions (bake into any bias fit)
 

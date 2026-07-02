@@ -1,22 +1,25 @@
-# Continuous replication of the SQLite files to object storage.
-# Keys go in the environment, not here:
+# Continuous replication of the SQLite files to Google Cloud Storage
+# (S3-interoperability endpoint). Keys go in the litestream service
+# environment, never in this file:
 #   LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY
 dbs:
-  - path: /var/lib/noah/noah.db
-    replicas:
-      - type: s3
-        bucket: noah-stage-backup
-        path: noah.db
-        endpoint: s3.us-east-005.backblazeb2.com   # Backblaze B2 example; or AWS/GCS S3 endpoint
-        retention: 720h
-
-  # QPF-bias verification ledger (see ledger/README_ledger.md).
-  # Separate DB, separate lifecycle from the ops ingest DB; same bucket,
-  # distinct replica path so restores can't collide.
+  # QPF-bias verification ledger (see ledger/README_ledger.md)
   - path: /var/lib/noah/qpf_ledger.db
     replicas:
       - type: s3
-        bucket: noah-stage-backup
+        bucket: noah-ledger-wcu-2026
         path: qpf_ledger.db
-        endpoint: s3.us-east-005.backblazeb2.com   # keep identical to the stanza above
+        endpoint: https://storage.googleapis.com
+        region: us-east1
         retention: 720h
+
+  # Ops ingest DB — UNCOMMENT when the receiver pipeline deploys to this VM;
+  # the file does not exist yet and Litestream would log errors watching it.
+  # - path: /var/lib/noah/noah.db
+  #   replicas:
+  #     - type: s3
+  #       bucket: noah-ledger-wcu-2026
+  #       path: noah.db
+  #       endpoint: https://storage.googleapis.com
+  #       region: us-east1
+  #       retention: 720h

@@ -1,25 +1,21 @@
-# Continuous replication of the SQLite files to Google Cloud Storage
-# (S3-interoperability endpoint). Keys go in the litestream service
-# environment, never in this file:
-#   LITESTREAM_ACCESS_KEY_ID / LITESTREAM_SECRET_ACCESS_KEY
+# Continuous replication of the SQLite files to Google Cloud Storage,
+# using Litestream's NATIVE GCS client (type gs).
+# NOTE: GCS's S3-compatibility endpoint is NOT used — it is incompatible
+# with the AWS SDK v2 signing that Litestream 0.5 uses (SignatureDoesNotMatch).
+# Auth: JSON service-account key for litestream-writer, referenced by
+#   GOOGLE_APPLICATION_CREDENTIALS in the litestream service environment.
+# The key file lives at /etc/litestream-gcs.json (root:root, mode 600),
+# never in this repo.
 dbs:
   # QPF-bias verification ledger (see ledger/README_ledger.md)
   - path: /var/lib/noah/qpf_ledger.db
-    replicas:
-      - type: s3
-        bucket: noah-ledger-wcu-2026
-        path: qpf_ledger.db
-        endpoint: https://storage.googleapis.com
-        region: us-east1
-        retention: 720h
+    replica:
+      url: gs://noah-ledger-wcu-2026/qpf_ledger.db
+      retention: 720h
 
   # Ops ingest DB — UNCOMMENT when the receiver pipeline deploys to this VM;
   # the file does not exist yet and Litestream would log errors watching it.
   # - path: /var/lib/noah/noah.db
-  #   replicas:
-  #     - type: s3
-  #       bucket: noah-ledger-wcu-2026
-  #       path: noah.db
-  #       endpoint: https://storage.googleapis.com
-  #       region: us-east1
-  #       retention: 720h
+  #   replica:
+  #     url: gs://noah-ledger-wcu-2026/noah.db
+  #     retention: 720h

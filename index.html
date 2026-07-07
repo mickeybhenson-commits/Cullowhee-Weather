@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en" id="top">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOAH &amp; SKYE — Cullowhee Creek flood warning</title>
+<meta name="description" content="A flood-warning system for Cullowhee Creek, a mountain stream in Jackson County, North Carolina — built after Hurricane Helene.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abyss:#0a161a;        /* deep creek water at night */
+    --shoal:#102128;        /* raised panel */
+    --shoal2:#0e1c22;
+    --mist:#e9f1ef;         /* primary text, green-white */
+    --slate:#8aa6a6;        /* secondary text */
+    --faint:#5c7576;        /* tertiary / captions */
+    --current:#45d0c0;      /* signature water-cyan */
+    --watch:#e2b52b;        /* alert ladder */
+    --warning:#f2882d;
+    --emergency:#ef5350;
+    --line:#20363c;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --body:'Newsreader',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--abyss);color:var(--mist);
+    font-family:var(--body);font-size:19px;line-height:1.6;font-weight:300;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  a{color:inherit}
+  ::selection{background:rgba(69,208,192,.28)}
+
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--current);margin:0 0 18px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--current);
+    box-shadow:0 0 0 0 rgba(69,208,192,.55);animation:pulse 2.4s ease-out infinite;flex:0 0 auto}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(69,208,192,.5)}70%{box-shadow:0 0 0 9px rgba(69,208,192,0)}100%{box-shadow:0 0 0 0 rgba(69,208,192,0)}}
+
+  h1,h2,h3{font-family:var(--disp);font-weight:500;line-height:1.05;letter-spacing:-.01em}
+
+  /* ---------- hero ---------- */
+  .hero{
+    max-width:1180px;margin:0 auto;padding:clamp(56px,9vw,120px) 28px clamp(48px,7vw,96px);
+    display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(28px,5vw,72px);align-items:center;
+  }
+  .hero h1{font-size:clamp(56px,11vw,132px);margin:0 0 6px;font-weight:700}
+  .hero h1 .amp{color:var(--current);font-weight:400}
+  .thesis{font-family:var(--disp);font-weight:400;font-size:clamp(20px,2.6vw,28px);
+    line-height:1.25;margin:0 0 22px;color:var(--mist)}
+  .lede{font-size:20px;color:var(--slate);max-width:34ch;margin:0 0 32px}
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px}
+  .btn{font-family:var(--mono);font-size:13px;letter-spacing:.04em;text-decoration:none;
+    padding:14px 22px;border-radius:2px;transition:.18s;display:inline-block}
+  .btn-primary{background:var(--current);color:#04211d;font-weight:500}
+  .btn-primary:hover{background:#6fe0d2;transform:translateY(-1px)}
+  .btn-ghost{border:1px solid var(--line);color:var(--mist)}
+  .btn-ghost:hover{border-color:var(--current);color:var(--current)}
+
+  /* ---------- stage gauge (signature) ---------- */
+  .hero-gauge{display:flex;justify-content:center}
+  .gauge{width:100%;max-width:280px;height:auto;overflow:visible}
+  .gauge .tube-fill{fill:rgba(255,255,255,.02)}
+  .gauge .tube-stroke{fill:none;stroke:var(--line);stroke-width:1.5}
+  .waterline{stroke:var(--current);stroke-width:2;opacity:.9}
+  .tick{stroke-width:1.5}
+  .tick-label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;fill:var(--slate)}
+  .tick-ft{font-family:var(--mono);font-size:10px;fill:var(--faint)}
+  .water-grp{animation:tide 9s ease-in-out infinite}
+  @keyframes tide{0%,100%{transform:translateY(11px)}50%{transform:translateY(-13px)}}
+  .now-reading{font-family:var(--mono);font-size:11px;fill:var(--current);font-weight:500}
+  @media (prefers-reduced-motion:reduce){.water-grp{animation:none}.live-dot{animation:none}}
+
+  /* ---------- sections ---------- */
+  .section{max-width:1120px;margin:0 auto;padding:clamp(60px,9vw,110px) 28px;border-top:1px solid var(--line)}
+  .section-narrow{max-width:720px}
+  .section h2{font-size:clamp(30px,5vw,52px);margin:0 0 20px;max-width:20ch}
+  .section-lede{font-size:20px;color:var(--slate);max-width:60ch;margin:0 0 40px}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);margin-top:12px}
+  .two-col article{border-left:2px solid var(--current);padding-left:22px}
+  .two-col h3{font-size:24px;margin:0 0 12px;color:var(--mist)}
+  .two-col .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .two-col p{margin:0;color:var(--slate);font-size:18px}
+
+  /* ---------- embed frames ---------- */
+  .frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+    background:var(--shoal2);box-shadow:0 24px 60px -30px rgba(0,0,0,.8)}
+  .frame iframe{display:block;width:100%;height:100%;border:0}
+  .frame-live{aspect-ratio:16/9}
+  .frame-tall{aspect-ratio:4/3}
+  @media (max-width:640px){.frame-live,.frame-tall{aspect-ratio:3/4}}
+  .caption{font-family:var(--mono);font-size:12px;color:var(--faint);margin:16px 0 0;line-height:1.6;letter-spacing:.01em}
+  .caption b{color:var(--slate);font-weight:500}
+
+  /* fallback card when live-map URL not yet set */
+  .map-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;padding:36px;gap:16px}
+  .map-fallback p{margin:0;color:var(--slate);font-family:var(--disp);font-size:19px;max-width:34ch}
+  .map-fallback .hint{font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+  /* ---------- prose ---------- */
+  .prose p{max-width:60ch;color:var(--mist);margin:0 0 22px}
+  .prose p.dim{color:var(--slate)}
+  .prose em{font-style:italic;color:var(--current)}
+
+  /* ---------- footer ---------- */
+  .foot{max-width:1120px;margin:0 auto;padding:56px 28px 72px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:13px;color:var(--faint);display:flex;flex-wrap:wrap;
+    justify-content:space-between;gap:16px;align-items:baseline}
+  .foot strong{color:var(--mist);font-weight:500}
+  .foot a{color:var(--slate);text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:1px}
+  .foot a:hover{color:var(--current);border-color:var(--current)}
+
+  /* ---------- reveal ---------- */
+  .js .reveal{opacity:0;transform:translateY(18px)}
+  .js .reveal.in{opacity:1;transform:none;transition:opacity .7s ease,transform .7s ease}
+
+  :focus-visible{outline:2px solid var(--current);outline-offset:3px;border-radius:2px}
+
+  @media (max-width:840px){
+    .hero{grid-template-columns:1fr;padding-top:48px}
+    .hero-gauge{order:-1;max-width:200px;margin:0 auto}
+    .gauge{max-width:200px}
+    .two-col{grid-template-columns:1fr;gap:28px}
+    body{font-size:18px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="live-dot"></span>Cullowhee Creek · Jackson County, NC</p>
+    <h1>NOAH <span class="amp">&amp;</span> SKYE</h1>
+    <p class="thesis">A flood warning for a mountain creek that never had one.</p>
+    <p class="lede">After Hurricane Helene, the streams that flood fastest in these mountains still had no gauges. This puts sensors in the water and weather in the picture — to buy the one thing that matters in a flash flood: a little time.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#now">See current conditions</a>
+      <a class="btn btn-ghost" href="#how">Explore the system</a>
+    </div>
+  </div>
+
+  <div class="hero-gauge">
+    <!-- signature: a creek stage gauge; 0–12 ft over the tube, 30px/ft -->
+    <svg class="gauge" viewBox="0 0 260 400" role="img" aria-label="Stage gauge showing water level below the WATCH mark, with WARNING and EMERGENCY thresholds above.">
+      <defs>
+        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#5fe0d2" stop-opacity="0.55"/>
+          <stop offset="1" stop-color="#2fa596" stop-opacity="0.28"/>
+        </linearGradient>
+        <clipPath id="tubeClip"><rect x="92" y="20" width="60" height="360" rx="8"/></clipPath>
+      </defs>
+
+      <!-- tube -->
+      <rect class="tube-fill" x="92" y="20" width="60" height="360" rx="8"/>
+
+      <!-- water (animated) -->
+      <g clip-path="url(#tubeClip)">
+        <g class="water-grp">
+          <rect x="92" y="230" width="60" height="200" fill="url(#water)"/>
+          <line class="waterline" x1="92" y1="230" x2="152" y2="230"/>
+        </g>
+      </g>
+
+      <rect class="tube-stroke" x="92" y="20" width="60" height="360" rx="8"/>
+
+      <!-- thresholds: 11 / 9 / 7 ft -->
+      <line class="tick" x1="92" y1="50"  x2="152" y2="50"  stroke="#ef5350"/>
+      <text class="tick-label" x="160" y="48"  fill="#ef5350">EMERGENCY</text>
+      <text class="tick-ft" x="86" y="53" text-anchor="end">11</text>
+
+      <line class="tick" x1="92" y1="110" x2="152" y2="110" stroke="#f2882d"/>
+      <text class="tick-label" x="160" y="108" fill="#f2882d">WARNING</text>
+      <text class="tick-ft" x="86" y="113" text-anchor="end">9</text>
+
+      <line class="tick" x1="92" y1="170" x2="152" y2="170" stroke="#e2b52b"/>
+      <text class="tick-label" x="160" y="168" fill="#e2b52b">WATCH</text>
+      <text class="tick-ft" x="86" y="173" text-anchor="end">7</text>
+
+      <!-- ground line -->
+      <line x1="70" y1="380" x2="174" y2="380" stroke="#20363c" stroke-width="2"/>
+      <text class="now-reading" x="122" y="399" text-anchor="middle">campus · ft above bed</text>
+    </svg>
+  </div>
+</header>
+
+<section id="what" class="section reveal">
+  <p class="eyebrow">Two halves, one system</p>
+  <div class="two-col">
+    <article>
+      <span class="kicker">NOAH</span>
+      <h3>In the water</h3>
+      <p>Solar-powered sensors along the creek measure how high and how fast it's running, and relay each reading out by radio, cellular, and satellite — so a measurement gets through even when the power is out and the roads are gone.</p>
+    </article>
+    <article>
+      <span class="kicker">SKYE</span>
+      <h3>In the sky</h3>
+      <p>A forecast engine watches radar, rainfall, and how saturated the ground already is, then estimates how the creek will respond — hours before it does. In these mountains, rain squeezed up over the ridges is what turns a stream dangerous.</p>
+    </article>
+  </div>
+</section>
+
+<section id="now" class="section reveal">
+  <p class="eyebrow">Current conditions</p>
+  <h2>What the creek is doing right now</h2>
+  <p class="section-lede">The live view — the same map the system runs on. Each sub-basin is colored by its status, from normal through watch, warning, and emergency.</p>
+  <div class="frame frame-live">
+    <iframe id="liveMap" title="Live Cullowhee Creek watershed status map" loading="lazy" style="display:none"></iframe>
+    <div class="map-fallback" id="mapFallback">
+      <p>The live watershed map opens in its own window.</p>
+      <a class="btn btn-primary" id="mapLink" href="#" target="_blank" rel="noopener">Open the live map</a>
+      <span class="hint">— set the map address to embed it here —</span>
+    </div>
+  </div>
+  <p class="caption">Right now this runs on <b>forecast rainfall and NEXRAD radar</b>. The in-stream sensors deploy over the 2026–27 season; until then, some thresholds stay deliberately cautious.</p>
+</section>
+
+<section id="how" class="section reveal">
+  <p class="eyebrow">How it works</p>
+  <h2>The whole system, in one model</h2>
+  <p class="section-lede">The sensors in the creek, the gateways that carry the data out, the satellites overhead, and the weather that drives it all. Drag to look around; switch between the sensor network, the forecast layer, and the campus alert ladder.</p>
+  <div class="frame frame-tall">
+    <iframe src="noah_skye_3d.html" title="Interactive 3D model of the NOAH and SKYE system" loading="lazy"></iframe>
+  </div>
+  <p class="caption">Interactive · the terrain is schematic and sensor positions are indicative — a diagram of how the parts fit, not a survey map.</p>
+</section>
+
+<section id="why" class="section section-narrow reveal prose">
+  <p class="eyebrow">Why</p>
+  <h2>The creeks that rise fastest are the ones nobody watches.</h2>
+  <p>In September 2024, Helene turned quiet Appalachian streams into something unrecognizable. The big rivers everyone watches have gauges and warnings. The small headwater creeks — the ones that go from ankle-deep to over-the-bank in minutes — mostly don't. Cullowhee Creek is one of them.</p>
+  <p class="dim">The approach comes out of a habit learned just up the road at the Coweeta Hydrologic Laboratory: <em>measure the ground truth, then trust what you measured.</em> Instruments in the field, checked against reality, carried into a job that's now about warning people in time.</p>
+</section>
+
+<section id="stands" class="section section-narrow reveal prose">
+  <p class="eyebrow">Where it stands</p>
+  <h2>Honest about what's proven.</h2>
+  <p>The forecast layer is live now. The sensor network is being built and calibrated over the coming field seasons. Until real floods pass real gauges, some thresholds stay cautious on purpose — the system would rather say <em>watch</em> early than promise more than it can yet prove.</p>
+</section>
+
+<footer class="foot">
+  <p>Built by <strong>Mickey Henson</strong> · College of Engineering, Western Carolina University</p>
+  <p><a href="noah_skye_3d.html">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+</footer>
+
+<script>
+  document.documentElement.classList.add('js');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- scroll reveal ----
+  var reveals = document.querySelectorAll('.reveal');
+  if(reduce || !('IntersectionObserver' in window)){
+    reveals.forEach(function(el){el.classList.add('in');});
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+    },{rootMargin:'0px 0px -12% 0px',threshold:0.08});
+    reveals.forEach(function(el){io.observe(el);});
+  }
+
+  // ---- live map embed ----
+  // Paste the address of your live watershed map between the quotes to embed it here.
+  // Leave it as-is and the section shows an "Open the live map" button instead.
+  var DASHBOARD_URL = "Cullowhee_Creek_live_status.html";
+
+  (function(){
+    var frame = document.getElementById('liveMap');
+    var fallback = document.getElementById('mapFallback');
+    var link = document.getElementById('mapLink');
+    var url = (DASHBOARD_URL || "").trim();
+    if(url){
+      frame.src = url;
+      frame.style.display = 'block';
+      fallback.style.display = 'none';
+    } else {
+      // no URL yet: keep the button, point it nowhere harmful
+      link.addEventListener('click', function(ev){
+        if(!link.getAttribute('href') || link.getAttribute('href')==='#'){ ev.preventDefault(); }
+      });
+    }
+  })();
+</script>
+</body>
+</html>

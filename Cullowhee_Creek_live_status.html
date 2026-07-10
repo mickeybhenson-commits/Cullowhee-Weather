@@ -58,7 +58,8 @@
 </div>
 
 <div id="radarctl" class="panel">
-  <button id="rref">↻ Refresh</button>
+  <button id="rplay">❙❙ Pause</button>
+  <button id="rref">↻ Now</button>
   <span id="rtime">radar: loading…</span>
 </div>
 
@@ -307,28 +308,82 @@ document.getElementById("sld").addEventListener("input",e=>{idx=+e.target.value;
 repaint();
 fetchLive();   // default: live on load
 
-/* ---- IEM NEXRAD composite radar: LIVE latest frame (observed; all zooms) ----
-   Single most-recent composite, auto-refreshed every 5 min (IEM update cadence).
-   Refresh loads the new frame invisibly, then swaps to avoid flicker. */
+/* ---- IEM NEXRAD composite radar: AUTO-UPDATING LOOP ----
+   Animates the last NF 5-min frames (dwelling on the newest), and every
+   RREFRESH_MS rebuilds the frame set with the latest scans, preloads it
+   invisibly, swaps it in, and restarts the loop. If loop tiles never load,
+   falls back to a single live frame refreshed on the same cadence. */
 const LATEST_URL="https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png";
-const ROPACITY=0.6, RREFRESH_MS=5*60000;
-function rlayer(){ return L.tileLayer(LATEST_URL+"?ts="+Date.now(),
-  {opacity:0,zIndex:400,maxZoom:19,errorTileUrl:TRANS}); }
-let radar=rlayer().addTo(map);
-function rstamp(){ document.getElementById("rtime").textContent="radar live \u00b7 "+
+const FRAME_URL="https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::USCOMP-N0Q-{TS}/{z}/{x}/{y}.png";
+const NF=8, LAG=10, STEP_MS=550, DWELL_MS=1800, RREFRESH_MS=5*60000, ROP=0.6;
+
+function tsUTC(d){const p=n=>String(n).padStart(2,"0");
+  return d.getUTCFullYear()+p(d.getUTCMonth()+1)+p(d.getUTCDate())+p(d.getUTCHours())+p(d.getUTCMinutes());}
+function buildStamps(){ let a=new Date(Date.now()-LAG*60000);
+  a.setUTCMinutes(Math.floor(a.getUTCMinutes()/5)*5,0,0);
+  const s=[]; for(let i=NF-1;i>=0;i--) s.push(new Date(a.getTime()-i*5*60000)); return s; }
+function makeSet(){ const stamps=buildStamps();
+  const layers=stamps.map(d=>L.tileLayer(FRAME_URL.replace("{TS}",tsUTC(d)),
+    {opacity:0,zIndex:400,maxZoom:19,errorTileUrl:TRANS}));
+  const set={stamps:stamps,layers:layers,ok:0};
+  layers.forEach(l=>{ l.on("tileload",()=>set.ok++); l.addTo(map); });
+  return set; }
+
+let RAD=null, ri=0, rtimer=null, playing=true, fellBack=false;
+function showFrame(k){ ri=k;
+  RAD.layers.forEach((l,j)=>l.setOpacity(j===k?ROP:0));
+  const last=(k===RAD.layers.length-1);
+  document.getElementById("rtime").textContent="radar "+
+    RAD.stamps[k].toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+
+    (last?" \u25cf":"")+" \u00b7 loop, auto\u2011updates (IEM)"; }
+function tick(){ showFrame((ri+1)%RAD.layers.length);
+  rtimer=setTimeout(tick, ri===RAD.layers.length-1?DWELL_MS:STEP_MS); }
+function rplayStart(){ if(rtimer||fellBack||!RAD)return; playing=true;
+  document.getElementById("rplay").innerHTML="\u2759\u2759 Pause";
+  rtimer=setTimeout(tick,STEP_MS); }
+function rplayStop(){ clearTimeout(rtimer); rtimer=null; playing=false;
+  document.getElementById("rplay").innerHTML="\u25B6 Play"; }
+
+/* fallback: single live frame, refreshed on the same 5-min cadence */
+let fbLayer=null;
+function fbStamp(){ document.getElementById("rtime").textContent="radar live \u00b7 "+
   new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+" \u00b7 NEXRAD (IEM)"; }
-radar.on("load",()=>{ radar.setOpacity(ROPACITY); rstamp(); });
-function refreshRadar(){
-  const nl=rlayer();
+function fbRefresh(){
+  const nl=L.tileLayer(LATEST_URL+"?ts="+Date.now(),{opacity:0,zIndex:400,maxZoom:19,errorTileUrl:TRANS});
   let done=false;
-  nl.on("load",()=>{ if(done)return; done=true;
-    nl.setOpacity(ROPACITY); map.removeLayer(radar); radar=nl; rstamp(); });
-  nl.addTo(map);
-  setTimeout(()=>{ if(!done){ done=true; nl.setOpacity(ROPACITY);
-    map.removeLayer(radar); radar=nl; rstamp(); } }, 15000);
+  const swap=()=>{ if(done)return; done=true; nl.setOpacity(ROP);
+    if(fbLayer)map.removeLayer(fbLayer); fbLayer=nl; fbStamp(); };
+  nl.on("load",swap); nl.addTo(map); setTimeout(swap,15000); }
+function enterFallback(set){ fellBack=true; rplayStop();
+  set.layers.forEach(l=>map.removeLayer(l));
+  document.getElementById("rplay").disabled=true;
+  document.getElementById("rplay").innerHTML="\u25CF live";
+  fbRefresh(); }
+
+/* rebuild: fetch a fresh frame set, preload, swap, restart loop */
+function rebuild(){
+  if(fellBack){ fbRefresh(); return; }
+  if(!RAD) return;
+  const ns=makeSet();
+  setTimeout(()=>{
+    if(ns.ok===0){ ns.layers.forEach(l=>map.removeLayer(l)); return; } /* keep old set */
+    const wasPlaying=playing; rplayStop();
+    RAD.layers.forEach(l=>map.removeLayer(l));
+    RAD=ns; showFrame(RAD.layers.length-1);
+    if(wasPlaying) rplayStart();
+  },6000);
 }
-setInterval(refreshRadar, RREFRESH_MS);
-document.getElementById("rref").addEventListener("click",refreshRadar);
+
+/* init */
+document.getElementById("rtime").textContent="radar: loading loop\u2026";
+RAD=makeSet();
+setTimeout(()=>{
+  if(RAD.ok>0){ showFrame(RAD.layers.length-1); rplayStart(); }
+  else enterFallback(RAD);
+},4500);
+setInterval(rebuild,RREFRESH_MS);
+document.getElementById("rplay").addEventListener("click",()=>{ if(fellBack)return; rtimer?rplayStop():rplayStart(); });
+document.getElementById("rref").addEventListener("click",rebuild);
 
 L.control.layers({"Carto (light)":base,"Topographic":terrain},
   {"Streams (USGS NHD)":hydro,"Sub-basins":basins,"Labels":labels},{position:"topright",collapsed:false}).addTo(map);

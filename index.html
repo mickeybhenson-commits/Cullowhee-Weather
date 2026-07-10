@@ -229,7 +229,7 @@
   <h2>The whole system, in one model</h2>
   <p class="section-lede">The sensors in the creek, the gateways that carry the data out, the satellites overhead, and the weather that drives it all. Drag to look around; switch between the sensor network, the forecast layer, and the campus alert ladder.</p>
   <div class="frame frame-tall">
-    <iframe src="noah_skye_3d.html" title="Interactive 3D model of the NOAH and SKYE system" loading="lazy"></iframe>
+    <iframe id="model3d" title="Interactive 3D model of the NOAH and SKYE system" loading="lazy"></iframe>
   </div>
   <p class="caption">Interactive · the terrain is schematic and sensor positions are indicative — a diagram of how the parts fit, not a survey map.</p>
 </section>
@@ -249,7 +249,7 @@
 
 <footer class="foot">
   <p>Built by <strong>Mickey Henson</strong> · College of Engineering, Western Carolina University</p>
-  <p><a href="noah_skye_3d.html">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+  <p><a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
 </footer>
 
 <script>
@@ -267,9 +267,15 @@
     reveals.forEach(function(el){io.observe(el);});
   }
 
+  // ---- cache-busting for embedded pages ----
+  // Browsers cache iframe documents aggressively; appending a fresh version
+  // stamp to the URL forces the latest committed copy every page load.
+  var CACHE_BUST = 'v=' + Date.now();
+  function bust(url){ return url + (url.indexOf('?') < 0 ? '?' : '&') + CACHE_BUST; }
+
   // ---- live map embed ----
   // Paste the address of your live watershed map between the quotes to embed it here.
-  // Leave it as-is and the section shows an "Open the live map" button instead.
+  // Leave it empty and the section shows an "Open the live map" button instead.
   var DASHBOARD_URL = "Cullowhee_Creek_live_status.html";
 
   (function(){
@@ -278,15 +284,22 @@
     var link = document.getElementById('mapLink');
     var url = (DASHBOARD_URL || "").trim();
     if(url){
-      frame.src = url;
+      frame.src = bust(url);
       frame.style.display = 'block';
       fallback.style.display = 'none';
+      link.href = url;
     } else {
       // no URL yet: keep the button, point it nowhere harmful
       link.addEventListener('click', function(ev){
         if(!link.getAttribute('href') || link.getAttribute('href')==='#'){ ev.preventDefault(); }
       });
     }
+  })();
+
+  // ---- 3D model embed (same cache-busting) ----
+  (function(){
+    var m = document.getElementById('model3d');
+    if(m){ m.src = bust('noah_skye_3d.html'); }
   })();
 </script>
 </body>

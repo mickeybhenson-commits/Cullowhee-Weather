@@ -265,7 +265,7 @@ if(typeof SCEN!=="undefined"){ const ARCW={1:0.2,2:0.5,3:0.85};
     const a=assessBasin(b,s.qpf,w);
     s.st[b]={lvl:(a.stage==null?"N/A":a.posture), stage:a.stage, cq:a.calib_q, rp:a.rp}; }); }); }
 const TRANS="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
-const map=L.map("map",{zoomControl:true,maxZoom:16}).fitBounds(BOUNDS,{maxZoom:12});
+const map=L.map("map",{zoomControl:true,maxZoom:16,zoomSnap:0.25,zoomDelta:0.5}).setView([35.262,-83.189],11.75);
 const base=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
   {attribution:"&copy; OpenStreetMap, &copy; CARTO",subdomains:"abcd",maxZoom:19,errorTileUrl:TRANS}).addTo(map);
 const terrain=L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",

@@ -51,7 +51,7 @@
 body.whatif-on .radartiles{opacity:0!important;pointer-events:none}
 .stormicon{background:none;border:none}
 .stormdot{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,#2b6cb0 0%,#4299e1 45%,rgba(66,153,225,.18) 72%,transparent 100%);border:2px solid #2b6cb0;box-shadow:0 0 7px rgba(43,108,176,.6);cursor:move}
-#sbtable{position:absolute;top:48px;right:8px;z-index:1100;background:rgba(19,33,46,.93);color:#eef2f4;border-radius:10px;padding:8px 11px 9px;font:12px/1.4 ui-monospace,Menlo,monospace;box-shadow:0 2px 12px rgba(0,0,0,.45);min-width:252px;max-width:330px}
+#sbtable{position:absolute;bottom:14px;right:8px;max-height:calc(100vh - 90px);overflow-y:auto;z-index:1100;background:rgba(19,33,46,.93);color:#eef2f4;border-radius:10px;padding:8px 11px 9px;font:12px/1.4 ui-monospace,Menlo,monospace;box-shadow:0 2px 12px rgba(0,0,0,.45);min-width:252px;max-width:330px}
 #sbtable h4{margin:0 0 6px;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:#9db2c4;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px}
 #sbtable table{border-collapse:collapse;width:100%}
 #sbtable th{font-size:9px;color:#8aa0b2;text-align:left;font-weight:600;padding:0 8px 4px 0;text-transform:uppercase;letter-spacing:.02em}
@@ -104,22 +104,12 @@ body.whatif-on .radartiles{opacity:0!important;pointer-events:none}
     <select id="stormspeed" class="mini" title="playback speed" style="padding:4px 6px;cursor:pointer"><option value="0.5">&#189;&#215;</option><option value="1" selected>1&#215;</option><option value="2">2&#215;</option><option value="4">4&#215;</option></select>
     <label style="font-size:11px;color:#5b6b7a">R</label>
     <input type="range" id="stormrad" min="1.5" max="9" step="0.5" value="5" title="storm radius (mi)" style="width:66px">
-    <span class="read" id="stormread">place the storm &middot; drag or click the map</span>
   </div>
 </div>
 <div id="radarctl" class="panel">
   <button id="rplay">❙❙ Pause</button>
   <button id="rref">↻ Now</button>
   <span id="rtime">radar: loading…</span>
-</div>
-<div id="legend" class="panel">
-  <div class="row"><span class="sw" style="background:#1A7A52"></span>NORMAL</div>
-  <div class="row"><span class="sw" style="background:#C08A00"></span>WATCH</div>
-  <div class="row"><span class="sw" style="background:#C2410C"></span>WARNING</div>
-  <div class="row"><span class="sw" style="background:#B42318"></span>EMERGENCY</div>
-  <div class="row"><span class="sw" style="background:#9AA5B1"></span>no rating / no data</div>
-  <div class="note"><b>Basins = model</b>, computed live from Open‑Meteo (forecast QPF + antecedent + soil).
-    <b>Radar = observed</b> NEXRAD. SHADOW‑MODE: forecast under‑calls orographic rain; only WCU thresholds are validated.</div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>

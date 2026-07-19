@@ -438,6 +438,114 @@ def qpf_bias(rows, model_by_dir, window="h24", min_measured=0.1):
     return out
 
 
+# ---------------------------------------------------------------------------
+# INTEGRATION 3 — the UPWIND OUTLOOK: turn measured upwind rain into a pre-rain
+# escalation signal. This is the piece that lets the system ACT, not just show:
+# when a gauge on the storm-approach arc is logging hard rain AND the steering
+# flow is carrying it toward the watershed, we emit a relative risk index that
+# flood_network.tiered_posture folds into its OUTLOOK tier — raising a WATCH
+# before a drop falls on the ungauged headwaters.
+#
+# Design decisions, matched to flood_network's philosophy:
+#   - Direction-gated: a gauge only counts if the storm is coming FROM it (same
+#     cone test the arrival-ETA uses). Heavy rain moving AWAY is not your storm.
+#   - Rain RATE -> risk, not total: a 3-inch daily total that fell overnight is
+#     not the threat a 1-inch hour is. We score short-window intensity (h1/h3).
+#   - Combined with noisy-OR (same combiner flood_network uses), so multiple
+#     upwind gauges reinforce rather than average away.
+#   - Returns a RELATIVE, UNCALIBRATED index in [0,1] — like priming/orographic.
+#     It is allowed to reach WATCH and no further: measured upwind RAIN is still
+#     a leading proxy for the ungauged headwaters, NOT a confirmed creek rise, so
+#     it respects the same ceiling as the rest of the outlook tier.
+#
+# Thresholds below are TUNABLE placeholders — calibrate against the Helene
+# backtest (backtest_helene.py) before trusting the absolute trip point.
+# ---------------------------------------------------------------------------
+UPWIND_RATE1_IN = 1.0        # 1-h total mapping to full-scale intensity risk [tunable]
+UPWIND_RATE3_IN = 2.0        # 3-h total mapping to full-scale intensity risk [tunable]
+UPWIND_CONE_DEG = 60         # gauge counts only if within this of the upwind heading
+UPWIND_WATCH_THRESHOLD = 0.45  # combined risk that trips an Outlook WATCH [tunable]
+_MPH_TO_KMH = 1.60934
+
+
+def _noisy_or(probs):
+    acc = 1.0
+    for p in probs:
+        acc *= (1.0 - max(0.0, min(1.0, p)))
+    return round(1.0 - acc, 3)
+
+
+def _ang_diff(a, b):
+    d = abs((a - b) % 360)
+    return min(d, 360 - d)
+
+
+def _intensity_score(h1, h3):
+    """Short-window rain intensity -> risk in [0,1]. Worst of the 1-h and 3-h
+    normalised rates, so a sharp burst OR a sustained soak both register."""
+    s1 = (h1 or 0.0) / UPWIND_RATE1_IN if UPWIND_RATE1_IN else 0.0
+    s3 = (h3 or 0.0) / UPWIND_RATE3_IN if UPWIND_RATE3_IN else 0.0
+    return max(0.0, min(1.0, max(s1, s3)))
+
+
+def upwind_outlook(rows, steering, cone_deg=UPWIND_CONE_DEG,
+                   watch_threshold=UPWIND_WATCH_THRESHOLD):
+    """Measured upwind gauges + steering flow -> pre-rain outlook signal.
+
+    rows: gauge_rows() output. steering: live_rainfall.steering_flow() dict
+    ({from_deg, speed_mph, ...}) or None. Returns a dict:
+      {risk, level, lead_min, contributors, note}
+    consumable directly by flood_network.tiered_posture(..., upwind=<this>).
+
+    Only CLEAN (qc==ok), geolocated gauges that are genuinely upwind of the
+    watershed under the current steering flow contribute. If the flow is missing
+    or near-calm, motion is undefined: we report the raw intensity for visibility
+    but emit risk 0 (we can't claim it's heading our way)."""
+    have_flow = bool(steering) and steering.get("speed_mph", 0) >= 3
+    from_deg = steering.get("from_deg") if steering else None
+    speed_kmh = (steering.get("speed_mph", 0) * _MPH_TO_KMH) if steering else 0.0
+
+    contributors, scores = [], []
+    for r in rows:
+        if r.get("qc") != "ok" or r.get("bearing") is None:
+            continue
+        score = _intensity_score(r.get("h1"), r.get("h3"))
+        if score <= 0:
+            continue
+        upwind = have_flow and _ang_diff(r["bearing"], from_deg) <= cone_deg
+        eta_min = None
+        if upwind and speed_kmh > 0 and r.get("dist_km") is not None:
+            eta_min = max(1, round(r["dist_km"] / speed_kmh * 60))
+        contributors.append(dict(
+            area=r["area"], dir=r.get("dir"), h1=r.get("h1"), h3=r.get("h3"),
+            score=round(score, 3), upwind=bool(upwind), eta_min=eta_min))
+        if upwind:
+            scores.append(score)         # only upwind gauges drive the risk
+
+    contributors.sort(key=lambda c: (not c["upwind"], -c["score"]))
+    risk = _noisy_or(scores) if scores else 0.0
+    level = "WATCH" if risk >= watch_threshold else "NORMAL"
+    etas = [c["eta_min"] for c in contributors if c["upwind"] and c["eta_min"]]
+    lead_min = min(etas) if etas else None
+
+    if not have_flow:
+        hot = [c["area"] for c in contributors if c["score"] >= 0.5]
+        note = ("Steering flow undefined (calm/variable) — cannot confirm approach; "
+                + (f"heavy rain present at {', '.join(hot)} (motion unknown)."
+                   if hot else "no significant upwind rain."))
+    elif level == "WATCH":
+        who = ", ".join(c["area"] for c in contributors if c["upwind"]
+                        and c["score"] >= 0.5) or "the approach arc"
+        lead = f" ~{lead_min} min out" if lead_min else ""
+        note = (f"MEASURED heavy rain approaching from {who}{lead}. Leading, "
+                "uncalibrated proxy for the ungauged headwaters — WATCH ceiling, "
+                "not a confirmed creek rise.")
+    else:
+        note = "Upwind gauges below intensity threshold, or rain not tracking in."
+    return dict(risk=risk, level=level, lead_min=lead_min,
+                contributors=contributors, note=note)
+
+
 def validate_note():
     return ("VALIDATE once on a networked box: run this file, pick one clean "
             "gauge, and compare its h24 against the same station's public page "

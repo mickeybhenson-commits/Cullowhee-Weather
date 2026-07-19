@@ -13,13 +13,20 @@ Confirmed topology (headwaters meet at Speedwell):
 
 Lead time to the campus is the SUM of a site's segments along the path
 (e.g. Double Springs → Speedwell → Campus), not a single hop.
+
+UPWIND OUTLOOK (added): the Outlook tier can now also be raised by MEASURED rain
+on the storm-approach arc — gov_gauges.upwind_outlook() turns "a real gauge SW/S
+of us is logging hard rain and the flow is carrying it in" into a pre-rain WATCH,
+before any headwater sensor responds. It enters the outlook tier as one more
+priming signal and respects the same WATCH ceiling (measured upwind RAIN is a
+lead indicator, not a confirmed creek rise). Optional: tiered_posture works
+exactly as before when `upwind` is not supplied.
 ============================================================================
 """
 
 from dataclasses import dataclass, field
 
 import flood_engine as fe
-from outlook_engine import forecast_site   # calibrated gateway forecast (capped at WATCH)
 
 # ---------------------------------------------------------------------
 # TOPOLOGY
@@ -122,8 +129,6 @@ class UpstreamContribution:
     ew_prob: float = None
     priming: float = None
     olp_index: float = None
-    calib_outlook: str = None          # calibrated forecast posture (capped WATCH) if basin-mapped
-    forecast_stage_ft: float = None    # forecast stage from the calibrated engine
 
 
 @dataclass
@@ -161,25 +166,12 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL",
             if a.level != "NORMAL":
                 etas.append(eta)
         else:
-            # No measured stage: forecast is the only forward signal. Use the
-            # calibrated engine where the gateway maps to a CC-* basin; fall back
-            # to the relative priming index where it doesn't.
-            qpf, p5 = inp.get("storm_rain_in"), inp.get("antecedent_5day")
-            fc = forecast_site(sid, qpf, p5) if (qpf is not None and p5 is not None) else None
-            if fc is not None:
-                c.calib_outlook = fc["outlook_level"]
-                c.forecast_stage_ft = fc["forecast_stage_ft"]
-                watch = _sev_idx(c.calib_outlook) >= _sev_idx("WATCH")
-                probs.append(0.5 if watch else 0.0)
-                if watch:
+            prim = priming_index(inp)
+            if prim is not None:
+                c.priming = prim
+                probs.append(prim)
+                if prim >= 0.5:
                     etas.append(eta)
-            else:
-                prim = priming_index(inp)
-                if prim is not None:
-                    c.priming = prim
-                    probs.append(prim)
-                    if prim >= 0.5:
-                        etas.append(eta)
         olp = orographic_by_site.get(sid)
         if olp is not None:
             c.olp_index = round(olp, 3)
@@ -231,6 +223,7 @@ class TieredPosture:
     stream_sites: list = field(default_factory=list)    # (name, level, stage_ft, eta_hr)
     stream_note: str = ""
     lead_hr: float = None
+    upwind_lead_min: float = None      # measured-upwind lead time, if any
     headline_statement: str = ""
 
 
@@ -239,10 +232,17 @@ def _sev_idx(level):
     return order.index(level) if level in order else 0
 
 
-def tiered_posture(rw, warning_id="belk"):
+def tiered_posture(rw, warning_id="belk", upwind=None):
     """Split a RoutedWarning into the Outlook (forecast/soil) and Confirmation
     (measured stream) tiers, enforcing: forecast/soil can reach at most WATCH;
-    WARNING/EMERGENCY require a measured stream rise."""
+    WARNING/EMERGENCY require a measured stream rise.
+
+    `upwind` (optional): the dict from gov_gauges.upwind_outlook() — a MEASURED
+    rain signal from the storm-approach arc. It enters the Outlook tier as one
+    more priming source (same noisy-OR combine, same WATCH ceiling), so a storm
+    bearing down from the SW/S can raise a WATCH even with zero headwater sensors
+    deployed. It NEVER escalates past WATCH: measured upwind rain is a leading
+    proxy, not a confirmed creek rise."""
     tp = TieredPosture(lead_hr=rw.lead_time_hr)
 
     # ---- Confirmation tier: measured stage only --------------------------
@@ -259,26 +259,35 @@ def tiered_posture(rw, warning_id="belk"):
             tp.stream_sites.append((c.name, c.level, None, c.eta_hr))
     tp.stream_level = max(stream_levels, key=_sev_idx) if stream_levels else "NORMAL"
 
-    # ---- Outlook tier: calibrated forecast where mapped, else relative index ----
-    primings, rising_names, calib_levels = [], [], []
+    # ---- Outlook tier: soil + forecast (+ pre-rain orographic + upwind rain) --
+    primings, soil_names = [], []
     for c in rw.upstream:
-        if c.calib_outlook is not None:                  # basin-mapped: calibrated forecast wins
-            calib_levels.append(c.calib_outlook)
-            tp.outlook_sites.append((c.name, c.forecast_stage_ft, c.eta_hr, "calibrated"))
-            if _sev_idx(c.calib_outlook) >= _sev_idx("WATCH"):
-                rising_names.append(c.name)
-        elif c.priming is not None:                      # unmapped: relative priming fallback
+        if c.priming is not None:
             primings.append(c.priming)
             tp.outlook_sites.append((c.name, c.priming, c.eta_hr, "soil+rain"))
             if c.priming >= WATCH_OUTLOOK_THRESHOLD:
-                rising_names.append(c.name)
+                soil_names.append(c.name)
         if c.olp_index is not None:
             primings.append(0.6 * c.olp_index)
             tp.outlook_sites.append((c.name, c.olp_index, c.eta_hr, "orographic"))
+
+    # measured upwind rain on the approach arc (gov_gauges.upwind_outlook)
+    upwind_watch, upwind_who = False, ""
+    if upwind and upwind.get("risk"):
+        u_risk = upwind["risk"]
+        primings.append(u_risk)
+        lead_min = upwind.get("lead_min")
+        tp.upwind_lead_min = lead_min
+        eta_hr = round(lead_min / 60.0, 2) if lead_min else None
+        upwind_who = ", ".join(dict.fromkeys(
+            c["area"] for c in upwind.get("contributors", []) if c.get("upwind")))
+        tp.outlook_sites.append((upwind_who or "approach arc", round(u_risk, 3),
+                                 eta_hr, "upwind-gauge"))
+        if u_risk >= WATCH_OUTLOOK_THRESHOLD:
+            upwind_watch = True
+
     tp.outlook_risk = _noisy_or(primings) if primings else 0.0
-    calib_watch = any(_sev_idx(l) >= _sev_idx("WATCH") for l in calib_levels)
-    relative_watch = tp.outlook_risk >= WATCH_OUTLOOK_THRESHOLD
-    tp.outlook_level = "WATCH" if (calib_watch or relative_watch) else "NORMAL"
+    tp.outlook_level = "WATCH" if tp.outlook_risk >= WATCH_OUTLOOK_THRESHOLD else "NORMAL"
 
     # ---- Combine: outlook capped at WATCH; stream sets the ceiling -------
     tp.headline = max([tp.outlook_level, tp.stream_level], key=_sev_idx)
@@ -289,19 +298,24 @@ def tiered_posture(rw, warning_id="belk"):
     else:
         tp.driver = "none"
 
-    # ---- Tier notes ------------------------------------------------------
+    # ---- Tier notes (reflect what actually tripped the outlook) ----------
     if tp.outlook_level == "WATCH":
-        who = ", ".join(dict.fromkeys(rising_names)) or "upstream sub-basins"
-        lead = f" ~{tp.lead_hr:.1f} hr before the creek responds" if tp.lead_hr else ""
-        if calib_watch:
-            tp.outlook_note = (f"Calibrated forecast (StreamStats-anchored) puts {who} at WATCH{lead}. "
-                               "Forecast rainfall under-calls orographic totals, so this is a lead-time "
-                               "outlook, not a confirmed stage — WARNING/EMERGENCY need a measured rise.")
-        else:
-            tp.outlook_note = (f"Saturated soils + forecast rain have primed {who}{lead}. "
-                               "Relative priming index (uncalibrated) — treat as relative risk.")
+        parts = []
+        if soil_names:
+            who = ", ".join(dict.fromkeys(soil_names))
+            lead = f" ~{tp.lead_hr:.1f} hr before the creek responds" if tp.lead_hr else ""
+            parts.append(f"Saturated soils + forecast rain have primed {who}{lead}.")
+        if upwind_watch:
+            um = upwind.get("lead_min")
+            ulead = f" ~{um} min out" if um else ""
+            parts.append(f"MEASURED heavy rain is tracking in from "
+                         f"{upwind_who or 'the approach arc'}{ulead} — a real gauge, "
+                         "not a forecast.")
+        parts.append("Leading, uncalibrated signal — relative risk, not a calibrated "
+                     "probability, and not yet confirmed by a stream rise.")
+        tp.outlook_note = "  ".join(parts)
     else:
-        tp.outlook_note = "Soil + forecast signal below outlook threshold."
+        tp.outlook_note = "Soil + forecast + upwind signal below outlook threshold."
 
     if tp.stream_confirmed and tp.stream_level != "NORMAL":
         names = ", ".join(n for n, lv, *_ in tp.stream_sites if lv != "NORMAL")
@@ -316,8 +330,13 @@ def tiered_posture(rw, warning_id="belk"):
     if tp.driver == "stream":
         tp.headline_statement = f"Measured headwater stream rise — {tp.stream_level} confirmed."
     elif tp.driver == "outlook":
-        tp.headline_statement = ("OUTLOOK: sub-basins primed by soil + forecast. Lead-time signal, "
-                                 "not yet confirmed by stream rise.")
+        if upwind_watch:
+            tp.headline_statement = ("OUTLOOK: measured rain on the storm-approach arc is "
+                                     "tracking toward the watershed. Lead-time signal, not yet "
+                                     "confirmed by stream rise.")
+        else:
+            tp.headline_statement = ("OUTLOOK: sub-basins primed by soil + forecast. Lead-time signal, "
+                                     "not yet confirmed by stream rise.")
     else:
         tp.headline_statement = "No flood threat indicated. Monitoring nominal."
     return tp
@@ -364,6 +383,25 @@ def _run_self_test():
     inp = {"double_springs": {"stage_series": _rising(4.0, 9.5)},
            "aahp": {"soil_pct": 88.0, "storm_rain_in": 1.8}}
     _show("Upstream pulse, campus gauge not yet installed", routed_assessment("belk", inp))
+
+    # Upwind-outlook demo: NO headwater sensors online, but a measured gauge SW
+    # of us is logging hard rain and the flow is carrying it in -> Outlook WATCH.
+    print("=" * 70)
+    print("Upwind OUTLOOK: measured rain approaching, zero headwater sensors")
+    print("=" * 70)
+    rw_bare = routed_assessment("belk", {})            # nothing deployed
+    upwind = {"risk": 0.62, "level": "WATCH", "lead_min": 48,
+              "contributors": [{"area": "Raingage at Franklin", "dir": "SW",
+                                "h1": 0.9, "h3": 1.9, "score": 0.95,
+                                "upwind": True, "eta_min": 48}],
+              "note": "MEASURED heavy rain approaching from Franklin ~48 min out."}
+    tp = tiered_posture(rw_bare, "belk", upwind=upwind)
+    print(f"  headline : {tp.headline}  (driver={tp.driver})")
+    print(f"  outlook  : {tp.outlook_level}  risk={tp.outlook_risk}  "
+          f"lead={tp.upwind_lead_min} min")
+    print(f"  stream   : {tp.stream_level}  (confirmed={tp.stream_confirmed})")
+    print(f"  says     : {tp.headline_statement}")
+    print(f"  outlook_note: {tp.outlook_note}\n")
 
 
 # =====================================================================
@@ -464,6 +502,8 @@ MODEL_PROVENANCE = {
     "logistic_weights":  ("placeholder", "calibrate against observed flood events"),
     "orographic_terrain": ("placeholder", "upslope azimuth + slope per windward site from DEM"),
     "orographic_index":   ("modeled", "lift potential from ridge wind + BME280"),
+    "upwind_gauge_outlook": ("measured", "gov_gauges.upwind_outlook — real approach-arc rain; "
+                                         "rate/direction thresholds tunable, calibrate vs Helene"),
 }
 
 

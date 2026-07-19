@@ -152,10 +152,51 @@ def test_integration_helpers():
     check("no rain -> ratio None", bias2["S"]["ratio"] is None)
 
 
+def _grow(area, dir_, bearing, dist_km, h1, h3, qc="ok"):
+    return {"area": area, "dir": dir_, "bearing": bearing, "dist_km": dist_km,
+            "h1": h1, "h3": h3, "qc": qc}
+
+
+def test_upwind_outlook():
+    print("upwind_outlook")
+    franklin = _grow("Franklin", "SW", 225, 30, 0.9, 1.9)   # score max(.9,.95)=.95
+    sw_flow = {"from_deg": 225, "speed_mph": 25}            # storm coming FROM SW
+
+    o = gg.upwind_outlook([franklin], sw_flow)
+    check("hard rain from upwind -> WATCH", o["level"] == "WATCH")
+    check("risk high (~0.95)", o["risk"] >= 0.9)
+    check("lead time computed", o["lead_min"] is not None and o["lead_min"] > 0)
+    check("contributor marked upwind", o["contributors"][0]["upwind"] is True)
+
+    # same rain, but flow from the NE -> Franklin is NOT upwind -> no risk
+    ne_flow = {"from_deg": 45, "speed_mph": 25}
+    o2 = gg.upwind_outlook([franklin], ne_flow)
+    check("off-axis storm -> NORMAL", o2["level"] == "NORMAL")
+    check("off-axis risk = 0", o2["risk"] == 0.0)
+    check("still listed, flagged not-upwind", o2["contributors"][0]["upwind"] is False)
+
+    # calm / no steering -> motion undefined, risk 0 but rain still surfaced
+    o3 = gg.upwind_outlook([franklin], None)
+    check("no flow -> risk 0", o3["risk"] == 0.0)
+    check("no flow note mentions motion", "motion" in o3["note"].lower()
+          or "undefined" in o3["note"].lower())
+
+    # a rejected gauge must never contribute
+    bad = _grow("Bad", "SW", 225, 10, 5.0, 9.0, qc="reject:impossible-rate")
+    o4 = gg.upwind_outlook([bad], sw_flow)
+    check("rejected gauge ignored", o4["risk"] == 0.0)
+
+    # two upwind gauges reinforce (noisy-OR) vs one
+    g2 = _grow("Highlands", "S", 180, 25, 0.6, 1.0)
+    s_and_sw = {"from_deg": 200, "speed_mph": 20}          # cone covers S..SW
+    o5 = gg.upwind_outlook([franklin, g2], s_and_sw)
+    check("two gauges combine >= single", o5["risk"] >= gg.upwind_outlook([g2], s_and_sw)["risk"])
+
+
 if __name__ == "__main__":
     for fn in (test_trailing_totals, test_usgs_compute, test_synoptic_compute,
                test_qc, test_geometry, test_time_parsing,
-               test_integration_helpers):
+               test_integration_helpers, test_upwind_outlook):
         fn()
     print("\n" + ("ALL PASS" if not FAILS else f"{len(FAILS)} FAILED: {FAILS}"))
     raise SystemExit(1 if FAILS else 0)

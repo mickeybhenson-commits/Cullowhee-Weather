@@ -12,6 +12,7 @@ PROVENANCE OF EVERY NUMBER
   calib   : maps this model's TR-55/UH peak onto regression          [derived]
   thr_ft  : campus = receptor-validated; others = PLACEHOLDER        [see thr_src]
   learned / stage_sensor : empty until events / sensors arrive       [MEASURED, future]
+  tc_min / lead_req_min  : time-of-concentration + operational lead   [see tc_src]
 
 KEY FINDINGS BAKED IN (see flood_rating.py self-test to reproduce)
   - Every reach's raw TR-55 peak runs 1.9-2.8x over regression; the bias GROWS
@@ -28,6 +29,9 @@ NESTING - these are cumulative points down ONE mainstem, NOT independent areas:
 WHAT IS STILL OPEN (flagged per record)
   - thr_ft for the 7 non-campus reaches are placeholders; they need a surveyed
     top-of-bank or an observed receptor (the campus has the road datum, they don't).
+    NOTE: as of the 2026-07 improvement set, posture for these 7 reaches is taken
+    from discharge return-period (see flood_rating.classify), which sidesteps the
+    invalid out-of-bank stage rating. thr_ft is retained as a cross-check only.
   - `role` (warning point vs contributor) PENDING for the tributaries; set from map.
   - Long Branch discharge is soft: TVA (~445) and StreamStats (294) disagree 1.5x
     at the 10-yr (both within the StreamStats prediction interval).
@@ -37,6 +41,11 @@ WHAT IS STILL OPEN (flagged per record)
 AEP_RP = {0.50: 2, 0.20: 5, 0.10: 10, 0.04: 25, 0.02: 50, 0.01: 100, 0.005: 200, 0.002: 500}
 
 REG_SRC = "USGS StreamStats regional regression, NC SIR 2023-5006 (6/2026 delineation)"
+
+# Operational forecast lead requirement (minutes). Reaches with tc_min below this
+# are lead-limited: obs-only warning cannot make lead, so they need forecast-driven
+# warning. Source: NOAH operations handoff (120-min actionable lead).
+LEAD_REQ_MIN = 120
 
 BASINS = {
 
@@ -52,6 +61,7 @@ BASINS = {
     bankfull_curve="Appalachian Highlands D (Blue Ridge eq EXCLUDED: DA 5.03 < 5.46 floor)",
     out_of_bank_10yr=0.99, tva_wse=None, bed_ft=None, learned=None,
     thr_ft=(1.78, 2.67, 3.56), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    tc_min=40, tc_src="Kirpich (buildsheet); NRCS-wet pending TR-55 segmental",
     stage_sensor=None,  # buildsheet: anchor MB7067 / confirmation A02YYUW, role-dependent
     note="n=0.045 post-Helene woody-debris (buildsheet, supersedes test_model 0.060)."),
 
@@ -67,6 +77,7 @@ BASINS = {
     bankfull_curve="Blue Ridge P (DA 11 > 5.46 floor)",
     out_of_bank_10yr=1.09, tva_wse=None, bed_ft=None, learned=None,
     thr_ft=(2.32, 3.48, 4.64), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    tc_min=86, tc_src="Kirpich 86 vs NRCS-wet 142 (ambiguous); calibration absorbs the spread",
     stage_sensor=None,
     note="Tc ambiguous (Kirpich 86 vs NRCS-wet 142 min); calibration absorbs the spread."),
 
@@ -82,6 +93,7 @@ BASINS = {
     bankfull_curve="Blue Ridge P (DA 7.05 > 5.46 floor)",
     out_of_bank_10yr=1.15, tva_wse=None, bed_ft=None, learned=None,
     thr_ft=(2.02, 3.03, 4.04), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    tc_min=62, tc_src="Kirpich (buildsheet)",
     stage_sensor=None, note=""),
 
  "CC-SPD-1830": dict(
@@ -96,6 +108,7 @@ BASINS = {
     bankfull_curve="Blue Ridge P (DA 18.3 > 5.46 floor)",
     out_of_bank_10yr=1.07, tva_wse=None, bed_ft=None, learned=None,
     thr_ft=(2.71, 4.07, 5.42), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    tc_min=91, tc_src="Kirpich (buildsheet); NRCS-wet 146",
     stage_sensor=None, note=""),
 
  "CC-COX-097": dict(
@@ -110,6 +123,7 @@ BASINS = {
     bankfull_curve="Appalachian Highlands D (Blue Ridge eq EXCLUDED: DA 0.97 < 5.46 floor)",
     out_of_bank_10yr=1.09, tva_wse=None, bed_ft=None, learned=None,
     thr_ft=(1.11, 1.67, 2.22), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    tc_min=29, tc_src="Kirpich (buildsheet); NRCS-wet 52. Flashiest reach.",
     stage_sensor=None, note="Lead-limited (Tc<120). Below Bieger Blue Ridge floor."),
 
  "CC-LB-171": dict(
@@ -127,6 +141,7 @@ BASINS = {
     tva_wse={10:(380,2128.2), 100:(830,2130.3), 500:(1275,2131.9)},  # Table 3 XS3 mile 0.44 (open ch)
     bed_ft=None, learned=None,
     thr_ft=(1.31, 1.97, 2.62), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    tc_min=36, tc_src="Kirpich (buildsheet); NRCS-wet 62",
     stage_sensor=None,
     note="Contributor to campus, not standalone. Discharge soft: TVA 445 vs reg 294 at 10-yr."),
 
@@ -146,6 +161,7 @@ BASINS = {
     bed_ft=2070.5,   # = 100-yr WSE - 11 ft road datum; CONFIRM warning-point mile / survey thalweg
     learned=None,
     thr_ft=(7.0, 9.0, 11.0), thr_src="VALIDATED: 11 ft = water in road (field); 9/11 bracket TVA 10/100-yr",
+    tc_min=127, tc_src="Kirpich (buildsheet); NRCS-wet 182. Lead-adequate.",
     stage_sensor=None,  # Belk rooftop gateway nearby; ultrasonic TBD
     note="Sole TVA-rated reach. 10-yr -> WATCH/WARNING (section-dependent), 100-yr -> EMERGENCY. "
          "WATCH/WARNING split depends on warning-point mile (0.60 -> WARNING, 0.89 -> WATCH); CONFIRM."),
@@ -163,6 +179,7 @@ BASINS = {
     bankfull_curve="Blue Ridge P (ref)",
     out_of_bank_10yr=3.02, tva_wse=None, bed_ft=None, learned=None,
     thr_ft=None, thr_src="N/A - out of scope, downstream bookend only",
+    tc_min=147, tc_src="Kirpich (buildsheet). Out of scope.",
     stage_sensor=None,
     note="Held for completeness. Needs a non-backwater section to ever go live; not a warning point."),
 }

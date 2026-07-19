@@ -16,6 +16,7 @@ import flood_rating as fr
 import lead_time as lt
 import flood_ensemble as fe
 import backtest_helene as bt
+import confluence_status as cs
 
 NON_CAMPUS = [b for b in routed_order() if b not in ("CC-WCU-2260", "CC-MOUTH-2340")]
 
@@ -152,6 +153,42 @@ class TestHeleneBacktest(unittest.TestCase):
     def test_campus_emergency(self):
         rows = {r["bid"]: r for r in bt.run()}
         self.assertEqual(rows["CC-WCU-2260"]["eng_posture"], "EMERGENCY")
+
+
+class TestConfluence(unittest.TestCase):
+    def test_backwater_mapping(self):
+        # NWS TKRN7 categories: action 13 / minor 16 / moderate 19
+        self.assertEqual(cs.backwater_posture(5.0)[0], "NORMAL")
+        self.assertEqual(cs.backwater_posture(13.0)[0], "WATCH")
+        self.assertEqual(cs.backwater_posture(16.0)[0], "WARNING")
+        self.assertEqual(cs.backwater_posture(19.0)[0], "EMERGENCY")
+        self.assertEqual(cs.backwater_posture(24.0)[0], "EMERGENCY")
+
+    def test_takes_worse_mechanism(self):
+        helene_peak = cwm.assess(cs.CONFLUENCE_BID, 10, 0.25)["qp_raw"]
+        # creek flood, river calm -> creek drives EMERGENCY
+        r1 = cs.confluence_status(model_peak_q_cfs=helene_peak, gage_ht_ft=5.0)
+        self.assertEqual(r1["confluence_posture"], "EMERGENCY")
+        self.assertEqual(r1["driver"], "creek-runoff")
+        # creek calm, river minor -> river drives WARNING
+        calm = cwm.assess(cs.CONFLUENCE_BID, 1.0, 0.3)["qp_raw"]
+        r2 = cs.confluence_status(model_peak_q_cfs=calm, gage_ht_ft=17.0)
+        self.assertEqual(r2["confluence_posture"], "WARNING")
+        self.assertEqual(r2["driver"], "river-backwater")
+
+    def test_normal_when_both_calm(self):
+        calm = cwm.assess(cs.CONFLUENCE_BID, 1.0, 0.3)["qp_raw"]
+        r = cs.confluence_status(model_peak_q_cfs=calm, gage_ht_ft=5.21)
+        self.assertEqual(r["confluence_posture"], "NORMAL")
+        self.assertEqual(r["driver"], "none")
+
+    def test_receptor_check(self):
+        # gauge WSE = datum 2111.45 + 18 = 2129.45; home floor 2130 -> dry, 0.55 ft freeboard
+        rc = cs.receptor_check(18.0, 2130.0)
+        self.assertFalse(rc["receptor_wet"])
+        self.assertAlmostEqual(rc["freeboard_ft"], 0.55, places=2)
+        rc2 = cs.receptor_check(20.0, 2130.0)   # WSE 2131.45 > floor -> wet
+        self.assertTrue(rc2["receptor_wet"])
 
 
 if __name__ == "__main__":

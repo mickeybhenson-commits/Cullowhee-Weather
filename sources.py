@@ -6,7 +6,6 @@ PURPOSE
 Every input quantity (rainfall, soil moisture, stage, wind) is fetched through
 ONE resolver that returns the *best available* source plus a provenance tag.
 Priority, highest first:
-
     MEASURED      physical sensor / gauge  (SKYE, NOAH, K24A)
     GOV_ESTIMATE  official model product   (NWM)            <- not wired yet
     MODELED       Open-Meteo / our engine                   <- the fallback today
@@ -35,10 +34,21 @@ ACTIVATING SENSORS LATER
    field_map). That's it -- resolve() starts returning MEASURED for covered
    basins automatically, gated by freshness + range.
 
+COMPOSING SOURCES  (ChainBackend)
+---------------------------------
+To run more than one source with a fixed priority -- e.g. a true in-basin sensor
+first, a nearby government gauge as a proxy second -- wrap them:
+       sources.set_backend(sources.ChainBackend([
+           sources.FirestoreBackend(...),          # MEASURED, in-basin (best)
+           gov_sources.GovGaugeBackend(...),        # GOV_ESTIMATE, nearby proxy
+       ]))
+ChainBackend tries each in order and returns the first reading that PASSES the
+freshness+range gate, so a stale in-basin gauge falls through to the proxy, and
+a rejected proxy falls through to the model -- each level still gated.
+
 Stdlib only. The Firestore client is imported lazily so this module loads with
 or without google-cloud-firestore installed.
 """
-
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
@@ -52,7 +62,6 @@ MODELED = "modeled"
 
 TIER_RANK = {MEASURED: 0, GOV_ESTIMATE: 1, MODELED: 2}
 TIER_LABEL = {MEASURED: "MEASURED", GOV_ESTIMATE: "GOV EST", MODELED: "MODELED"}
-
 DEFAULT_MODELED_SOURCE = "Open-Meteo (HRRR) / engine"
 
 
@@ -132,14 +141,11 @@ def gate(r: Reading, now: Optional[datetime] = None) -> Reading:
     """Return a copy of `r` with valid/note set by range + freshness checks.
     A reading that fails is returned valid=False with the reason in `.note`."""
     now = now or _utcnow()
-
     if r.value is None:
         return _reject(r, "no value")
-
     lo, hi = RANGE.get(r.quantity, (float("-inf"), float("inf")))
     if not (lo <= r.value <= hi):
         return _reject(r, f"out of range [{lo}, {hi}]: {r.value}")
-
     limit = FRESH_S.get(r.quantity)
     if r.ts is None:
         # Can't verify freshness. Allow, but flag -- never silently trust.
@@ -150,7 +156,6 @@ def gate(r: Reading, now: Optional[datetime] = None) -> Reading:
             return _reject(r, f"stale: {int(age)}s old > {limit}s limit")
         if age < -60:  # clock skew / future timestamp
             return _reject(r, f"timestamp in the future by {int(-age)}s")
-
     return _ok(r, "")
 
 
@@ -188,6 +193,33 @@ class DictBackend(SensorBackend):
 
     def latest(self, quantity, basin_id):
         return self._d.get((quantity, basin_id))
+
+
+class ChainBackend(SensorBackend):
+    """Compose backends with a fixed priority. Returns the first reading that
+    PASSES the freshness+range gate; each level is gated independently, so a
+    stale/out-of-range higher-priority reading falls through to the next source.
+
+    If no backend yields a gate-valid reading but at least one returned SOMETHING,
+    the highest-priority present-but-rejected reading is returned (still invalid),
+    so resolve() can surface *why* it was rejected in `.note` rather than silently
+    dropping to the model. Returns None only when every backend returned None."""
+    def __init__(self, backends, now_fn=_utcnow):
+        self._backends = list(backends)
+        self._now_fn = now_fn
+
+    def latest(self, quantity, basin_id):
+        first_present = None
+        now = self._now_fn()
+        for b in self._backends:
+            r = b.latest(quantity, basin_id)
+            if r is None:
+                continue
+            if first_present is None:
+                first_present = r
+            if gate(r, now).valid:
+                return r          # highest-priority source that passes the gate
+        return first_present       # all rejected (or None): surface the top one
 
 
 # Default Firestore document schema. Override field names via field_map if your
@@ -319,6 +351,7 @@ if __name__ == "__main__":
     r = resolve(Q_STAGE, "CC-WCU-2260", 6.7)
     print(f"  stage -> {r.label():9s} {r.value} ({r.source})  note={r.note!r}")
     assert r.tier == MEASURED and r.value == 8.9
+
     # a basin WITHOUT a sensor still falls back
     r2 = resolve(Q_STAGE, "CC-COX-097", 1.2)
     print(f"  Cox  -> {r2.label():9s} {r2.value} ({r2.source})")
@@ -336,8 +369,20 @@ if __name__ == "__main__":
     print(f"  stage -> {r.label():9s} {r.value}  note={r.note!r}")
     assert r.tier == MODELED and "range" in r.note
 
+    print("\n== ChainBackend: stale in-basin sensor falls through to a fresh proxy ==")
+    inbasin = DictBackend()
+    inbasin.put(Reading(8.9, MEASURED, "SKYE in-basin", stale, Q_RAIN_STORM), "CC-TIL-705")
+    proxy = DictBackend()
+    proxy.put(Reading(2.1, GOV_ESTIMATE, "Franklin proxy", fresh, Q_RAIN_STORM), "CC-TIL-705")
+    set_backend(ChainBackend([inbasin, proxy]))
+    r = resolve(Q_RAIN_STORM, "CC-TIL-705", 1.0)
+    print(f"  rain -> {r.label():9s} {r.value} ({r.source})")
+    assert r.tier == GOV_ESTIMATE and r.value == 2.1
+
     print("\n== dead gauge reads 0.00 during a real flood: model still governs ==")
-    be.put(Reading(0.0, MEASURED, "rain gauge", fresh, Q_RAIN_STORM), "CC-TIL-705")
+    be2 = DictBackend()
+    be2.put(Reading(0.0, MEASURED, "rain gauge", fresh, Q_RAIN_STORM), "CC-TIL-705")
+    set_backend(be2)
     # 0.0 is IN range, so it would be accepted -- this shows why freshness + a
     # cross-check matter. Here it's fresh+in-range, so it IS taken; the lesson is
     # that range alone won't catch a stuck-at-zero gauge. Flag for future QC.

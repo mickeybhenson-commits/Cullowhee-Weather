@@ -344,6 +344,7 @@ def _row_from(parsed, meta, now=None):
         h1=parsed.get("h1"), h3=parsed.get("h3"),
         h6=parsed.get("h6"), h24=parsed.get("h24"),
         latest=latest.strftime("%Y-%m-%d %H:%M UTC") if latest else None,
+        latest_iso=latest.isoformat() if latest else None,   # machine ts for gating
         source=f'{meta["network"].upper()} {meta["id"]} (logged)',
         qc="ok" if not flags else "reject:" + ",".join(flags),
         note=meta.get("note", ""),

@@ -135,8 +135,17 @@ def soil_moisture_pct(precip, et0, end_idx, et0_unit="mm",
 
 
 def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
-                          forecast_days=FORECAST_DAYS, now=None):
+                          forecast_days=FORECAST_DAYS, now=None,
+                          storm_correction=None):
     """Map the API response to per-basin posture. Pure: no network calls.
+
+    `storm_correction` (optional): {basin_id: factor} from
+    gov_sources.storm_correction_map() — an UPWARD-ONLY (>= 1.0) multiplier that
+    scales a basin's modeled storm rain up toward measured reality when the
+    government-gauge arc shows the forecast under-calling on that basin's inflow
+    direction. It is applied to the MODELED value BEFORE source resolution, so a
+    real in-basin sensor still out-ranks it. Injected (not fetched) to keep this
+    function pure. None => unchanged behavior.
 
     Every sensor-replaceable quantity (storm rain, antecedent rain, soil
     moisture, stage) is routed through sources.resolve(): today it returns the
@@ -153,6 +162,10 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
         et0 = daily.get("et0_fao_evapotranspiration", []) or []
         et0_unit = loc.get("daily_units", {}).get("et0_fao_evapotranspiration", "mm")
         m_p5, m_storm, fcst_total = _split(dates, precip, forecast_days)
+
+        # upward-only QPF-bias correction from the measured gov-gauge arc, if any
+        if storm_correction:
+            m_storm = round(m_storm * max(1.0, storm_correction.get(bid, 1.0)), 2)
 
         today = datetime.date.today().isoformat()
         ti = dates.index(today) if today in dates else max(0, len(precip) - forecast_days)
@@ -190,8 +203,22 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
 # ---------------------------------------------------------------------------
 # CONVENIENCE: fetch + compute
 # ---------------------------------------------------------------------------
-def run_live(points=BASIN_POINTS, PRF=484.0):
-    return compute_from_response(fetch_all(points), points, PRF)
+def run_live(points=BASIN_POINTS, PRF=484.0, basin_inflow=None):
+    """Fetch + compute. If `basin_inflow` ({basin_id: compass_dir}) is given and
+    gov_gauges is available, apply the upward-only QPF-bias correction from the
+    measured approach-arc gauges. Any failure (no module, no token, no network)
+    degrades silently to the uncorrected model."""
+    correction = None
+    if basin_inflow and gov is not None:
+        try:
+            import gov_sources
+            grows, _err = gov.gauge_rows(token=os.environ.get("SYNOPTIC_TOKEN"))
+            correction = gov_sources.storm_correction_map(
+                basin_inflow, grows, upwind_rainfall())
+        except Exception:
+            correction = None
+    return compute_from_response(fetch_all(points), points, PRF,
+                                 storm_correction=correction)
 
 
 # ---------------------------------------------------------------------------

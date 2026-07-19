@@ -150,7 +150,7 @@ const REGPI={ "CC-UP-503":{10:[395,1260],100:[781,2880]},"CC-MS-1100":{10:[746,2
  "CC-COX-097":{10:[104,333],100:[221,822]},"CC-LB-171":{10:[164,526],100:[342,1270]},
  "CC-WCU-2260":{10:[1330,4240],100:[2480,9130]},"CC-MOUTH-2340":{10:[1370,4370],100:[2540,9360]}};
 const LEADMIN={"CC-UP-503":40,"CC-MS-1100":86,"CC-TIL-705":62,"CC-SPD-1830":91,"CC-COX-097":29,"CC-LB-171":36,"CC-WCU-2260":127,"CC-MOUTH-2340":147};
-const STAGE_BASED={"CC-WCU-2260":1,"CC-MOUTH-2340":1};   // keep stage rating (campus / mouth)
+const STAGE_BASED={"CC-WCU-2260":1};   // campus keeps validated stage; mouth (Cullowhee/Tuckasegee confluence) classifies by discharge frequency
 function rpFromQ(q,bid){ const rq=REGQ[bid]; if(!rq)return null;
   const rps=[2,5,10,25,50,100,200,500], pts=rps.map(r=>[rq[r],r]).sort((a,b)=>a[0]-b[0]);
   if(q<=pts[0][0])return pts[0][1]*q/pts[0][0];
@@ -263,7 +263,7 @@ const LIVEST={}; let LIVE=null, lastUpdate=null, liveErr=null;
 if(typeof SCEN!=="undefined"){ const ARCW={1:0.2,2:0.5,3:0.85};
   SCEN.forEach(s=>{ const w=ARCW[s.arc]||0.5; ORDER.forEach(b=>{
     const a=assessBasin(b,s.qpf,w);
-    s.st[b]={lvl:(a.stage==null?"N/A":a.posture), stage:a.stage, cq:a.calib_q, rp:a.rp}; }); }); }
+    s.st[b]={lvl:(a.posture), stage:a.stage, cq:a.calib_q, rp:a.rp}; }); }); }
 const TRANS="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const map=L.map("map",{zoomControl:true,maxZoom:16,zoomSnap:0.25,zoomDelta:0.5}).setView([35.262,-83.189],11.75);
 const base=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
@@ -392,7 +392,7 @@ function recomputeLive(){
     const w=(useSoil&&d.soilPct!=null)?wetnessFromSoilPct(d.soilPct)
             :wetnessFromAPI(d.api!=null?d.api:(d.p5||0)*API_5DAY_EQUIV);
     const a=assessBasin(b,d.qpf,w);
-    LIVEST[b]={lvl:(a.stage==null?"N/A":a.posture),stage:a.stage,storm:a.storm,rp:a.rp,
+    LIVEST[b]={lvl:(a.posture),stage:a.stage,storm:a.storm,rp:a.rp,
                wet:w,CN:a.CN,cq:a.calib_q,p5:d.p5,api:d.api,qpf:d.qpf,
                vwc:d.vwc,soilPct:d.soilPct};});
   repaint();
@@ -442,7 +442,7 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
     var rainS=(r.rain!=null&&isFinite(r.rain))? (+r.rain).toFixed(1)+"″":"—";
     var rpS;
     if(r.bid==="CC-WCU-2260"){ rpS=(r.stage!=null)? (+r.stage).toFixed(1)+" ft":"—"; }
-    else if(r.bid==="CC-MOUTH-2340"){ rpS="—"; }
+    else if(r.bid==="CC-MOUTH-2340"){ rpS=(r.rp!=null)? "~"+Math.round(r.rp)+" yr":"—"; }
     else { rpS=(r.rp!=null)? "~"+Math.round(r.rp)+" yr":"—"; }
     var lead=(typeof LEADMIN!=="undefined"&&LEADMIN[r.bid]!=null)? LEADMIN[r.bid]+" min":"—";
     html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
@@ -485,7 +485,7 @@ function _arcw(a){ return ({1:0.2,2:0.5,3:0.85})[a]||0.5; }
 function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,stormLL.lng,stormR,SCEN[idx].qpf);
   var rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}, ww="NORMAL",wb=null;
   var _rows=[];
-  ORDER.forEach(function(b){ var pr=(rain[b]||0)*ORO[b], a=assessBasin(b,pr,w), lv=(a.stage==null?"N/A":a.posture), col=SEV[lv]||"#9AA5B1";
+  ORDER.forEach(function(b){ var pr=(rain[b]||0)*ORO[b], a=assessBasin(b,pr,w), lv=(a.posture), col=SEV[lv]||"#9AA5B1";
     if(layerByBid[b]) layerByBid[b].setStyle({color:col,fillColor:col});
     if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col});
     _rows.push({bid:b,lv:lv,rain:pr,rp:a.rp,stage:a.stage});

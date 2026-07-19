@@ -96,6 +96,33 @@ system.
 python confluence_status.py     # four scenarios: quiet, creek-driven, river-driven, coincident
 ```
 
+### Making it show up in your views
+
+The confluence was "not giving a status" because two things weren't wired:
+
+- **Python engine** (`flood_rating.assess`): `CC-MOUTH-2340` used to return `N/A`
+  ("out of scope"). It now returns the **creek half** of the confluence posture
+  (its own §2 discharge frequency) — so the mouth node prints a real status.
+  Combine it with the live gauge via `confluence_status` for the operational call.
+- **Streamlit console** (`streamlit_app.py`): your live console runs on a
+  *different* engine (`flood_network`) whose topology (Double Springs + AAHP →
+  Speedwell → Campus → Body Farm) has **no** Cullowhee/Tuckasegee confluence node,
+  which is why no card appeared. `confluence_panel.py` adds one. Wire it in with a
+  3-line insertion right after the monitoring-sites grid (where `lvl`, `SEV`,
+  `ORDER` already exist):
+
+  ```python
+  try:
+      import confluence_panel
+      confluence_panel.render(st, SEV, ORDER, creek_level=lvl)
+  except Exception as _e:
+      st.caption(f"Confluence panel unavailable: {_e}")
+  ```
+
+  The card fetches the live TKRN7 gauge, maps it to a backwater posture via the
+  NWS flood stages, and posts the worse of that and the console's creek/campus
+  level — a real status card for the confluence, with the homes-at-risk note.
+
 Two things are still open, both documented in the module: the gauge stage is used
 as a first-cut proxy for the confluence elevation (the rigorous version
 translates it downstream with a HEC-RAS profile using the gauge as the boundary),

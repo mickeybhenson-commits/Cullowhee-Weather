@@ -17,6 +17,7 @@ import lead_time as lt
 import flood_ensemble as fe
 import backtest_helene as bt
 import confluence_status as cs
+import confluence_panel as cp
 
 NON_CAMPUS = [b for b in routed_order() if b not in ("CC-WCU-2260", "CC-MOUTH-2340")]
 
@@ -92,9 +93,12 @@ class TestAssess(unittest.TestCase):
             self.assertEqual(a["basis"], "discharge frequency (USGS regression)")
             self.assertIsNotNone(a["rp_band"])
 
-    def test_mouth_out_of_scope(self):
+    def test_mouth_gives_creek_frequency_status(self):
+        # mouth is no longer N/A: it posts the creek half of the confluence posture
         a = fr.assess(5000, "CC-MOUTH-2340")
-        self.assertEqual(a["posture"], "N/A")
+        self.assertIn(a["posture"], ("NORMAL", "WATCH", "WARNING", "EMERGENCY"))
+        self.assertIsNotNone(a["rp_best"])
+        self.assertIn("confluence", a["basis"])
 
 
 class TestLeadTime(unittest.TestCase):
@@ -181,6 +185,22 @@ class TestConfluence(unittest.TestCase):
         r = cs.confluence_status(model_peak_q_cfs=calm, gage_ht_ft=5.21)
         self.assertEqual(r["confluence_posture"], "NORMAL")
         self.assertEqual(r["driver"], "none")
+
+    def test_panel_combined_takes_worse(self):
+        ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
+        # creek EMERGENCY, river calm -> confluence EMERGENCY, creek driver
+        conf, river, wse, drv = cp.combined("EMERGENCY", 5.0, ORDER)
+        self.assertEqual(conf, "EMERGENCY")
+        self.assertEqual(drv, "Cullowhee Creek")
+        # creek normal, river minor (17 ft) -> WARNING, backwater driver
+        conf, river, wse, drv = cp.combined("NORMAL", 17.0, ORDER)
+        self.assertEqual((conf, river, drv), ("WARNING", "WARNING", "Tuckasegee backwater"))
+        # both calm -> NORMAL, no driver
+        conf, river, wse, drv = cp.combined("NORMAL", 5.0, ORDER)
+        self.assertEqual((conf, drv), ("NORMAL", "—"))
+        # gauge missing -> falls back to creek side
+        conf, river, wse, drv = cp.combined("WATCH", None, ORDER)
+        self.assertEqual((conf, river), ("WATCH", "N/A"))
 
     def test_receptor_check(self):
         # gauge WSE = datum 2111.45 + 18 = 2129.45; home floor 2130 -> dry, 0.55 ft freeboard

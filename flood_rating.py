@@ -230,9 +230,19 @@ def assess(model_peak_q_cfs, bid):
         "stage_posture": stage_post, "thr_validated": validated,
     }
 
-    if rec["rating"] == "none":                       # mouth: out of scope
-        out.update(posture="N/A", basis="out of scope (downstream bookend)",
-                   rp_best=None, rp_band=None, confidence=None)
+    if rec["rating"] == "none":                       # mouth = Cullowhee/Tuckasegee confluence
+        # The mouth floods by BACKWATER from the Tuckasegee, which the creek's own
+        # rating cannot represent (why rating="none"). This engine can compute the
+        # CREEK half of the confluence posture (its own §2 discharge frequency);
+        # the operational status combines that with the live Tuckasegee gauge in
+        # confluence_status.confluence_status(). No longer "N/A" — it gives a status.
+        best = rp_from_q(cq, rec["reg_q"])
+        out.update(posture=category_from_rp(best, bid),
+                   basis="creek frequency at confluence (add Tuckasegee backwater via "
+                         "confluence_status + live USGS 03508050/TKRN7 for operational posture)",
+                   rp_best=round(best) if best is not None else None,
+                   rp_band=None,
+                   confidence="creek-only (backwater not included here)")
         return out
 
     best = rp_from_q(cq, rec["reg_q"])

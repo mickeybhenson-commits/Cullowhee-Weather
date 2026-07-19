@@ -86,13 +86,17 @@ GAUGES = [
     {"label": "Highlands 1NW",      "network": "synoptic", "id": "HDSN7",
      "role": "headwater", "note": "Blue Ridge escarpment; catches S/SE surges first"},
 
-    # --- Southwest: the prevailing track (Helene's path) + Coweeta research gauges
+    # --- Southwest: the prevailing track (Helene's path)
     {"label": "Raingage at Franklin","network": "usgs",    "id": "351205083213545",
      "role": "headwater", "note": "USGS real-time, no key; on the prevailing SW track"},
     {"label": "Franklin 1N",        "network": "synoptic", "id": "FNKN7",
      "role": "approach",  "note": "HADS; SW approach"},
-    {"label": "Coweeta RAWS",       "network": "synoptic", "id": "CWTN7",
-     "role": "approach",  "note": "USFS Nantahala Mtns; research-grade. CONFIRM STID"},
+    # NOTE: Coweeta Hydrologic Lab (~10 mi SW, near Otto) is NOT real-time — its
+    # gold-standard record (recording rain gauges, gauged watersheds) is an
+    # archive released on delay (USFS RDS / Coweeta LTER-EDI; COOP USC00312102 is
+    # daily only). It is a CALIBRATION source for the Helene backtest, not a live
+    # feed. The real-time SW corridor is already covered by the USGS Franklin gage
+    # above (same track, ~10 mi away). Do not add a live Coweeta gauge here.
 
     # --- West: Nantahala / Cherokee side
     {"label": "Cow Mountain RAWS",  "network": "synoptic", "id": "COWN7",

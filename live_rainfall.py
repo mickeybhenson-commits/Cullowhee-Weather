@@ -14,10 +14,20 @@ how much of the rain runs off; it cannot recover rain the forecast never saw.
 So this is a SHADOW-MODE system: real, live, good for validation — not a basis
 for public warnings until the gauges are catching the QPF bias in real time.
 
+MEASURED UPWIND (new): gov_gauges.py adds public, quality-controlled government
+rain gauges on the W/SW/S storm-approach arc (USGS Franklin, HADS Highlands /
+Brevard, Nantahala RAWS). When present they OVERLAY the modeled upwind corridor
+below, so the arrival-ETA readout runs on real logged rain, and qpf_bias() reports
+how much the forecast is under-calling RIGHT NOW — the number that lets this
+system climb out of shadow mode. gov_gauges is optional: if it or its Synoptic
+token is missing, everything here still runs on the model alone.
+
 Run (in a networked environment):  python live_rainfall.py
+  (optional, for HADS/RAWS gauges:  SYNOPTIC_TOKEN=xxxx python live_rainfall.py)
 Deps: standard library only (urllib, json).
 """
 
+import os
 import json
 import math
 import datetime
@@ -25,6 +35,13 @@ import urllib.request
 import urllib.parse
 import test_model as tm
 import sources as src
+
+# Measured government gauges on the approach arc. Optional: keep live_rainfall
+# runnable even if the module isn't deployed yet.
+try:
+    import gov_gauges as gov
+except Exception:
+    gov = None
 
 # Basin representative points (lat, lon). Centroids/pour points of each sub-basin.
 BASIN_POINTS = {
@@ -153,7 +170,8 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
 
         # stage sensor (NOAH) is the most direct truth: if MEASURED it governs
         stage = src.resolve(src.Q_STAGE, bid, m_stage, now=now)
-        posture = (tm.posture(stage.value, bid)              # flood_rating.posture(depth, bid)
+        b = tm.BASINS[bid]
+        posture = (tm.posture(stage.value, b, bid)
                    if stage.tier == src.MEASURED else r["posture"])
 
         out[bid] = dict(
@@ -310,6 +328,35 @@ def arrival_eta(steering, bearing, dist_km, cone_deg=UPWIND_CONE_DEG):
 
 
 # ---------------------------------------------------------------------------
+# MEASURED UPWIND OVERLAY: fold real government gauges into the corridor.
+# Returns (measured_by_dir, gauge_rows, errors). measured_by_dir maps an 8-point
+# compass direction to the best CLEAN gauge row for that direction, so callers can
+# prefer a logged total over the modeled UPWIND_POINTS value. Fully optional and
+# defensive: no gov_gauges module, no token, or a network failure all degrade to
+# ({}, [], {...}) and the model-only path keeps working.
+# ---------------------------------------------------------------------------
+def measured_upwind_overlay(hours=30, token=None):
+    if gov is None:
+        return {}, [], {"gov_gauges": "module not importable"}
+    token = token or os.environ.get("SYNOPTIC_TOKEN")
+    try:
+        rows, errors = gov.gauge_rows(hours=hours, token=token)
+    except Exception as e:
+        return {}, [], {"gov_gauges": str(e)}
+    return gov.measured_upwind(rows), rows, errors
+
+
+def upwind_qpf_bias(modeled_rows, gauge_rows, window="h24"):
+    """Per-direction measured-vs-modeled comparison — the live under-call signal.
+    modeled_rows: upwind_compute() output. gauge_rows: measured_upwind_overlay()'s
+    second return. Empty dict if gov_gauges is unavailable."""
+    if gov is None or not gauge_rows:
+        return {}
+    model_by_dir = {r["dir"]: r.get(window) for r in modeled_rows}
+    return gov.qpf_bias(gauge_rows, model_by_dir, window=window)
+
+
+# ---------------------------------------------------------------------------
 # LOCAL GAUGE: real LOGGED precip from the Jackson County Airport AWOS (K24A)
 # ---------------------------------------------------------------------------
 # This is the one MEASURED rainfall point in the system: an actual heated-gauge
@@ -395,6 +442,18 @@ if __name__ == "__main__":
               f"{r['stage']:6.2f}  {r['posture']}")
 
     print("\nSteering flow (storm-motion proxy, 700 mb wind — MODELED):")
+    # Pull the modeled upwind corridor once so we can both (a) show ETAs and
+    # (b) compare it against the measured government gauges for the QPF bias.
+    modeled_rows = []
+    try:
+        modeled_rows = upwind_rainfall()
+    except Exception as e:
+        print(f"  upwind fetch failed: {e}")
+
+    # Measured overlay from the government-gauge arc (optional; needs SYNOPTIC_TOKEN
+    # for the HADS/RAWS stations, but the USGS Franklin gage works with no key).
+    meas_by_dir, gauge_rows, gov_err = measured_upwind_overlay()
+
     try:
         sf = steering_flow()
         if sf is None:
@@ -405,12 +464,50 @@ if __name__ == "__main__":
         else:
             print(f"  from {sf['from_compass']} at {sf['speed_mph']} mph -> storms "
                   f"tracking {sf['toward_compass']}")
-            for r in upwind_rainfall():
+            for r in modeled_rows:
                 eta = arrival_eta(sf, r["bearing"], r["dist_km"])
-                if eta is not None:
-                    print(f"    {r['area']:14s} ({r['dir']:>2}) ~{eta} min out")
+                if eta is None:
+                    continue
+                g = meas_by_dir.get(r["dir"])
+                if g is not None and g.get("h24") is not None:
+                    # MEASURED beats MODELED: show the real gauge's logged total
+                    src_tag = (f'gauge {g["area"]}: 24h {g["h24"]}" '
+                               f'MEASURED ({g["dist_km"]} km {g["dir"]})')
+                else:
+                    src_tag = f'model 24h {r["h24"]}"'
+                print(f"    {r['area']:14s} ({r['dir']:>2}) ~{eta} min out  ·  {src_tag}")
     except Exception as e:
         print(f"  steering fetch failed: {e}")
+
+    # QPF bias: how much is the forecast under-calling on the approach arc RIGHT NOW?
+    bias = upwind_qpf_bias(modeled_rows, gauge_rows)
+    if bias:
+        print("\nQPF bias — MEASURED gov gauge vs MODEL (24 h), approach arc:")
+        for d in ("S", "SW", "W", "SE", "E", "NE", "N", "NW"):
+            if d not in bias:
+                continue
+            bd = bias[d]
+            ratio = f'{bd["ratio"]:.2f}x' if bd["ratio"] is not None else "  n/a"
+            print(f'  {d:>2}  {bd["area"]:22s} meas {bd["measured"]}"  '
+                  f'model {bd["modeled"]}"  = {ratio}  {bd["note"]}')
+
+    print("\nMeasured government gauge arc (REAL logged precip, W/SW/S of Cullowhee):")
+    if gov is None:
+        print("  gov_gauges.py not importable — model-only mode.")
+    elif not gauge_rows:
+        print("  no gauge rows returned "
+              f"({gov_err or 'stations offline or SYNOPTIC_TOKEN unset'}).")
+    else:
+        for r in gauge_rows:
+            if r.get("h1") is None:
+                continue
+            loc = (f'{r["dir"] or "?":>2} {r["dist_km"]:>3} km'
+                   if r.get("dist_km") is not None else "  (no geo)")
+            tag = "" if r["qc"] == "ok" else f'  [{r["qc"]}]'
+            print(f'  {r["area"]:22s} {loc}  '
+                  f'1h {r["h1"]}"  3h {r["h3"]}"  6h {r["h6"]}"  24h {r["h24"]}"{tag}')
+        for net, msg in (gov_err or {}).items():
+            print(f"  [{net}] {msg}")
 
     print("\nLocal airport gauge (REAL logged precip, IEM/AWOS K24A):")
     try:

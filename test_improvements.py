@@ -16,8 +16,6 @@ import flood_rating as fr
 import lead_time as lt
 import flood_ensemble as fe
 import backtest_helene as bt
-import confluence_status as cs
-import confluence_panel as cp
 
 NON_CAMPUS = [b for b in routed_order() if b not in ("CC-WCU-2260", "CC-MOUTH-2340")]
 
@@ -93,12 +91,9 @@ class TestAssess(unittest.TestCase):
             self.assertEqual(a["basis"], "discharge frequency (USGS regression)")
             self.assertIsNotNone(a["rp_band"])
 
-    def test_mouth_gives_creek_frequency_status(self):
-        # mouth is no longer N/A: it posts the creek half of the confluence posture
+    def test_mouth_out_of_scope(self):
         a = fr.assess(5000, "CC-MOUTH-2340")
-        self.assertIn(a["posture"], ("NORMAL", "WATCH", "WARNING", "EMERGENCY"))
-        self.assertIsNotNone(a["rp_best"])
-        self.assertIn("confluence", a["basis"])
+        self.assertEqual(a["posture"], "N/A")
 
 
 class TestLeadTime(unittest.TestCase):
@@ -157,58 +152,6 @@ class TestHeleneBacktest(unittest.TestCase):
     def test_campus_emergency(self):
         rows = {r["bid"]: r for r in bt.run()}
         self.assertEqual(rows["CC-WCU-2260"]["eng_posture"], "EMERGENCY")
-
-
-class TestConfluence(unittest.TestCase):
-    def test_backwater_mapping(self):
-        # NWS TKRN7 categories: action 13 / minor 16 / moderate 19
-        self.assertEqual(cs.backwater_posture(5.0)[0], "NORMAL")
-        self.assertEqual(cs.backwater_posture(13.0)[0], "WATCH")
-        self.assertEqual(cs.backwater_posture(16.0)[0], "WARNING")
-        self.assertEqual(cs.backwater_posture(19.0)[0], "EMERGENCY")
-        self.assertEqual(cs.backwater_posture(24.0)[0], "EMERGENCY")
-
-    def test_takes_worse_mechanism(self):
-        helene_peak = cwm.assess(cs.CONFLUENCE_BID, 10, 0.25)["qp_raw"]
-        # creek flood, river calm -> creek drives EMERGENCY
-        r1 = cs.confluence_status(model_peak_q_cfs=helene_peak, gage_ht_ft=5.0)
-        self.assertEqual(r1["confluence_posture"], "EMERGENCY")
-        self.assertEqual(r1["driver"], "creek-runoff")
-        # creek calm, river minor -> river drives WARNING
-        calm = cwm.assess(cs.CONFLUENCE_BID, 1.0, 0.3)["qp_raw"]
-        r2 = cs.confluence_status(model_peak_q_cfs=calm, gage_ht_ft=17.0)
-        self.assertEqual(r2["confluence_posture"], "WARNING")
-        self.assertEqual(r2["driver"], "river-backwater")
-
-    def test_normal_when_both_calm(self):
-        calm = cwm.assess(cs.CONFLUENCE_BID, 1.0, 0.3)["qp_raw"]
-        r = cs.confluence_status(model_peak_q_cfs=calm, gage_ht_ft=5.21)
-        self.assertEqual(r["confluence_posture"], "NORMAL")
-        self.assertEqual(r["driver"], "none")
-
-    def test_panel_combined_takes_worse(self):
-        ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
-        # creek EMERGENCY, river calm -> confluence EMERGENCY, creek driver
-        conf, river, wse, drv = cp.combined("EMERGENCY", 5.0, ORDER)
-        self.assertEqual(conf, "EMERGENCY")
-        self.assertEqual(drv, "Cullowhee Creek")
-        # creek normal, river minor (17 ft) -> WARNING, backwater driver
-        conf, river, wse, drv = cp.combined("NORMAL", 17.0, ORDER)
-        self.assertEqual((conf, river, drv), ("WARNING", "WARNING", "Tuckasegee backwater"))
-        # both calm -> NORMAL, no driver
-        conf, river, wse, drv = cp.combined("NORMAL", 5.0, ORDER)
-        self.assertEqual((conf, drv), ("NORMAL", "—"))
-        # gauge missing -> falls back to creek side
-        conf, river, wse, drv = cp.combined("WATCH", None, ORDER)
-        self.assertEqual((conf, river), ("WATCH", "N/A"))
-
-    def test_receptor_check(self):
-        # gauge WSE = datum 2111.45 + 18 = 2129.45; home floor 2130 -> dry, 0.55 ft freeboard
-        rc = cs.receptor_check(18.0, 2130.0)
-        self.assertFalse(rc["receptor_wet"])
-        self.assertAlmostEqual(rc["freeboard_ft"], 0.55, places=2)
-        rc2 = cs.receptor_check(20.0, 2130.0)   # WSE 2131.45 > floor -> wet
-        self.assertTrue(rc2["receptor_wet"])
 
 
 if __name__ == "__main__":

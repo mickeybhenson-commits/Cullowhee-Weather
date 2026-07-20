@@ -73,65 +73,6 @@ frequency call for non-campus reaches. Feed it the **raw** model peak (e.g.
 `cwm_model.assess(...)["qp_raw"]`); the engine applies the per-basin regression
 calibration itself.
 
-## Confluence status (prototype — `confluence_status.py`)
-
-The Cullowhee Creek / Tuckasegee River confluence (`CC-MOUTH-2340`) floods by a
-different mechanism than the rest of the system — **backwater**, when the
-Tuckasegee is high and dams up the creek mouth — which is why `basins.py` marks
-that reach `rating="none"`. There are homes in the confluence bottomland, so this
-prototype gives it a status by posting the **worse of two mechanisms**:
-`confluence = max(creek's own §2 frequency posture, Tuckasegee backwater posture)`.
-
-The river side reads the real, live gauge **USGS 03508050 / NWS TKRN7**
-("Tuckasegee River at SR 1172 nr Cullowhee," drainage area 147 sq mi, datum
-2111.45 ft NAVD88), which sits *above* the confluence — so its discharge (nearly
-conserved to the mouth) and its official NWS flood-category stages (action 13 /
-minor 16 / moderate 19 / major 22 ft) drive the backwater posture. Because the
-gauge is upstream, it is also a *leading* indicator: the river flood wave passes
-it before reaching the mouth, giving warning lead the flashy creek reaches never
-have. This makes the confluence the one MEASURED node in an otherwise modeled
-system.
-
-```bash
-python confluence_status.py     # four scenarios: quiet, creek-driven, river-driven, coincident
-```
-
-### Making it show up in your views
-
-The confluence was "not giving a status" because two things weren't wired:
-
-- **Python engine** (`flood_rating.assess`): `CC-MOUTH-2340` used to return `N/A`
-  ("out of scope"). It now returns the **creek half** of the confluence posture
-  (its own §2 discharge frequency) — so the mouth node prints a real status.
-  Combine it with the live gauge via `confluence_status` for the operational call.
-- **Streamlit console** (`streamlit_app.py`): your live console runs on a
-  *different* engine (`flood_network`) whose topology (Double Springs + AAHP →
-  Speedwell → Campus → Body Farm) has **no** Cullowhee/Tuckasegee confluence node,
-  which is why no card appeared. `confluence_panel.py` adds one. Wire it in with a
-  3-line insertion right after the monitoring-sites grid (where `lvl`, `SEV`,
-  `ORDER` already exist):
-
-  ```python
-  try:
-      import confluence_panel
-      confluence_panel.render(st, SEV, ORDER, creek_level=lvl)
-  except Exception as _e:
-      st.caption(f"Confluence panel unavailable: {_e}")
-  ```
-
-  The card fetches the live TKRN7 gauge, maps it to a backwater posture via the
-  NWS flood stages, and posts the worse of that and the console's creek/campus
-  level — a real status card for the confluence, with the homes-at-risk note.
-
-Two things are still open, both documented in the module: the gauge stage is used
-as a first-cut proxy for the confluence elevation (the rigorous version
-translates it downstream with a HEC-RAS profile using the gauge as the boundary),
-and the home finished-floor elevations aren't wired yet (the project `V_E_STRUC`
-layer couldn't be parsed here and may not carry FFEs) — `receptor_ffe_navd88` is
-exposed as an input so EMERGENCY can be tied to the lowest surveyed floor when
-that number is in hand. The design case to size thresholds against is the
-*coincident* one (creek and river high together, as in Helene).
-
 ## Reconstructed Helene forcing
 
 QPF = 10 in (≈48-hr storm total, WCU study) on antecedent wetness = 0.25

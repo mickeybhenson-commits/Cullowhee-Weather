@@ -285,4 +285,4 @@ if __name__ == "__main__":
         warn_probability=0.03,
         discharge_cfs=42.0,
     )
-    publish({"CULLOWHEE_CK": demo})
+    publish({"CULLOWHEE_CK": demo}, outdir="feed")

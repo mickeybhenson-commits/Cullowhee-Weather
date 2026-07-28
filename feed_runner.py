@@ -105,6 +105,19 @@ def main() -> None:
     if not reading.valid or reading.value is None:
         print(f"no valid stage: {reading.note or 'no value'} — publishing No Data")
         publish_feed.publish({"CULLOWHEE_CK": None}, outdir=str(OUTDIR))
+        # Still persist state on this path. An early return that skips the
+        # state files leaves the repo without them entirely, and anything
+        # downstream that expects them (the workflow's git add, a consumer
+        # checking freshness) breaks on a condition that is itself normal.
+        state = _load(STATE_PATH, {})
+        HISTORY_PATH.write_text(json.dumps(_load(HISTORY_PATH, [])))
+        STATE_PATH.write_text(json.dumps({
+            **state,
+            "level": state.get("level", "NORMAL"),
+            "updated_utc": now.isoformat(),
+            "source_tier": reading.tier,
+            "source_note": reading.note or "no valid stage",
+        }, indent=2))
         return
 
     stage = float(reading.value)

@@ -57,7 +57,27 @@ FIELDS = ["SITE_ID", "NAME", "LAST_UPDATED", "IN_SERVICE", "CONDITION_TXT",
 COLUMNS = ["observed_utc", "site_id", "name", "last_updated_raw",
            "last_updated_utc", "age_min", "intervals_missed", "in_service",
            "condition_txt", "stage_ft", "rain_1hr", "rain_24hr", "srv_int",
-           "num_sensors", "qa", "trend", "query_ok", "note"]
+           "num_sensors", "qa", "trend", "query_ok", "note",
+           # --- model comparison (site 25380 only) --------------------------
+           "model_stage_ft",     # our engine's stage at this instant
+           "obs_delta_ft",       # observed change since the last DISTINCT obs
+           "model_delta_ft",     # our predicted change over that same span
+           "delta_window_min",   # span between the two OBSERVATION stamps
+           "model_window_min",   # span between the two RUN times
+           "delta_resid_ft"]     # model_delta - obs_delta  (the error)
+#
+# Note on the two window columns. The observed delta spans FIMAN's observation
+# timestamps; the model delta spans our run times, because we can only sample
+# the model when we run. Because FIMAN batches, those windows often differ —
+# an observation may jump 120 min while our two samples are 60 min apart.
+# Differencing across mismatched windows is not a fair comparison, so BOTH are
+# recorded and the analysis should keep only rows where they roughly agree
+# (say within 20%). Silently comparing them would manufacture a skill number
+# that does not mean anything.
+
+# The only site our basin model actually predicts. The Tuckasegee control gage
+# is a different drainage; logging a "prediction" against it would be noise.
+MODEL_SITE = "25380"
 
 
 def parse_fiman_ts(raw: Optional[str]) -> Optional[datetime]:
@@ -130,6 +150,96 @@ def row_for(a: dict, now: datetime) -> dict:
     }
 
 
+def _model_stage() -> Optional[float]:
+    """Our engine's current stage, or None. Imported lazily and defensively:
+    the monitor's job is logging the state feed, and it must keep doing that
+    even if our own model is broken or mid-edit.
+    """
+    try:
+        from feed_runner import get_modeled_stage_ft
+        v = get_modeled_stage_ft()
+        return None if v is None else float(v)
+    except Exception as e:                       # noqa: BLE001 - deliberate
+        print(f"model stage unavailable: {type(e).__name__}: {e}")
+        return None
+
+
+def _prior_distinct(site: str, last_updated_utc: Optional[str]) -> Optional[dict]:
+    """Most recent logged row for `site` whose observation timestamp DIFFERS
+    from the current one.
+
+    This is the whole trick. FIMAN batches roughly every two hours, so
+    consecutive 30-minute runs usually see the SAME reading republished.
+    Differencing against the previous ROW would yield a string of spurious
+    0.00 ft deltas and make the model look perfect while telling us nothing.
+    We difference against the last genuinely new observation instead.
+    """
+    if not OUT.exists() or not last_updated_utc:
+        return None
+    try:
+        with OUT.open(newline="") as fh:
+            rows = [r for r in csv.DictReader(fh)
+                    if r.get("site_id") == site
+                    and r.get("query_ok") == "1"
+                    and r.get("last_updated_utc")
+                    and r["last_updated_utc"] != last_updated_utc]
+    except (OSError, csv.Error):
+        return None
+    return rows[-1] if rows else None
+
+
+def _f(v) -> Optional[float]:
+    try:
+        return None if v in (None, "", "None") else float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def add_model_comparison(r: dict) -> dict:
+    """Attach our prediction and a datum-independent delta comparison.
+
+    Deltas, not absolutes: FIMAN stage is measured above gage datum (2125.0,
+    and disputed by NWS by 1.00 ft) while our model returns depth above
+    streambed. Those zeros differ, so absolute values are not comparable —
+    but a CHANGE of 0.6 ft is 0.6 ft in either reference. That lets rise-rate
+    validation start now, before the survey resolves the datum.
+    """
+    for c in ("model_stage_ft", "obs_delta_ft", "model_delta_ft",
+              "delta_window_min", "model_window_min", "delta_resid_ft"):
+        r.setdefault(c, None)
+    if r.get("site_id") != MODEL_SITE or not r.get("query_ok"):
+        return r
+
+    r["model_stage_ft"] = _model_stage()
+
+    prev = _prior_distinct(MODEL_SITE, r.get("last_updated_utc"))
+    if not prev:
+        return r
+
+    obs_now, obs_prev = _f(r.get("stage_ft")), _f(prev.get("stage_ft"))
+    mod_now, mod_prev = _f(r.get("model_stage_ft")), _f(prev.get("model_stage_ft"))
+    t_now = parse_fiman_ts(r.get("last_updated_raw"))
+    t_prev = (datetime.fromisoformat(prev["last_updated_utc"])
+              if prev.get("last_updated_utc") else None)
+
+    if t_now and t_prev:
+        r["delta_window_min"] = round((t_now - t_prev).total_seconds() / 60.0, 1)
+    try:
+        r["model_window_min"] = round(
+            (datetime.fromisoformat(r["observed_utc"])
+             - datetime.fromisoformat(prev["observed_utc"])
+             ).total_seconds() / 60.0, 1)
+    except (KeyError, TypeError, ValueError):
+        pass
+    if obs_now is not None and obs_prev is not None:
+        r["obs_delta_ft"] = round(obs_now - obs_prev, 3)
+    if mod_now is not None and mod_prev is not None:
+        r["model_delta_ft"] = round(mod_now - mod_prev, 3)
+    if r["obs_delta_ft"] is not None and r["model_delta_ft"] is not None:
+        r["delta_resid_ft"] = round(r["model_delta_ft"] - r["obs_delta_ft"], 3)
+    return r
+
+
 def failure_row(now: datetime, site: str, note: str) -> dict:
     r = {c: None for c in COLUMNS}
     r.update({"observed_utc": now.isoformat(timespec="seconds"),
@@ -142,7 +252,7 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        rows = [row_for(a, now) for a in query()]
+        rows = [add_model_comparison(row_for(a, now)) for a in query()]
         seen = {r["site_id"] for r in rows}
         # A site we asked for but did not get back is itself a finding.
         for s in WATCH_SITES:
@@ -162,10 +272,19 @@ def main() -> None:
 
     for r in rows:
         if r["query_ok"]:
-            print(f"{r['site_id']:>10}  age={r['age_min']} min  "
-                  f"missed={r['intervals_missed']}  "
-                  f"in_service={r['in_service']}  "
-                  f"cond={r['condition_txt']}")
+            line = (f"{r['site_id']:>10}  age={r['age_min']} min  "
+                    f"missed={r['intervals_missed']}  "
+                    f"in_service={r['in_service']}  "
+                    f"cond={r['condition_txt']}")
+            if r.get("obs_delta_ft") is not None:
+                line += (f"  |  obs{r['obs_delta_ft']:+.2f} "
+                         f"model{r['model_delta_ft']:+.2f} "
+                         f"resid{r['delta_resid_ft']:+.2f} ft "
+                         f"over {r['delta_window_min']:.0f} min"
+                         if r.get("delta_resid_ft") is not None
+                         else f"  |  obs{r['obs_delta_ft']:+.2f} ft "
+                              f"(no model value)")
+            print(line)
         else:
             print(f"{r['site_id']:>10}  QUERY FAILED: {r['note']}")
 

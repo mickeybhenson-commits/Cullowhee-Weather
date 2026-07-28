@@ -98,12 +98,29 @@ body.whatif-on .radartiles{opacity:0!important;pointer-events:none}
     <span class="read" id="read"></span>
   </div>
   <div class="ctl" id="stormctl" style="display:none">
+    <label style="font-size:11px;color:#5b6b7a">path</label>
+    <select id="stormpath" class="mini" title="storm pathway" style="padding:4px 6px;cursor:pointer;max-width:170px">
+      <optgroup label="Historical analogs">
+        <option value="helene">Helene 2024 &#8593;N&#183;NW</option>
+        <option value="fred">Fred 2021 &#8599;NE</option>
+        <option value="frances">Frances 2004 &#8598;N&#183;NW</option>
+        <option value="ivan">Ivan 2004 &#8599;NE</option>
+      </optgroup>
+      <optgroup label="Directional">
+        <option value="swne" selected>SW&#8594;NE sweep</option>
+        <option value="sn">S&#8594;N Gulf remnant</option>
+        <option value="senw">SE&#8594;NW upslope</option>
+        <option value="nwse">NW&#8594;SE front</option>
+        <option value="stall">Stalled cell</option>
+      </optgroup>
+    </select>
     <button class="mini" id="stormplay">&#9658; Play storm</button>
     <input type="range" id="stormscrub" min="0" max="100" step="1" value="0" style="flex:1;min-width:120px">
     <button class="mini" id="stormreset" title="reset">&#8635;</button>
     <select id="stormspeed" class="mini" title="playback speed" style="padding:4px 6px;cursor:pointer"><option value="0.5">&#189;&#215;</option><option value="1" selected>1&#215;</option><option value="2">2&#215;</option><option value="4">4&#215;</option></select>
     <label style="font-size:11px;color:#5b6b7a">R</label>
     <input type="range" id="stormrad" min="1.5" max="9" step="0.5" value="5" title="storm radius (mi)" style="width:66px">
+    <span class="read" id="stormread"></span>
   </div>
 </div>
 <div id="radarctl" class="panel">
@@ -505,6 +522,29 @@ stormMarker.on("drag",function(e){ moveStorm(e.target.getLatLng()); });
 map.on("click",function(e){ if(mode==="whatif") moveStorm(e.latlng); });
 (function(){ var rr=document.getElementById("stormrad"); if(rr)rr.addEventListener("input",function(e){ setStormR(parseFloat(e.target.value)); }); })();
 
+/* ===== STORM PATHWAYS — preset tracks for the what-if animation =====
+   dLat/dLon: half-window displacement (deg); the storm travels ~2x this over
+   the event, passing through the user-placed center. dwell: deposit factor
+   (slow/stalling storms wring out more rain as they pass). oroW: exponent on
+   each basin's orographic factor — moist SE/S upslope flow amplifies the
+   windward-headwater enhancement; dry NW downslope flow suppresses it.
+   Historical entries are SCHEMATIC analogs of how each event's remnants moved
+   through the Cullowhee corridor (not HURDAT2 reconstructions); on selection
+   they suggest a design-storm depth + radius, which you can still override. */
+var PATHWAYS={
+  swne:   {name:"SW→NE sweep",      arrow:"↗ NE",     dLat:0.036,  dLon:0.029,  dwell:2.2, oroW:1.00},
+  sn:     {name:"S→N Gulf remnant", arrow:"↑ N",      dLat:0.046,  dLon:0.000,  dwell:2.2, oroW:1.10},
+  senw:   {name:"SE→NW upslope",    arrow:"↖ NW",     dLat:0.030,  dLon:-0.032, dwell:2.4, oroW:1.35},
+  nwse:   {name:"NW→SE front",      arrow:"↘ SE",     dLat:-0.030, dLon:0.032,  dwell:1.6, oroW:0.60},
+  stall:  {name:"Stalled cell",          arrow:"● stalls", dLat:0.004,  dLon:0.003,  dwell:3.2, oroW:1.00},
+  helene: {name:"Helene 2024 analog",    arrow:"↑ N·NW", dLat:0.048, dLon:-0.014, dwell:3.0, oroW:1.35, set:{idx:4,R:9.0}},
+  fred:   {name:"Fred 2021 analog",      arrow:"↗ NE",     dLat:0.040,  dLon:0.030,  dwell:2.4, oroW:1.15, set:{idx:2,R:6.0}},
+  frances:{name:"Frances 2004 analog",   arrow:"↖ N·NW", dLat:0.044, dLon:-0.024, dwell:2.8, oroW:1.25, set:{idx:3,R:8.0}},
+  ivan:   {name:"Ivan 2004 analog",      arrow:"↗ NE",     dLat:0.042,  dLon:0.034,  dwell:2.2, oroW:1.10, set:{idx:2,R:7.0}}
+};
+var pathKey="swne";
+function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
+
 /* ===== What-if storm progression: animate the event hydrograph through time =====
    Builds each basin's full calibrated hydrograph (SCS Type II storm -> NRCS-CN
    runoff -> unit hydrograph convolution), then steps through the event recoloring
@@ -526,21 +566,22 @@ map.on("click",function(e){ if(mode==="whatif") moveStorm(e.latlng); });
       if(h>=a&&h<=b){ wv=0.5*(1-Math.cos(2*Math.PI*(h-a)/(b-a))); }
       raw.push(wv); sum+=wv; }
     return raw.map(function(wv){ return sum>0? total*wv/sum : 0; }); }
-  function build(){   // MOVING storm: enters SW, sweeps NE through the placed swath; each basin's
+  function build(){   // MOVING storm: follows the selected PATHWAY through the placed swath; each basin's
     // hyetograph is the rain deposited as the storm passes over it (orographically weighted).
     const w=ARCW[SCEN[idx].arc]||0.5, P=SCEN[idx].qpf;
     const env=extHyeto(1.0);                              // per-step intensity fraction (prolonged hump)
-    const TDLAT=0.036, TDLON=0.029, cLat=stormLL.lat, cLon=stormLL.lng, DWELL=2.2;   // slow, intense (stalling) storm
+    const PW=curPath();
+    const TDLAT=PW.dLat, TDLON=PW.dLon, cLat=stormLL.lat, cLon=stormLL.lng, DWELL=PW.dwell, OROW=PW.oroW;
     let t0=0,t1=env.length-1;
     for(let t=0;t<env.length;t++){ if(env[t]>1e-6){t0=t;break;} }
     for(let t=env.length-1;t>=0;t--){ if(env[t]>1e-6){t1=t;break;} }
     const track=[];
     for(let t=0;t<env.length;t++){ const frac=t1>t0?Math.min(Math.max((t-t0)/(t1-t0),0),1):0.5;
-      track.push([cLat+(frac-0.5)*2*TDLAT, cLon+(frac-0.5)*2*TDLON]); }   // SW (frac 0) -> NE (frac 1)
+      track.push([cLat+(frac-0.5)*2*TDLAT, cLon+(frac-0.5)*2*TDLON]); }   // pathway start (frac 0) -> end (frac 1) through the placed center
     const series={}; ORDER.forEach(b=>series[b]=new Array(env.length).fill(0));
     for(let t=0;t<env.length;t++){ const dep=P*env[t]*DWELL; if(dep<=0)continue;
       const br=basinRain(track[t][0],track[t][1],stormR,dep);
-      ORDER.forEach(b=>{ series[b][t]=(br[b]||0)*ORO[b]; }); }
+      ORDER.forEach(b=>{ series[b][t]=(br[b]||0)*Math.pow(ORO[b],OROW); }); }
     hydros={}; ORDER.forEach(b=>{ const B=BASINS[b], CN=cnFromWetness(B.CN2,w);
       const incr=incrementalRunoff(series[b],CN), uh=unitHydrograph(B.DA,B.Tc/60.0,484,0.25);
       const h=new Array(incr.length+uh.length).fill(0);
@@ -565,7 +606,7 @@ map.on("click",function(e){ if(mode==="whatif") moveStorm(e.latlng); });
       if(tp){ var ll=L.latLng(tp[0],tp[1]); stormMarker.setLatLng(ll); stormCircle.setLatLng(ll); } }
     const hr=(t*DTh).toFixed(1), rain=(hydros.__rain[Math.min(t,hydros.__rain.length-1)]||0).toFixed(2);
     const rd=document.getElementById("stormread");
-    if(rd) rd.innerHTML="hr "+hr+" &middot; storm ↗ NE &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
+    if(rd) rd.innerHTML="hr "+hr+" &middot; "+curPath().name+" "+curPath().arrow+" &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
     if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var cq=(t<hydros[b].length?hydros[b][t]:0);
       return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b)}; }));
     const sc=document.getElementById("stormscrub"); if(sc && +sc.value!==t) sc.value=t; }
@@ -581,11 +622,17 @@ map.on("click",function(e){ if(mode==="whatif") moveStorm(e.latlng); });
     if(typeof stormMarker!=="undefined"){ stormMarker.setLatLng(stormLL); stormCircle.setLatLng(stormLL); }
     if(mode==="whatif")repaint();
     const sc=document.getElementById("stormscrub"); if(sc)sc.value=0;
-    const rd=document.getElementById("stormread"); if(rd)rd.innerHTML="place the storm &middot; play to sweep SW→NE"; }
+    const rd=document.getElementById("stormread"); if(rd)rd.innerHTML="place the storm &middot; "+curPath().name+" "+curPath().arrow+" &middot; press play"; }
   var pb=document.getElementById("stormplay"); if(pb)pb.onclick=playPause;
   var rb=document.getElementById("stormreset"); if(rb)rb.onclick=reset;
   var sb=document.getElementById("stormscrub"); if(sb)sb.addEventListener("input",function(e){ if(!hydros)build(); stop(); paint(+e.target.value); });
   var sp=document.getElementById("stormspeed"); if(sp)sp.addEventListener("change",function(e){ speed=parseFloat(e.target.value)||1; if(timer)startTimer(); });
+  var pth=document.getElementById("stormpath"); if(pth)pth.addEventListener("change",function(e){
+    pathKey=e.target.value; var pw=curPath();
+    if(pw.set){   /* historical analog: suggest depth + radius (user can still override) */
+      if(pw.set.idx!=null){ idx=pw.set.idx; var s=document.getElementById("sld"); if(s)s.value=idx; }
+      if(pw.set.R!=null){ stormR=pw.set.R; stormCircle.setRadius(stormR*1609.34); var rr=document.getElementById("stormrad"); if(rr)rr.value=pw.set.R; } }
+    reset(); });
   document.getElementById("sld").addEventListener("input",function(){ reset(); });
   document.getElementById("m-live").addEventListener("click",reset);
   _animReset=reset;

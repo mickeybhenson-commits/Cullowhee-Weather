@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOAH Storm Track Watch — Cullowhee Corridor</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --bg:#0b0e12; --panel:rgba(10,14,18,.86); --line:rgba(255,255,255,.12);
+    --txt:#e8edf2; --dim:#8a94a0; --ok:#5dd08a;
+    --elev:#e6b34d; --pend:#e8734d; --gate:#e6b34d;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);
+    font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--txt)}
+  #map{position:absolute;inset:0}
+
+  /* header */
+  #hdr{position:fixed;top:0;left:0;right:0;z-index:1100;display:flex;gap:14px;
+    align-items:baseline;padding:8px 14px;background:var(--panel);
+    border-bottom:1px solid var(--line)}
+  #hdr b{font-size:14px;letter-spacing:.04em}
+  #hdr .sub{color:var(--dim)}
+  #clock{margin-left:auto;color:var(--dim)}
+
+  /* posture floor banner */
+  #floorBadge{position:fixed;top:44px;left:14px;z-index:1100;
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:8px 12px;min-width:220px}
+  #floorBadge .lvl{font-size:16px;font-weight:700;letter-spacing:.06em}
+  #floorBadge .why{color:var(--dim);margin-top:3px;font-size:12px}
+  #floorBadge.none .lvl{color:var(--ok)}
+  #floorBadge.elevated{border-color:var(--elev)}
+  #floorBadge.elevated .lvl{color:var(--elev)}
+  #floorBadge.pending{border-color:var(--pend)}
+  #floorBadge.pending .lvl{color:var(--pend)}
+
+  /* storm list panel */
+  #storms{position:fixed;right:14px;top:44px;z-index:1100;width:290px;
+    max-height:calc(100% - 120px);overflow:auto;background:var(--panel);
+    border:1px solid var(--line);border-radius:6px;padding:10px 12px}
+  #storms h2{margin:0 0 6px;font-size:12px;color:var(--dim);
+    letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+  .storm{border-top:1px solid var(--line);padding:7px 0}
+  .storm:first-of-type{border-top:none}
+  .storm .nm{font-weight:700}
+  .storm .cls{color:var(--dim)}
+  .storm .met{margin-top:2px;font-size:12px}
+  .storm .met.hit{color:var(--elev)}
+  .storm .met.hit48{color:var(--pend)}
+  .storm .met.miss{color:var(--dim)}
+  #quiet{color:var(--ok);padding:6px 0}
+
+  /* status line */
+  #statline{position:fixed;bottom:12px;left:14px;z-index:1100;
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:5px 10px;color:var(--dim);font-size:12px}
+  #statline .live{color:var(--ok)}
+  #statline .err{color:var(--pend)}
+
+  /* legend */
+  #legend{position:fixed;bottom:12px;right:14px;z-index:1100;
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:7px 10px;font-size:12px;color:var(--dim)}
+  #legend .sw{display:inline-block;width:16px;height:0;border-top:2px solid;
+    vertical-align:middle;margin-right:6px}
+
+  /* what-if simulation mode */
+  #whatifBtn{margin-left:14px;background:none;border:1px solid var(--line);
+    border-radius:5px;color:var(--dim);font:12px ui-monospace,Menlo,monospace;
+    padding:3px 9px;cursor:pointer;letter-spacing:.05em}
+  #whatifBtn:hover{color:var(--txt);border-color:var(--txt)}
+  #whatifBtn.on{color:var(--sim);border-color:var(--sim)}
+  :root{--sim:#b48ce6}
+  #simbar{display:none;position:fixed;left:50%;transform:translateX(-50%);
+    bottom:52px;z-index:1100;background:var(--panel);border:1px solid var(--sim);
+    border-radius:6px;padding:8px 12px;align-items:center;gap:10px}
+  #simbar.on{display:flex}
+  #simbar select,#simbar button{background:#141922;color:var(--txt);
+    border:1px solid var(--line);border-radius:4px;
+    font:12px ui-monospace,Menlo,monospace;padding:3px 8px;cursor:pointer}
+  #simbar button:hover{border-color:var(--sim)}
+  #simbar input[type=range]{width:180px;accent-color:var(--sim)}
+  #simTime{color:var(--sim);min-width:64px;text-align:right}
+  #floorBadge.sim{border-color:var(--sim)}
+  #floorBadge.sim .lvl{color:var(--sim)}
+  #simTag{display:none;position:fixed;top:44px;left:50%;transform:translateX(-50%);
+    z-index:1100;color:var(--sim);background:var(--panel);border:1px solid var(--sim);
+    border-radius:6px;padding:4px 14px;font-weight:700;letter-spacing:.14em}
+  #simTag.on{display:block}
+  @media (max-width:720px){
+    #simbar{width:calc(100% - 28px);flex-wrap:wrap;bottom:96px}
+    #simbar input[type=range]{flex:1;min-width:120px}
+  }
+
+  .leaflet-container{background:var(--bg)}
+  .leaflet-control-layers{background:var(--panel);color:var(--txt);
+    border:1px solid var(--line)!important;border-radius:6px;
+    font:12px ui-monospace,Menlo,Consolas,monospace}
+  .leaflet-control-layers label{color:var(--txt)}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);
+    color:var(--txt);border:1px solid var(--line)}
+  .leaflet-popup-content{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;margin:10px 12px}
+  .gatelbl{color:var(--gate);font:11px ui-monospace,Menlo,monospace;
+    text-shadow:0 0 4px #000;white-space:nowrap}
+  .wslbl{color:var(--ok);font:11px ui-monospace,Menlo,monospace;
+    text-shadow:0 0 4px #000;white-space:nowrap}
+
+  @media (prefers-reduced-motion: no-preference){
+    #floorBadge.pending .lvl{animation:pulse 2.4s ease-in-out infinite}
+    @keyframes pulse{50%{opacity:.55}}
+  }
+  @media (max-width:720px){
+    #storms{width:calc(100% - 28px);top:auto;bottom:52px;max-height:34%}
+    #floorBadge{min-width:0}
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="hdr">
+  <b>NOAH STORM TRACK WATCH</b>
+  <span class="sub">Cullowhee Creek corridor &middot; NHC guidance</span>
+  <button id="whatifBtn">WHAT-IF</button>
+  <span id="clock"></span>
+</div>
+
+<div id="simTag">SIMULATION</div>
+
+<div id="simbar">
+  <select id="simStorm">
+    <option value="Helene 2024">Helene 2024</option>
+    <option value="Frances 2004">Frances 2004</option>
+    <option value="Ivan 2004">Ivan 2004</option>
+  </select>
+  <button id="simPlay">▶ Play storm</button>
+  <input type="range" id="simSlider" min="0" max="100" value="0" step="0.5">
+  <span id="simTime">T+0 h</span>
+</div>
+
+<div id="floorBadge" class="none">
+  <div class="lvl">FLOOR: NONE</div>
+  <div class="why">No corridor criterion met</div>
+</div>
+
+<div id="storms">
+  <h2>Active systems (ATL)</h2>
+  <div id="stormList"><div id="quiet">Loading NHC feed&hellip;</div></div>
+</div>
+
+<div id="statline">initializing&hellip;</div>
+
+<div id="legend">
+  <div><span class="sw" style="border-color:var(--gate);border-top-style:dashed"></span>Corridor gate −83.2° / 33.0–36.5°N</div>
+  <div><span class="sw" style="border-color:#7fb3ff"></span>NHC forecast track</div>
+  <div><span class="sw" style="border-color:#5a6675;border-top-style:dotted"></span>Analog best tracks (schematic)</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============================================================================
+   NOAH Storm Track Watch — situational display for the Cullowhee corridor.
+
+   IMPORTANT: this page is a DISPLAY MIRROR of the synoptic_watch.py corridor
+   criterion. It renders NHC guidance and evaluates the same four gates for
+   operator awareness. The authoritative posture floor is owned by
+   synoptic_watch.py -> probabilistic_posture.py on the backend. This page
+   never triggers warnings. Escalate-only invariant applies server-side.
+
+   Corridor criterion (config/cullowhee_corridor.json):
+     lon < -83.2  AND  33.0 <= lat <= 36.5  AND  tau <= 72 h  AND  status >= TS
+   Floor ladder:  tau <= 72 h -> ELEVATED,  tau <= 48 h -> WATCH_PENDING.
+
+   Data: NOAA/NHC ArcGIS MapServer (GeoJSON, CORS-enabled) + CurrentStorms.json.
+   Poll: every 15 min. Fail-safe: on fetch failure, hold last render + flag it.
+   ========================================================================== */
+
+const CORRIDOR = { gateLon:-83.2, latMin:33.0, latMax:36.5, tauMax:72, tauPend:48 };
+const WATERSHED = { lat:35.31, lon:-83.19, name:"Cullowhee Creek watershed" };
+const REFRESH_MS = 15*60*1000;
+const STATUS_RANK = { TD:0, STD:0, PTC:0, TS:1, STS:1, HU:2, MH:3 };
+
+const NHC_MAPSERVER =
+  "https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer";
+const NHC_CURRENT = "https://www.nhc.noaa.gov/CurrentStorms.json";
+
+/* ---- map ---- */
+const map = L.map("map",{zoomControl:true}).setView([32.0,-83.0],5);
+map.zoomControl.setPosition("bottomleft");
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
+  attribution:"&copy; OSM &copy; CARTO &middot; tracks: NOAA/NHC",maxZoom:12
+}).addTo(map);
+
+/* ---- corridor overlay (signature layer) ---- */
+const corridorZone = L.rectangle(
+  [[CORRIDOR.latMin,-92.0],[CORRIDOR.latMax,CORRIDOR.gateLon]],
+  {color:"#e6b34d",weight:1,dashArray:"6 5",fillColor:"#e6b34d",fillOpacity:0.06,interactive:false}
+).addTo(map);
+const gateLine = L.polyline(
+  [[CORRIDOR.latMin,CORRIDOR.gateLon],[CORRIDOR.latMax,CORRIDOR.gateLon]],
+  {color:"#e6b34d",weight:2.5,dashArray:"8 6",interactive:false}
+).addTo(map);
+L.marker([CORRIDOR.latMax-0.15,CORRIDOR.gateLon-0.2],{
+  icon:L.divIcon({className:"gatelbl",html:"GATE −83.2°",iconAnchor:[70,0]}),interactive:false
+}).addTo(map);
+
+/* watershed marker */
+L.circleMarker([WATERSHED.lat,WATERSHED.lon],{radius:6,color:"#5dd08a",weight:2,
+  fillColor:"#5dd08a",fillOpacity:.5}).addTo(map)
+  .bindPopup("<b>"+WATERSHED.name+"</b><br>ARONNAX-MTN / ARONNAX-APT");
+L.marker([WATERSHED.lat+0.22,WATERSHED.lon],{
+  icon:L.divIcon({className:"wslbl",html:"CULLOWHEE",iconAnchor:[34,0]}),interactive:false
+}).addTo(map);
+
+/* ---- analog best tracks (schematic, approx. HURDAT2) ----
+   Each point: [lat, lon, hours-from-start, status, wind kt] — timing and
+   intensity are schematic approximations for what-if playback, not HURDAT2. */
+const SIM_TRACKS = {
+  "Helene 2024":[
+    [16.8,-83.4, 0,"TD", 30],[18.0,-84.0,12,"TS", 45],
+    [19.0,-84.6,36,"TS", 60],[21.6,-86.0,42,"HU", 70],[23.2,-86.4,48,"HU", 85],
+    [25.2,-86.1,54,"MH",100],[27.4,-85.2,60,"MH",120],[29.1,-84.3,64,"MH",120],
+    [30.1,-83.6,67,"MH",115],[32.1,-83.6,71,"HU", 80],[33.9,-83.9,75,"TS", 50],
+    [35.2,-84.6,79,"TS", 40],[36.4,-85.7,84,"TD", 30]],
+  "Frances 2004":[
+    [26.6,-79.3, 0,"HU", 90],[27.2,-80.2, 8,"HU", 90],[27.9,-81.7,18,"TS", 60],
+    [28.8,-82.7,28,"TS", 50],[29.7,-83.5,36,"TS", 45],[30.8,-84.3,44,"TS", 40],
+    [32.2,-84.6,52,"TD", 30],[33.8,-84.5,60,"TD", 30],[35.2,-84.0,68,"TD", 25]],
+  "Ivan 2004":[
+    [23.0,-85.6, 0,"MH",140],[25.5,-86.5,10,"MH",135],[27.2,-87.5,20,"MH",130],
+    [28.9,-88.0,30,"MH",120],[30.2,-87.9,36,"MH",105],[31.5,-87.6,42,"HU", 70],
+    [32.9,-87.0,48,"TS", 45],[34.4,-85.9,56,"TS", 40],[35.5,-84.5,64,"TD", 30],
+    [36.2,-82.9,72,"TD", 25]]
+};
+const analogGroup = L.layerGroup();
+for(const [nm,pts] of Object.entries(SIM_TRACKS)){
+  L.polyline(pts.map(p=>[p[0],p[1]]),{color:"#5a6675",weight:1.5,dashArray:"2 5",interactive:true})
+    .bindPopup("<b>"+nm+"</b><br>Approx. best track (schematic)").addTo(analogGroup);
+}
+analogGroup.addTo(map);
+
+/* optional national radar context (IEM n0q, single live frame) */
+const radarLayer = L.tileLayer(
+  "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q/{z}/{x}/{y}.png",
+  {opacity:.55,maxZoom:12});
+
+/* live NHC layers */
+const coneGroup = L.layerGroup().addTo(map);
+const trackGroup = L.layerGroup().addTo(map);
+const pastGroup = L.layerGroup();
+
+L.control.layers(null,{
+  "Forecast cone":coneGroup,
+  "Forecast track + points":trackGroup,
+  "Past track":pastGroup,
+  "Analog tracks (schematic)":analogGroup,
+  "Corridor zone":corridorZone,
+  "NEXRAD composite (live)":radarLayer
+},{collapsed:true,position:"topleft"}).addTo(map);
+
+/* ---- helpers ---- */
+const $ = id=>document.getElementById(id);
+function attr(a,names,dflt){ for(const n of names){ if(a && a[n]!=null && a[n]!=="") return a[n]; } return dflt; }
+function statusRank(s){
+  if(!s) return -1; s=String(s).toUpperCase().trim();
+  if(s in STATUS_RANK) return STATUS_RANK[s];
+  if(s.includes("MAJOR")) return 3;
+  if(s.includes("HURRICANE")) return 2;
+  if(s.includes("TROPICAL STORM")||s.includes("SUBTROPICAL STORM")) return 1;
+  if(s.includes("DEPRESSION")||s.includes("POST")) return 0;
+  return -1;
+}
+function fmtZ(d){ return d.toISOString().replace(/\.\d+Z$/,"Z"); }
+
+/* enumerate MapServer layers by name so index changes don't break us */
+async function getLayerIds(){
+  const r = await fetch(NHC_MAPSERVER+"?f=json");
+  const j = await r.json();
+  const find = pat => (j.layers||[]).filter(l=>pat.test(l.name)).map(l=>l.id);
+  return {
+    points: find(/forecast.*(point|position)/i),
+    track:  find(/forecast.*track/i),
+    cone:   find(/cone/i),
+    past:   find(/(past|observed).*track|track.*(past|observed)/i)
+  };
+}
+async function queryGeoJSON(id){
+  const u = NHC_MAPSERVER+"/"+id+"/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson";
+  const r = await fetch(u);
+  if(!r.ok) throw new Error("layer "+id+" HTTP "+r.status);
+  return r.json();
+}
+
+/* ---- corridor evaluation (mirror of synoptic_watch.evaluate_corridor) ----
+   Status gate applies to the storm's CURRENT classification (≥ TS);
+   geometry + tau gates apply to forecast points. Matches backtest semantics
+   (fires on Frances/Ivan, which crossed the zone while decaying). */
+function evalStorm(points, curStatus){
+  if(curStatus==null){
+    let mn=null;
+    for(const p of points) if(p.tau!=null && (mn===null||p.tau<mn.tau)) mn=p;
+    curStatus = mn ? mn.status : "";
+  }
+  if(statusRank(curStatus) < STATUS_RANK.TS) return {met:false, floor:"NONE", tau:null};
+  let best = null;
+  for(const p of points){
+    if(p.lon < CORRIDOR.gateLon &&
+       p.lat >= CORRIDOR.latMin && p.lat <= CORRIDOR.latMax &&
+       p.tau != null && p.tau <= CORRIDOR.tauMax){
+      if(best===null || p.tau < best.tau) best = p;
+    }
+  }
+  if(!best) return {met:false, floor:"NONE", tau:null};
+  return {met:true, tau:best.tau,
+          floor: best.tau <= CORRIDOR.tauPend ? "WATCH_PENDING" : "ELEVATED"};
+}
+function applyFloorBadge(floor, storms){
+  const b = $("floorBadge");
+  b.className = floor==="WATCH_PENDING" ? "pending" : floor==="ELEVATED" ? "elevated" : "none";
+  b.querySelector(".lvl").textContent = "FLOOR: "+(floor==="WATCH_PENDING"?"WATCH_PENDING":floor);
+  b.querySelector(".why").textContent =
+    floor==="NONE" ? "No corridor criterion met — display mirror only"
+    : storms.join(", ")+" meets corridor gates · authoritative floor: synoptic_watch.py";
+}
+
+/* ---- per-storm point extraction ---- */
+function extractPoints(pointFeatures, stormKey){
+  const now = Date.now();
+  const pts = [];
+  for(const f of pointFeatures){
+    const a = f.properties||{};
+    const key = String(attr(a,["STORMID","STORMNAME","STORMNAM","BASINID"],"")).toUpperCase();
+    if(stormKey && key && !key.includes(stormKey)) continue;
+    const g = f.geometry; if(!g || g.type!=="Point") continue;
+    let tau = attr(a,["TAU","FCSTPRD","FHOUR","FCSTHR"],null);
+    if(tau!=null) tau = Number(tau);
+    if(tau==null || isNaN(tau)){
+      const vt = attr(a,["VALIDTIME","FLDATELBL","DATELBL","ADVDATE"],null);
+      const t = vt ? Date.parse(vt) : NaN;
+      tau = isNaN(t) ? null : Math.max(0,(t-now)/3.6e6);
+    }
+    pts.push({
+      lat:g.coordinates[1], lon:g.coordinates[0], tau,
+      status: attr(a,["STORMTYPE","DVLBL","TCDVLP","TCDEVELOPMENT"],""),
+      wind: attr(a,["MAXWIND","INTENSITY"],null),
+      lbl: attr(a,["FLDATELBL","DATELBL","VALIDTIME"],"")
+    });
+  }
+  return pts;
+}
+
+/* ---- render ---- */
+function renderStormList(rows){
+  const el = $("stormList");
+  if(!rows.length){
+    el.innerHTML = '<div id="quiet">No active tropical cyclones in NHC feed — corridor quiet.</div>';
+    return;
+  }
+  el.innerHTML = rows.map(r=>{
+    const cls = r.met ? (r.floor==="WATCH_PENDING"?"met hit48":"met hit") : "met miss";
+    const line = r.met
+      ? "CORRIDOR: gate crossing ≤ "+Math.round(r.tau)+" h → "+r.floor
+      : "CORRIDOR: not met";
+    return '<div class="storm"><span class="nm">'+r.name+'</span> '+
+           '<span class="cls">'+r.cls+(r.wind?(" · "+r.wind+" kt"):"")+'</span>'+
+           '<div class="'+cls+'">'+line+'</div></div>';
+  }).join("");
+}
+
+async function refresh(){
+  if(simActive) return;   /* what-if mode owns the display */
+  const stat = $("statline");
+  stat.innerHTML = "fetching NHC guidance&hellip;";
+  try{
+    const ids = await getLayerIds();
+    const [ptsFC, trkFC, coneFC, pastFC] = await Promise.all([
+      Promise.all(ids.points.map(queryGeoJSON)),
+      Promise.all(ids.track.map(queryGeoJSON)),
+      Promise.all(ids.cone.map(queryGeoJSON)),
+      Promise.all(ids.past.map(queryGeoJSON))
+    ]);
+    const flat = arr => arr.flatMap(fc => fc.features||[]);
+    const pointFeatures = flat(ptsFC);
+
+    /* draw */
+    coneGroup.clearLayers(); trackGroup.clearLayers(); pastGroup.clearLayers();
+    flat(coneFC).forEach(f => L.geoJSON(f,{style:{color:"#7fb3ff",weight:1,
+      fillColor:"#7fb3ff",fillOpacity:.08}}).addTo(coneGroup));
+    flat(trkFC).forEach(f => L.geoJSON(f,{style:{color:"#7fb3ff",weight:2}}).addTo(trackGroup));
+    flat(pastFC).forEach(f => L.geoJSON(f,{style:{color:"#8a94a0",weight:1.5,dashArray:"1 4"}}).addTo(pastGroup));
+    pointFeatures.forEach(f=>{
+      const a=f.properties||{}, g=f.geometry;
+      if(!g||g.type!=="Point") return;
+      L.circleMarker([g.coordinates[1],g.coordinates[0]],{radius:4,color:"#7fb3ff",
+        weight:1.5,fillColor:"#0b0e12",fillOpacity:1}).addTo(trackGroup)
+        .bindPopup("<b>"+attr(a,["STORMNAME","STORMNAM"],"?")+"</b><br>"+
+          attr(a,["STORMTYPE","DVLBL"],"")+" · "+
+          (attr(a,["MAXWIND"],"?")+" kt")+"<br>"+attr(a,["FLDATELBL","VALIDTIME"],""));
+    });
+
+    /* storm roster: prefer CurrentStorms.json metadata; fall back to point attrs */
+    let roster = [];
+    try{
+      const cs = await (await fetch(NHC_CURRENT)).json();
+      roster = (cs.activeStorms||[]).map(s=>({
+        key:String(s.name||"").toUpperCase(),
+        name:s.name, cls:s.classification||"", wind:s.intensity||null
+      }));
+    }catch(e){
+      const seen = new Set();
+      for(const f of pointFeatures){
+        const a=f.properties||{};
+        const nm = attr(a,["STORMNAME","STORMNAM"],null);
+        if(nm && !seen.has(nm)){ seen.add(nm);
+          roster.push({key:String(nm).toUpperCase(),name:nm,
+            cls:attr(a,["STORMTYPE","DVLBL"],""),wind:null}); }
+      }
+    }
+
+    /* evaluate corridor per storm */
+    let floor = "NONE"; const hits=[];
+    const rows = roster.map(s=>{
+      const res = evalStorm(extractPoints(pointFeatures, s.key), s.cls || null);
+      if(res.met){
+        hits.push(s.name);
+        if(res.floor==="WATCH_PENDING" || floor==="NONE") floor = res.floor==="WATCH_PENDING"?"WATCH_PENDING":(floor==="WATCH_PENDING"?floor:"ELEVATED");
+      }
+      return {...s, ...res};
+    });
+    applyFloorBadge(floor, hits);
+    renderStormList(rows);
+    stat.innerHTML = '<span class="live">●</span> NHC feed OK · updated '+fmtZ(new Date())+
+      ' · next poll in 15 min';
+  }catch(err){
+    stat.innerHTML = '<span class="err">●</span> NHC fetch failed ('+err.message+
+      ') — holding last render, retry in 15 min';
+  }
+}
+
+/* ============================================================================
+   WHAT-IF SIMULATION — replays a schematic analog track on an accelerated
+   clock and runs the same corridor evaluation the live mode uses. Purely a
+   training/awareness overlay: never touches live data or the posture engine.
+   ========================================================================== */
+let simActive=false, simPlaying=false, simT=0, simTimer=null;
+const simGroup = L.layerGroup();
+const SIM_COLORS = {TD:"#8a94a0",TS:"#e6b34d",HU:"#e8734d",MH:"#d94f6b"};
+
+function simTrack(){ return SIM_TRACKS[$("simStorm").value]; }
+function simMaxH(){ const t=simTrack(); return t[t.length-1][2]; }
+function simStateAt(h){
+  const t = simTrack();
+  if(h<=t[0][2]) return {lat:t[0][0],lon:t[0][1],status:t[0][3],wind:t[0][4]};
+  for(let i=0;i<t.length-1;i++){
+    const a=t[i], b=t[i+1];
+    if(h>=a[2] && h<=b[2]){
+      const f = (h-a[2])/(b[2]-a[2] || 1);
+      return {lat:a[0]+f*(b[0]-a[0]), lon:a[1]+f*(b[1]-a[1]),
+              status:a[3], wind:Math.round(a[4]+f*(b[4]-a[4]))};
+    }
+  }
+  const z=t[t.length-1];
+  return {lat:z[0],lon:z[1],status:z[3],wind:z[4]};
+}
+function simDraw(){
+  const t = simTrack(), cur = simStateAt(simT);
+  simGroup.clearLayers();
+  L.polyline(t.map(p=>[p[0],p[1]]),{color:"#b48ce6",weight:2,dashArray:"6 5",
+    interactive:false}).addTo(simGroup);
+  /* forecast points still ahead of sim clock */
+  const fpts = [{lat:cur.lat,lon:cur.lon,tau:0,status:cur.status}];
+  for(const p of t){
+    if(p[2] > simT){
+      fpts.push({lat:p[0],lon:p[1],tau:p[2]-simT,status:p[3]});
+      L.circleMarker([p[0],p[1]],{radius:4,color:"#b48ce6",weight:1.5,
+        fillColor:"#0b0e12",fillOpacity:1,interactive:false}).addTo(simGroup);
+    }
+  }
+  L.circleMarker([cur.lat,cur.lon],{radius:9,
+    color:SIM_COLORS[cur.status]||"#b48ce6",weight:3,
+    fillColor:SIM_COLORS[cur.status]||"#b48ce6",fillOpacity:.55,
+    interactive:false}).addTo(simGroup);
+
+  const res = evalStorm(fpts, cur.status);
+  const b = $("floorBadge");
+  b.className = "sim";
+  b.querySelector(".lvl").textContent = "SIM FLOOR: "+res.floor;
+  b.querySelector(".why").textContent =
+    $("simStorm").value+" · T+"+Math.round(simT)+" h · "+cur.status+" "+cur.wind+" kt"+
+    (res.met ? " · zone crossing ≤ "+Math.round(res.tau)+" h" : "");
+  $("simTime").textContent = "T+"+Math.round(simT)+" h";
+  $("simSlider").value = simT;
+}
+function simStop(){ simPlaying=false; clearInterval(simTimer); simTimer=null;
+  $("simPlay").textContent = "▶ Play storm"; }
+function simEnter(){
+  simActive = true;
+  [coneGroup,trackGroup,pastGroup].forEach(g=>map.removeLayer(g));
+  simGroup.addTo(map);
+  $("whatifBtn").classList.add("on");
+  $("simbar").classList.add("on");
+  $("simTag").classList.add("on");
+  $("statline").innerHTML = '<span style="color:var(--sim)">●</span> SIMULATION — live NHC display suspended';
+  simT = 0; $("simSlider").max = simMaxH(); simDraw();
+}
+function simExit(){
+  simStop(); simActive = false;
+  map.removeLayer(simGroup);
+  coneGroup.addTo(map); trackGroup.addTo(map);
+  $("whatifBtn").classList.remove("on");
+  $("simbar").classList.remove("on");
+  $("simTag").classList.remove("on");
+  refresh();  /* restore live badge, panel, layers */
+}
+$("whatifBtn").addEventListener("click",()=> simActive ? simExit() : simEnter());
+$("simPlay").addEventListener("click",()=>{
+  if(simPlaying){ simStop(); return; }
+  if(simT >= simMaxH()) simT = 0;
+  simPlaying = true; $("simPlay").textContent = "❚❚ Pause";
+  simTimer = setInterval(()=>{
+    simT = Math.min(simT + 0.4, simMaxH());
+    simDraw();
+    if(simT >= simMaxH()) simStop();
+  },120);
+});
+$("simSlider").addEventListener("input",e=>{
+  simStop(); simT = Number(e.target.value); simDraw();
+});
+$("simStorm").addEventListener("change",()=>{
+  simStop(); simT = 0; $("simSlider").max = simMaxH(); simDraw();
+});
+
+function tickClock(){ $("clock").textContent = fmtZ(new Date()); }
+tickClock(); setInterval(tickClock,1000);
+refresh(); setInterval(refresh,REFRESH_MS);
+</script>
+</body>
+</html>

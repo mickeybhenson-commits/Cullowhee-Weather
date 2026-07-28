@@ -145,6 +145,7 @@
     <p class="lede">After Hurricane Helene, the streams that flood fastest in these mountains still had no gauges. This puts sensors in the water and weather in the picture — to buy the one thing that matters in a flash flood: a little time.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#now">See current conditions</a>
+      <a class="btn btn-ghost" href="#watch">Storm track watch</a>
       <a class="btn btn-ghost" href="#how">Explore the system</a>
     </div>
   </div>
@@ -224,6 +225,16 @@
   <p class="caption">Right now this runs on <b>forecast rainfall and NEXRAD radar</b>. The in-stream sensors deploy over the 2026–27 season; until then, some thresholds stay deliberately cautious.</p>
 </section>
 
+<section id="watch" class="section reveal">
+  <p class="eyebrow">Storm track watch</p>
+  <h2>Watching the Atlantic before it reaches the mountains.</h2>
+  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion.</p>
+  <div class="frame frame-live">
+    <iframe id="stormWatch" title="NOAH storm track watch — live NHC guidance for the Cullowhee corridor" loading="lazy"></iframe>
+  </div>
+  <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
+</section>
+
 <section id="how" class="section reveal">
   <p class="eyebrow">How it works</p>
   <h2>The whole system, in one model</h2>
@@ -249,7 +260,7 @@
 
 <footer class="foot">
   <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies</p>
-  <p><a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+  <p><a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
 </footer>
 
 <script>
@@ -300,6 +311,12 @@
   (function(){
     var m = document.getElementById('model3d');
     if(m){ m.src = bust('noah_skye_3d.html'); }
+  })();
+
+  // ---- storm track watch embed (same cache-busting) ----
+  (function(){
+    var w = document.getElementById('stormWatch');
+    if(w){ w.src = bust('storm_watch.html'); }
   })();
 </script>
 </body>

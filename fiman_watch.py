@@ -247,6 +247,36 @@ def failure_row(now: datetime, site: str, note: str) -> dict:
     return r
 
 
+def _migrate_header() -> None:
+    """Rewrite the log in place if its header no longer matches COLUMNS.
+
+    Appending wide rows under a narrow header does not raise — it just shifts
+    every value after the last known column into the wrong field, and the
+    corruption is invisible until someone tries to analyse the file months
+    later. Old rows are preserved and back-filled with blanks for the new
+    columns; unknown legacy columns are dropped.
+    """
+    if not OUT.exists():
+        return
+    try:
+        with OUT.open(newline="") as fh:
+            reader = csv.DictReader(fh)
+            if reader.fieldnames == COLUMNS:
+                return
+            old = list(reader)
+            print(f"migrating log header: {len(reader.fieldnames or [])} "
+                  f"-> {len(COLUMNS)} columns, {len(old)} existing rows")
+        tmp = OUT.with_suffix(".csv.tmp")
+        with tmp.open("w", newline="") as fh:
+            w = csv.DictWriter(fh, fieldnames=COLUMNS, extrasaction="ignore")
+            w.writeheader()
+            for r in old:
+                w.writerow({c: r.get(c, "") for c in COLUMNS})
+        tmp.replace(OUT)
+    except (OSError, csv.Error) as e:
+        print(f"header migration skipped: {type(e).__name__}: {e}")
+
+
 def main() -> None:
     now = datetime.now(timezone.utc)
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -263,9 +293,10 @@ def main() -> None:
         rows = [failure_row(now, s, f"{type(e).__name__}: {e}")
                 for s in WATCH_SITES]
 
+    _migrate_header()
     new = not OUT.exists()
     with OUT.open("a", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=COLUMNS)
+        w = csv.DictWriter(fh, fieldnames=COLUMNS, extrasaction="ignore")
         if new:
             w.writeheader()
         w.writerows(rows)

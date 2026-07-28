@@ -1,13 +1,4 @@
 <!DOCTYPE html>
-<div id="devbanner" style="position:fixed;top:0;left:0;right:0;z-index:2000;
-  background:#3a1d12;border-bottom:1px solid #f2882d;color:#ffd9bd;
-  font:600 11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
-  padding:9px 16px;text-align:center;letter-spacing:.01em">
-  <strong style="color:#f2882d">DEVELOPMENT SYSTEM — NOT FOR EMERGENCY USE.</strong>
-  No in-stream sensors deployed. Status is modeled from forecast rainfall, not measured.
-  Official warnings: <a href="https://www.weather.gov/gsp/" style="color:#ffd9bd">NWS Greenville-Spartanburg</a>.
-</div>
-<script>if(window.self!==window.top){document.getElementById('devbanner').style.display='none';}</script>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -25,7 +16,7 @@
   #map{position:absolute;inset:0}
 
   /* header */
-  #hdr{position:fixed;top:0;left:0;right:0;z-index:1100;display:flex;gap:14px;
+  #hdr{position:fixed;top:var(--bannerH,54px);left:0;right:0;z-index:1100;display:flex;gap:14px;
     align-items:baseline;padding:8px 14px;background:var(--panel);
     border-bottom:1px solid var(--line)}
   #hdr b{font-size:14px;letter-spacing:.04em}
@@ -33,7 +24,7 @@
   #clock{margin-left:auto;color:var(--dim)}
 
   /* posture floor banner */
-  #floorBadge{position:fixed;top:44px;left:14px;z-index:1100;
+  #floorBadge{position:fixed;top:calc(var(--bannerH,54px) + 44px);left:14px;z-index:1100;
     background:var(--panel);border:1px solid var(--line);border-radius:6px;
     padding:8px 12px;min-width:220px}
   #floorBadge .lvl{font-size:16px;font-weight:700;letter-spacing:.06em}
@@ -45,7 +36,7 @@
   #floorBadge.pending .lvl{color:var(--pend)}
 
   /* storm list panel */
-  #storms{position:fixed;right:14px;top:44px;z-index:1100;width:290px;
+  #storms{position:fixed;right:14px;top:calc(var(--bannerH,54px) + 44px);z-index:1100;width:290px;
     max-height:calc(100% - 120px);overflow:auto;background:var(--panel);
     border:1px solid var(--line);border-radius:6px;padding:10px 12px}
   #storms h2{margin:0 0 6px;font-size:12px;color:var(--dim);
@@ -123,15 +114,79 @@
     #storms{width:calc(100% - 28px);top:auto;bottom:52px;max-height:34%}
     #floorBadge{min-width:0}
   }
+
+  /* ---------- intro / about card ---------- */
+  #aboutbtn{margin-left:8px;background:none;border:1px solid var(--line);
+    border-radius:5px;color:var(--dim);font:12px ui-monospace,Menlo,monospace;
+    padding:3px 9px;cursor:pointer;letter-spacing:.06em}
+  #aboutbtn:hover{color:var(--txt);border-color:var(--txt)}
+  #introwrap{position:fixed;inset:0;z-index:3000;background:rgba(4,7,10,.78);
+    backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:24px}
+  #introwrap.hidden{display:none}
+  #introcard{background:#0e141b;border:1px solid var(--line);border-radius:12px;
+    max-width:660px;width:100%;max-height:calc(100vh - 48px);min-height:0;
+    overflow-y:auto;padding:26px 28px 0;
+    box-shadow:0 24px 70px -20px #000;color:var(--txt);
+    font:13px/1.55 ui-monospace,Menlo,Consolas,monospace}
+  #introcard h2{margin:0 0 3px;font-size:17px;font-weight:700;letter-spacing:.02em}
+  #introcard .isub{margin:0 0 14px;font-size:12px;color:var(--dim)}
+  #introcard p{margin:10px 0}
+  #introcard b{color:#fff;font-weight:700}
+  #introcard .warnbox{border:1px solid var(--pend);background:rgba(232,115,77,.10);
+    border-radius:7px;padding:11px 13px;margin:14px 0}
+  #introcard .warnbox b{color:var(--pend)}
+  #introcard .sect{margin:16px 0 6px;font-size:11px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--dim);font-weight:700}
+  #introcard ol{margin:6px 0;padding-left:22px}
+  #introcard ol li{margin:5px 0}
+  #introcard ul{margin:6px 0;padding-left:18px;list-style:none}
+  #introcard ul li{margin:5px 0;position:relative}
+  #introcard ul li:before{content:"\25B8";position:absolute;left:-14px;color:var(--dim)}
+  #introcard .floorrow{display:flex;gap:9px;align-items:baseline;margin:5px 0}
+  #introcard .fchip{display:inline-block;min-width:132px;border:1px solid;border-radius:4px;
+    padding:2px 7px;font-size:11px;font-weight:700;letter-spacing:.05em;text-align:center}
+  #introcard .f-none{color:var(--ok);border-color:var(--ok)}
+  #introcard .f-elev{color:var(--elev);border-color:var(--elev)}
+  #introcard .f-pend{color:var(--pend);border-color:var(--pend)}
+  #introcard .contact{font-size:11.5px;color:var(--dim);margin-top:16px;
+    border-top:1px solid var(--line);padding-top:11px}
+  #introbtns{display:flex;justify-content:flex-end;position:sticky;bottom:0;
+    margin-top:16px;padding:12px 0 18px;background:linear-gradient(to top,#0e141b 62%,rgba(14,20,27,0))}
+  #introok{background:var(--ok);border:none;border-radius:6px;color:#062617;
+    font:700 12.5px ui-monospace,Menlo,monospace;padding:9px 18px;cursor:pointer;
+    letter-spacing:.03em}
+  #introok:hover{filter:brightness(1.1)}
+  @media (max-width:640px){#introcard{padding:20px 18px;font-size:12.5px}
+    #introcard .fchip{min-width:0}}
 </style>
 </head>
 <body>
+<!-- ==== status banner (hides itself when embedded; sets --bannerH for layout) ==== -->
+<style>
+#devbanner{position:fixed;top:0;left:0;right:0;z-index:2000;background:#3a1d12;
+  border-bottom:1px solid #f2882d;color:#ffd9bd;
+  font:600 11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
+  padding:9px 16px;text-align:center;letter-spacing:.01em}
+#devbanner a{color:#ffd9bd}
+#devbanner.embedded{display:none}
+.leaflet-top{top:var(--bannerH,54px)}
+</style>
+<div id="devbanner"><strong style="color:#f2882d">DECISION-SUPPORT TOOL &mdash; NOT AN OFFICIAL FLOOD WARNING.</strong> Posture is modeled, not measured; in-stream gauges pending. Do not use as the sole basis for issuing public alerts. Official warnings: <a href="https://www.weather.gov/gsp/" target="_blank" rel="noopener" style="color:#ffd9bd;text-decoration:underline">NWS Greenville-Spartanburg</a>.</div>
+<script>(function(){var b=document.getElementById("devbanner"),r=document.documentElement;
+  if(window.self!==window.top){b.classList.add("embedded");r.style.setProperty("--bannerH","0px");return;}
+  function sz(){r.style.setProperty("--bannerH",b.offsetHeight+"px");}
+  sz();window.addEventListener("resize",sz);
+  if(window.ResizeObserver){new ResizeObserver(sz).observe(b);}
+})();</script>
+<!-- ==== end status banner ==== -->
+
 <div id="map"></div>
 
 <div id="hdr">
   <b>NOAH STORM TRACK WATCH</b>
   <span class="sub">Cullowhee Creek corridor &middot; NHC guidance</span>
   <button id="whatifBtn">WHAT-IF</button>
+  <button id="aboutbtn">ABOUT</button>
   <span id="clock"></span>
 </div>
 
@@ -165,6 +220,91 @@
   <div><span class="sw" style="border-color:#7fb3ff"></span>NHC forecast track</div>
   <div><span class="sw" style="border-color:#5a6675;border-top-style:dotted"></span>Analog best tracks (schematic)</div>
 </div>
+
+
+<div id="introwrap">
+  <div id="introcard">
+    <h2>NOAH Storm Track Watch &mdash; Cullowhee corridor</h2>
+    <p class="isub">Jackson County situational-awareness display &middot; NHC tropical guidance</p>
+
+    <p>This screen watches Atlantic tropical systems and flags when a forecast track
+    threatens the Cullowhee Creek corridor. It draws live <b>National Hurricane Center</b>
+    guidance &mdash; forecast track, cone, and past track &mdash; and tests every active
+    storm against one fixed corridor criterion.</p>
+
+    <div class="warnbox">
+      <b>This is a situational-awareness display, not an official flood warning.</b>
+      It is a <b>display mirror</b>: it shows the same corridor test the backend runs, but it
+      never issues or triggers a warning, and the authoritative readiness floor is computed
+      server-side. Use it alongside &mdash; never in place of &mdash; NWS products and your own
+      judgment. Do not use it as the sole basis for issuing public alerts.
+    </div>
+
+    <div class="sect">The corridor test</div>
+    <p>A storm counts when its forecast track crosses <b>west of &minus;83.2&deg;</b> longitude
+    between <b>33.0&deg; and 36.5&deg;N</b> at tropical&#8209;storm strength or greater. How soon
+    it gets there sets the readiness floor:</p>
+    <div class="floorrow"><span class="fchip f-none">FLOOR: NONE</span>
+      <span>no storm meets the corridor test</span></div>
+    <div class="floorrow"><span class="fchip f-elev">FLOOR: ELEVATED</span>
+      <span>gate crossing within 72 hours</span></div>
+    <div class="floorrow"><span class="fchip f-pend">FLOOR: WATCH_PENDING</span>
+      <span>gate crossing within 48 hours</span></div>
+
+    <div class="sect">Reading the screen</div>
+    <ul>
+      <li><b>Top left</b> &mdash; the current floor, and the reason for it.</li>
+      <li><b>Right</b> &mdash; active Atlantic systems. Each shows name, class, and wind, with a
+          CORRIDOR line beneath: <b style="color:var(--elev)">amber</b> meets the gate,
+          <b style="color:var(--pend)">orange</b> meets it inside 48&nbsp;h,
+          grey does not meet it.</li>
+      <li><b>Bottom left</b> &mdash; data status. Green means the last NHC fetch succeeded. If a
+          fetch fails the display <b>holds the last good render</b> and flags it rather than
+          going blank &mdash; check this line before trusting what you see.</li>
+      <li><b>Bottom right</b> &mdash; legend: dashed gold is the corridor gate, blue is the NHC
+          forecast track, dotted grey are the analog tracks.</li>
+    </ul>
+    <p>Live guidance refreshes automatically every <b>15 minutes</b>.</p>
+
+    <div class="sect">Two modes</div>
+    <p><b>Live</b> (the view you start in) polls NHC and shows present conditions.
+    <b>What&#8209;if</b> is a practice sandbox that replays historical storms through the same
+    corridor test:</p>
+    <ol>
+      <li>Click <b>WHAT-IF</b> in the header. A <b>SIMULATION</b> tag appears and the badge
+          switches to <b>SIM FLOOR</b>.</li>
+      <li>Pick a storm &mdash; <b>Helene 2024</b>, <b>Frances 2004</b>, or <b>Ivan 2004</b>.</li>
+      <li>Press <b>&#9658; Play storm</b> to advance the track hour by hour; press again to pause.</li>
+      <li>Drag the <b>scrub bar</b> to step through manually. The <b>T+</b> readout shows hours
+          from the start of the track.</li>
+    </ol>
+    <p>Click <b>WHAT-IF</b> again to leave the sandbox and return to live guidance &mdash;
+    what&#8209;if never affects the live floor.</p>
+    <p style="color:var(--dim)">The analog tracks are <b style="color:var(--dim)">schematic
+    approximations</b> for practice &mdash; timing and intensity are not HURDAT2 data.</p>
+
+    <div class="sect">Needs internet</div>
+    <p>The basemap, NHC guidance, and cone all load from the web, so open it on a connected
+    device.</p>
+
+    <div class="contact">Cullowhee Creek pilot &middot; Jackson County NC Emergency Management.
+    Questions or issues: contact the EM department.</div>
+
+    <div id="introbtns"><button id="introok">Got it &mdash; open the watch</button></div>
+  </div>
+</div>
+
+<script>(function(){
+  var w=document.getElementById("introwrap"),
+      ok=document.getElementById("introok"),
+      ab=document.getElementById("aboutbtn");
+  function close(){ w.classList.add("hidden"); }
+  function open(){ w.classList.remove("hidden"); }
+  ok && ok.addEventListener("click",close);
+  ab && ab.addEventListener("click",open);
+  w && w.addEventListener("click",function(e){ if(e.target===w) close(); });
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape") close(); });
+})();</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>

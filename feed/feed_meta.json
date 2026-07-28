@@ -1,0 +1,18 @@
+{
+  "generated_utc": "2026-07-28T22:24:00.379042+00:00",
+  "shadow_mode": true,
+  "authority_note": "Not an official warning product. NWS (WFO GSP) is the warning authority; NCEM FIMAN is the authoritative gage record. This feed is a Jackson County forecast overlay intended to sit alongside FIMAN, not replace it.",
+  "publish_interval_hours": 0.5,
+  "expected_next_utc": null,
+  "site_count": 1,
+  "stale_sites": [],
+  "schema": {
+    "observation_fields": "mirror NCEM FIMAN GAGES_ALL naming",
+    "forecast_fields": "prefixed FX_, modeled, not measured",
+    "units": {
+      "stage": "ft above GAGE_DATUM",
+      "elevation": "ft NAVD88",
+      "discharge": "cfs"
+    }
+  }
+}

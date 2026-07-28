@@ -28,7 +28,7 @@ jobs:
         env:
           CULLOWHEE_SHADOW_MODE: "1"
           CULLOWHEE_DATUM_VERIFIED: "0"
-        run: python publish_feed.py
+        run: python feed_runner.py
 
       - name: Sanity check the feed
         run: |

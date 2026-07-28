@@ -23,6 +23,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Generate feed
         env:
@@ -45,6 +49,6 @@ jobs:
         run: |
           git config user.name  "feed-bot"
           git config user.email "feed-bot@users.noreply.github.com"
-          git add feed/gages.geojson feed/feed_meta.json feed/history.json feed/state.json
+          git add -A feed
           git diff --staged --quiet || git commit -m "feed: $(date -u +%FT%TZ)"
           git push

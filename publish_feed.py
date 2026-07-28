@@ -105,6 +105,10 @@ class Reading:
     observed_utc: datetime
     trend: str                      # "Rising" | "Falling" | "Constant"
     source: str                     # "SENSOR" | "MODEL" | "GOV"
+    # Level as computed by flood_engine.classify_stage WITH hysteresis carried
+    # across runs. When present this wins over the stateless recomputation
+    # below, because the deadband is the whole point.
+    level: Optional[str] = None
     rise_rate_ft_hr: Optional[float] = None
     hours_to_next: Optional[float] = None
     next_level: Optional[str] = None
@@ -203,7 +207,8 @@ def build_feature(key: str, r: Optional[Reading]) -> dict:
 
         # ---- FX_: modeled / forecast. NOT measurements. -------------------
         "FX_SHADOW_MODE": SHADOW_MODE,
-        "FX_LEVEL": _local_level(stage),
+        "FX_LEVEL": (r.level if (r and r.level) else _local_level(stage)),
+        "FX_LEVEL_HYSTERETIC": bool(r and r.level),
         "FX_LEVEL_BASIS": (
             "Local basin model (TR-55 / Manning). NOT an NWS flood category. "
             "Local EMERGENCY (stage 11.0 ft) fires below the state MAJOR "
@@ -285,4 +290,4 @@ if __name__ == "__main__":
         warn_probability=0.03,
         discharge_cfs=42.0,
     )
-    publish({"CULLOWHEE_CK": demo}, outdir="feed")
+    publish({"CULLOWHEE_CK": demo})

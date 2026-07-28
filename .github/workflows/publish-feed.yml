@@ -34,6 +34,10 @@ jobs:
           CULLOWHEE_DATUM_VERIFIED: "0"
         run: python feed_runner.py
 
+      - name: Watch the state feed
+        continue-on-error: true
+        run: python fiman_watch.py
+
       - name: Sanity check the feed
         run: |
           python - <<'PY'

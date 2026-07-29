@@ -54,5 +54,7 @@ jobs:
           git config user.name  "feed-bot"
           git config user.email "feed-bot@users.noreply.github.com"
           git add -A feed
-          git diff --staged --quiet || git commit -m "feed: $(date -u +%FT%TZ)"
+          git diff --staged --quiet && exit 0
+          git commit -m "feed: $(date -u +%FT%TZ)"
+          git pull --rebase --autostash origin main
           git push

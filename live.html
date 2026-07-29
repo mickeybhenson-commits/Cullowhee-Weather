@@ -1,16 +1,6 @@
 <!DOCTYPE html>
-<div id="devbanner" style="position:fixed;top:0;left:0;right:0;z-index:2000;
-  background:#3a1d12;border-bottom:1px solid #f2882d;color:#ffd9bd;
-  font:600 11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
-  padding:9px 16px;text-align:center;letter-spacing:.01em">
-  <strong style="color:#f2882d">DEVELOPMENT SYSTEM — NOT FOR EMERGENCY USE.</strong>
-  No in-stream sensors deployed. Status is modeled from forecast rainfall, not measured.
-  Official warnings: <a href="https://www.weather.gov/gsp/" style="color:#ffd9bd">NWS Greenville-Spartanburg</a>.
-</div>
-<script>if(window.self!==window.top){document.getElementById('devbanner').style.display='none';}</script>
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-  
 <title>Cullowhee Creek — live watershed status</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
@@ -18,7 +8,7 @@
  #map{position:absolute;inset:0;}
  .panel{position:absolute;z-index:1000;background:rgba(255,255,255,.95);border:1px solid #d8d2c6;
    border-radius:9px;box-shadow:0 2px 10px rgba(0,0,0,.12);padding:10px 13px;}
- #top{top:12px;left:12px;right:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+ #top{top:calc(var(--bannerH,38px) + 12px);left:12px;right:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
  #top h1{font-size:.98rem;margin:0;font-weight:800;white-space:nowrap;}
  #top .sub{font-size:.71rem;color:#5b6b78;margin:1px 0 0;}
  .seg{display:inline-flex;border:1px solid #234F86;border-radius:7px;overflow:hidden;}
@@ -57,7 +47,7 @@
 #windywrap .whead{display:flex;justify-content:space-between;align-items:center;margin:0 2px 6px;
    color:#eef2f4;font-size:12px;font-weight:600;}
 #windywrap .wclose{background:none;border:none;color:#cfd8dc;font-size:15px;line-height:1;cursor:pointer;padding:0 4px;}
-#provbanner{position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:1200;background:rgba(19,33,46,.92);color:#dfe8f0;font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 12px;border-radius:0 0 8px 8px;letter-spacing:.02em;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.35);}
+#provbanner{position:absolute;top:var(--bannerH,38px);left:50%;transform:translateX(-50%);z-index:1200;background:rgba(19,33,46,.92);color:#dfe8f0;font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 12px;border-radius:0 0 8px 8px;letter-spacing:.02em;white-space:nowrap;box-shadow:0 1px 6px rgba(0,0,0,.35);}
 body.whatif-on .radartiles{opacity:0!important;pointer-events:none}
 .stormicon{background:none;border:none}
 .stormdot{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle,#2b6cb0 0%,#4299e1 45%,rgba(66,153,225,.18) 72%,transparent 100%);border:2px solid #2b6cb0;box-shadow:0 0 7px rgba(43,108,176,.6);cursor:move}
@@ -76,6 +66,25 @@ body.whatif-on .radartiles{opacity:0!important;pointer-events:none}
 #sbtable.collapsed table,#sbtable.collapsed .sbhint,#sbtable.collapsed .sbleg{display:none}
 @media (max-width:640px){#sbtable{display:none}}
 </style></head><body>
+<!-- ===== status banner (auto-hides when embedded in a page that already shows it) ===== -->
+<style>
+#devbanner{position:fixed;top:0;left:0;right:0;z-index:2000;background:#3a1d12;
+  border-bottom:1px solid #f2882d;color:#ffd9bd;
+  font:600 11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
+  padding:9px 16px;text-align:center;letter-spacing:.01em}
+#devbanner.embedded{display:none}
+.leaflet-top{top:var(--bannerH,38px)}
+</style>
+<div id="devbanner"><strong style="color:#f2882d">DECISION-SUPPORT TOOL &mdash; NOT AN OFFICIAL FLOOD WARNING.</strong> Posture is modeled, not measured; in-stream gauges pending. Do not use as the sole basis for issuing public alerts. Official warnings: <a href="https://www.weather.gov/gsp/" target="_blank" rel="noopener" style="color:#ffd9bd;text-decoration:underline">NWS Greenville-Spartanburg</a>.</div>
+<script>(function(){var b=document.getElementById("devbanner");
+  if(window.self!==window.top){b.classList.add("embedded");
+    document.documentElement.style.setProperty("--bannerH","0px");return;}
+  function sz(){document.documentElement.style.setProperty("--bannerH",b.offsetHeight+"px");}
+  sz();window.addEventListener("resize",sz);
+  if(window.ResizeObserver){new ResizeObserver(sz).observe(b);}
+})();</script>
+<!-- ===== end status banner ===== -->
+
 <div id="map"></div>
 <div id="sbtable">
   <h4 id="sbhdr">Sub-basin status <span id="sbtog">&#9662;</span></h4>

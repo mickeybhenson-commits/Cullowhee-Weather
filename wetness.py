@@ -2,7 +2,7 @@
 wetness.py - antecedent wetness + baseflow engine for the Cullowhee Creek model.
 ================================================================================
 AUTHORITATIVE implementation. The JS engine embedded in
-Cullowhee_Creek_live_status.html is a PORT of this module - keep them in sync.
+live.html is a PORT of this module - keep them in sync.
 
 WHAT THIS REPLACES (and why)
   The original antecedent path was the NRCS 5-day ARC staircase:
@@ -262,6 +262,6 @@ if __name__ == "__main__":
               f"storm={r['storm_ft']:.2f}ft total={r['stage_ft']:.2f}ft "
               f"-> {r['posture']}")
     print("=" * 78)
-    print("PORT NOTE: the JS engine in Cullowhee_Creek_live_status.html mirrors")
+    print("PORT NOTE: the JS engine in live.html mirrors")
     print("this module (cnFromWetness / wetnessFromAPI / soil percentile / d0).")
     print("=" * 78)

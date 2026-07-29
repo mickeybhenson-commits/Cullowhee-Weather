@@ -29,7 +29,7 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
@@ -64,7 +64,12 @@ COLUMNS = ["observed_utc", "site_id", "name", "last_updated_raw",
            "model_delta_ft",     # our predicted change over that same span
            "delta_window_min",   # span between the two OBSERVATION stamps
            "model_window_min",   # span between the two RUN times
-           "delta_resid_ft"]     # model_delta - obs_delta  (the error)
+           "delta_resid_ft",     # model_delta - obs_delta  (the error)
+           # --- basin rainfall (attached to the 25380 rows only) ------------
+           "om_rain_1h_in",      # Open-Meteo, last completed hour, basin centroid
+           "om_rain_24h_in",     # Open-Meteo, sum of last 24 completed hours
+           "coop_prcp_in",       # NWS COOP Cullowhee daily total (inches)
+           "coop_prcp_date"]     # the DATE that daily total belongs to
 #
 # Note on the two window columns. The observed delta spans FIMAN's observation
 # timestamps; the model delta spans our run times, because we can only sample
@@ -78,6 +83,106 @@ COLUMNS = ["observed_utc", "site_id", "name", "last_updated_raw",
 # The only site our basin model actually predicts. The Tuckasegee control gage
 # is a different drainage; logging a "prediction" against it would be noise.
 MODEL_SITE = "25380"
+
+# ---------------------------------------------------------------------------
+# Basin rainfall. Two sources, deliberately different in character:
+#
+#   Open-Meteo  — hourly model/analysis blend at the (approximate) basin
+#                 centroid. Not a gauge. Timely but carries the mountain QPE
+#                 bias problem; treat as the event-timing signal.
+#   NWS COOP    — the Cullowhee cooperative observer gauge (USC00312200,
+#                 daily precip since 1909, ~1.5 mi from the FIMAN gage).
+#                 A real gauge, but daily-read and posted to NCEI with a
+#                 2-4 day lag; treat as the ground-truth / bias anchor.
+#
+# Together with the FIMAN stage column, each row of the log becomes one
+# sample of the paired (rain, stage) record that event correlation needs.
+# ---------------------------------------------------------------------------
+# Approximate centroid of the Cullowhee Creek watershed (basin runs SW of the
+# gage toward Cullowhee Mountain). Refine from BASIN_POINTS when convenient;
+# for a 2-3 mi^2 basin the difference is within Open-Meteo's grid anyway.
+BASIN_LAT, BASIN_LON = 35.272, -83.202
+COOP_STATION = "USC00312200"
+
+OM_URL = ("https://api.open-meteo.com/v1/forecast?"
+          + urllib.parse.urlencode({
+              "latitude": BASIN_LAT, "longitude": BASIN_LON,
+              "hourly": "precipitation", "past_days": 2, "forecast_days": 1,
+              "precipitation_unit": "inch", "timezone": "UTC"}))
+
+RAIN_COLS = ("om_rain_1h_in", "om_rain_24h_in", "coop_prcp_in", "coop_prcp_date")
+
+
+def _om_extract(data: dict, now: datetime) -> tuple[Optional[float], Optional[float]]:
+    """Last completed hour and last-24-completed-hours rainfall, inches.
+
+    Open-Meteo returns hour-start buckets; the bucket starting at H is only
+    complete once now >= H+1h. Forecast hours (future buckets) are excluded
+    by the same rule, so requesting forecast_days=1 cannot leak forecast
+    rain into an 'observed' column.
+    """
+    hourly = data.get("hourly", {})
+    times, vals = hourly.get("time", []), hourly.get("precipitation", [])
+    done = []
+    for t, v in zip(times, vals):
+        if v is None:
+            continue
+        try:
+            ts = datetime.fromisoformat(t).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+        if (now - ts).total_seconds() >= 3600:
+            done.append((ts, float(v)))
+    if not done:
+        return None, None
+    done.sort()
+    last24 = [v for ts, v in done if (now - ts).total_seconds() <= 24 * 3600 + 3599]
+    return round(done[-1][1], 3), round(sum(last24), 3)
+
+
+def _coop_extract(rows: list) -> tuple[Optional[float], Optional[str]]:
+    """Most recent day with a PRCP value from the NCEI daily-summaries rows."""
+    best = None
+    for r in rows:
+        p = r.get("PRCP")
+        if p in (None, ""):
+            continue
+        try:
+            best = max(best or ("", 0.0), (r.get("DATE", ""), float(p)),
+                       key=lambda x: x[0])
+        except (TypeError, ValueError):
+            continue
+    return (best[1], best[0]) if best else (None, None)
+
+
+def fetch_rain(now: datetime) -> dict:
+    """Both rain sources. Failures degrade to nulls with a printed note —
+    the rain legs must never take down the stage logging."""
+    out: dict = {c: None for c in RAIN_COLS}
+    try:
+        req = urllib.request.Request(OM_URL, headers={
+            "User-Agent": "Cullowhee-Weather feed monitor"})
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            out["om_rain_1h_in"], out["om_rain_24h_in"] = \
+                _om_extract(json.load(resp), now)
+    except Exception as e:                       # noqa: BLE001 - deliberate
+        print(f"open-meteo unavailable: {type(e).__name__}: {e}")
+    try:
+        start = (now - timedelta(days=10)).date().isoformat()
+        url = ("https://www.ncei.noaa.gov/access/services/data/v1?"
+               + urllib.parse.urlencode({
+                   "dataset": "daily-summaries", "stations": COOP_STATION,
+                   "startDate": start, "endDate": now.date().isoformat(),
+                   "dataTypes": "PRCP", "format": "json",
+                   "units": "standard"}))
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Cullowhee-Weather feed monitor"})
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            out["coop_prcp_in"], out["coop_prcp_date"] = \
+                _coop_extract(json.load(resp))
+    except Exception as e:                       # noqa: BLE001 - deliberate
+        print(f"NCEI COOP unavailable: {type(e).__name__}: {e}")
+    return out
 
 
 def parse_fiman_ts(raw: Optional[str]) -> Optional[datetime]:
@@ -293,6 +398,15 @@ def main() -> None:
         rows = [failure_row(now, s, f"{type(e).__name__}: {e}")
                 for s in WATCH_SITES]
 
+    # Rain is basin-scoped, not per-gage: attach it to the model site's row
+    # only. It is fetched even when the FIMAN query failed — a rain sample
+    # with missing stage is still half of a paired record, and during an
+    # event that half may be the one that matters.
+    rain = fetch_rain(now)
+    for r in rows:
+        if r.get("site_id") == MODEL_SITE:
+            r.update(rain)
+
     _migrate_header()
     new = not OUT.exists()
     with OUT.open("a", newline="") as fh:
@@ -315,6 +429,11 @@ def main() -> None:
                          if r.get("delta_resid_ft") is not None
                          else f"  |  obs{r['obs_delta_ft']:+.2f} ft "
                               f"(no model value)")
+            if r.get("om_rain_1h_in") is not None:
+                line += (f"  |  rain 1h={r['om_rain_1h_in']}in "
+                         f"24h={r['om_rain_24h_in']}in")
+            if r.get("coop_prcp_in") is not None:
+                line += f"  coop {r['coop_prcp_date']}={r['coop_prcp_in']}in"
             print(line)
         else:
             print(f"{r['site_id']:>10}  QUERY FAILED: {r['note']}")

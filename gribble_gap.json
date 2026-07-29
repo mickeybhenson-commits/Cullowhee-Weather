@@ -1,0 +1,117 @@
+{
+  "basin_id": "GG-FLUME-018",
+  "name": "Gribble Gap at WCHRS flume",
+  "role": "calibration_nested",
+  "nests_in": "CC-LB-171",
+  "status": "PRE-REGISTRATION DRAFT - freeze on commit, never alter after",
+  "gauge": {
+    "type": "Tracom 2-inch WSC 45-degree trapezoidal flume",
+    "operator": "WCHRS",
+    "flume_lat": 35.3037,
+    "flume_lon": -83.2059,
+    "flume_coord_source": "Gannon (2019) HydroShare resource 156bed7f9b984677ad617fd071a99a33",
+    "rating": "factory stage-discharge; suspected usable ceiling ~185 L/s (two independent record peaks at 184.9 and 183.8 L/s) - CONFIRM WITH WCHRS",
+    "public_record": "2015-08-13 to 2019-04-17, 10-min, CC-BY (Gannon 2019)",
+    "ceiling_evidence": "Record max 6.53 cfs (184.9 L/s) over 3.7 yr vs regression Q2yr=14.9 cfs (PI90 8.1-27.3). A 3.7-yr record should contain ~1-2 events at/above Q2yr; instead two independent events terminate at 6.49-6.53 cfs (0.6% apart). Strongly consistent with flume rating/overtopping ceiling near 185 L/s; peaks above ~6.5 cfs likely censored. Treat large observed peaks as lower bounds in Mode C."
+  },
+  "streamstats": {
+    "export_time": "2026-07-29T13:46:27",
+    "app_version": "4.35.0",
+    "snapped_pour_lat": 35.30322,
+    "snapped_pour_lon": -83.20466,
+    "snap_note": "snapped ~500 ft downstream of flume, at/near Long Branch confluence; DA slightly overstates flume catchment",
+    "DRNAREA_sqmi": 0.18,
+    "DA_published_sqmi": 0.166,
+    "DA_delta_pct": 8.4,
+    "DA_adopted_sqmi": 0.166,
+    "DA_adopted_rationale": "Gannon published 43 ha for the flume itself; StreamStats +8.4% attributable to downstream snap. Model runs use 0.166; StreamStats characteristics assumed representative of both.",
+    "LFPLENGTH_mi": 0.72,
+    "CSL10_85_ftmi": 697.612,
+    "BSLDEM30FT_pct": 39.659,
+    "ELEV_mean_ft": 2507.01,
+    "ELEVMAX_ft": 2856.68,
+    "OUTLETELEV_ft_navd88": 2224.21,
+    "relief_ft": 632,
+    "I24H50Y_in": 6.5828,
+    "PRECPRIS20_in": 56.1,
+    "SVI_2026": 0.23
+  },
+  "land_cover_nlcd": {
+    "forest_pct": 90.03,
+    "developed_pct": 9.37,
+    "shrub_pct": 0.61,
+    "impervious_pct_2019": 0.36
+  },
+  "soils_ssurgo": {
+    "HSG_A_pct": 1.49,
+    "HSG_B_pct": 98.51,
+    "HSG_C_pct": 0.0,
+    "HSG_D_pct": 0.0
+  },
+  "model_parameters": {
+    "CN2": 55.6,
+    "CN2_method": "HSG-weighted composite, woods good condition (A=30,B=55), NLCD developed 21-24 (A=57,B=65), shrub (A=35,B=56); weights = NLCD cover x SSURGO HSG fractions",
+    "Tc_kirpich_min": 9.7,
+    "Tc_kirpich_inputs": "L=3802 ft, S=0.13212 ft/ft (CSL10_85/5280)",
+    "Tc_nrcs_wet_min": 16.7,
+    "Tc_wet_method": "roster-convention scaling (x62/36, per CC-LB-171 Kirpich:NRCS-wet ratio) - provisional pending segmental TR-55",
+    "Tc_resolution_note": "Tc ~ one 10-min data step; observed hydrograph peaks are 1-2 samples wide (e.g. 2018-05-31), consistent with Tc<=10 min. Peak-capture error at 10-min sampling is a recognized uncertainty on observed peaks."
+  },
+  "flow_statistics": {
+    "source": "Peak Southeast US NC 2023-5006; LowFlow/Annual SIR 2026-5021; Bieger 2015 bankfull; exported 2026-07-29",
+    "peak_flow_cfs": {
+      "Q50pct_2yr": 14.9,
+      "Q20pct_5yr": 31.8,
+      "Q10pct_10yr": 47.5,
+      "Q4pct_25yr": 71.1,
+      "Q2pct_50yr": 93.5,
+      "Q1pct_100yr": 117.0,
+      "Q0_5pct_200yr": 143.0,
+      "Q0_2pct_500yr": 179.0
+    },
+    "Q2yr_PI90_cfs": [
+      8.12,
+      27.3
+    ],
+    "Q100yr_PI90_cfs": [
+      60.1,
+      228.0
+    ],
+    "max_probable_flood_cfs": {
+      "SE_US_2023_5006": 366.0,
+      "Crippen_Bue_R5": 2910.0
+    },
+    "mean_annual_flow_cfs": 0.34,
+    "DA_within_peak_eq_limits": true,
+    "lowflow_annual_extrapolated": "DA 0.18 below 0.3 sqmi min limit for SIR 2026-5021 low/annual/monthly equations"
+  },
+  "calibration_plan": {
+    "mode": "C (ad-hoc unrated nested catchment, k_event_raw vs raw TR-55/UH peak)",
+    "calibration_set": "38 events >25 L/s, 2015-08-13 to 2019-04-17 (see gribble_gap_event_inventory_2015_2019.csv), rain from cucn7 archive (valley point gauge, ~2.5 mi, orographic caveat) pending WCHRS 15-min gauges",
+    "holdout": "Hurricane Helene (2024-09-26/27) - excluded from all calibration; WCHRS discharge record is the blind test target",
+    "declared": "calibration/holdout split declared before any WCHRS Helene data received"
+  },
+  "provenance": {
+    "public_data_citation": "Gannon, J. (2019). Gribble Gap Watershed Discharge, HydroShare, http://www.hydroshare.org/resource/156bed7f9b984677ad617fd071a99a33, CC-BY 4.0",
+    "streamstats_citation": "USGS StreamStats v4.35.0, NC, exported 2026-07-29",
+    "prepared": "2026-07-29"
+  },
+  "bankfull_bieger_2015": {
+    "AppHighlands_D": {
+      "width_ft": 7.46,
+      "depth_ft": 0.685,
+      "xs_ft2": 5.16
+    },
+    "BlueRidge_P": {
+      "width_ft": 9.19,
+      "depth_ft": 0.647,
+      "xs_ft2": 6.18
+    },
+    "USA": {
+      "width_ft": 6.77,
+      "depth_ft": 0.837,
+      "xs_ft2": 6.77
+    },
+    "note": "BlueRidge_P DA below its 5.46 sqmi applicability floor; AppHighlands_D within range"
+  }
+}

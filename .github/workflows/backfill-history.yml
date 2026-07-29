@@ -1,0 +1,36 @@
+name: backfill-history
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: backfill-history
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Pull archive
+        run: python cucn7_backfill.py
+
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name  "feed-bot"
+          git config user.email "feed-bot@users.noreply.github.com"
+          git add feed/cucn7_history.csv feed/cucn7_extent.csv feed/cucn7_backfill_state.json
+          git diff --staged --quiet && exit 0
+          git commit -m "backfill: cucn7 archive $(date -u +%FT%TZ)"
+          git pull --rebase --autostash origin main
+          git push

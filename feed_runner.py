@@ -72,6 +72,51 @@ def _load(path: Path, default):
         return default
 
 
+# ---------------------------------------------------------------------------
+# EXTERNAL GOVERNMENT FEEDS  (feeds.py — survey wiring 2026-07-30)
+# Writes feed/external.json: measured USGS mainstem context, official NWS
+# alerts, gridded FFG, and the NWM reach forecast. Every connector is guarded
+# individually — this step must NEVER sink the publish run. Consumed by
+# live.html ("Measured & official" panel) and anyone else reading the feed.
+# ---------------------------------------------------------------------------
+def publish_external(outdir: Path, now: datetime) -> None:
+    out = {"fetched_utc": now.isoformat(), "status": {}}
+    try:
+        import feeds
+    except Exception as e:                                   # pragma: no cover
+        out["status"]["feeds"] = f"import failed: {e}"
+        (outdir / "external.json").write_text(json.dumps(out, indent=2))
+        return
+
+    def _try(name, fn):
+        try:
+            out[name] = fn()
+            out["status"][name] = "ok"
+        except Exception as e:
+            out[name] = None
+            out["status"][name] = type(e).__name__
+
+    def _usgs():
+        ctx = feeds.tuckasegee_context()
+        # keep the committed diff small: last ~6 h at 15-min = 24 points
+        for k in ("stage_series_up", "stage_series_down"):
+            ctx[k] = (ctx.get(k) or [])[-24:]
+        return ctx
+
+    def _nwm():
+        rid = feeds.NWM_REACH_CULLOWHEE or feeds.NWM_REACH_AT_GAUGE
+        return {"reach": rid,
+                "reach_is_cullowhee": bool(feeds.NWM_REACH_CULLOWHEE),
+                "series": feeds.nwm_forecast(rid)[:36]}
+
+    _try("usgs", _usgs)
+    _try("alerts", lambda: feeds.active_alerts()[:5])
+    _try("ffg_in", feeds.ffg_at)
+    _try("nwm", _nwm)
+    (outdir / "external.json").write_text(json.dumps(out, indent=2))
+    print("external feed:", out["status"])
+
+
 def _trend_from_rate(rate: Optional[float]) -> str:
     if rate is None:
         return "Unknown"
@@ -93,6 +138,13 @@ def _tier_to_source(tier: str) -> str:
 def main() -> None:
     OUTDIR.mkdir(parents=True, exist_ok=True)
     now = datetime.now(timezone.utc)
+
+    # External government context — independent of the stage chain, so it runs
+    # first and unconditionally (also on the No-Data path below).
+    try:
+        publish_external(OUTDIR, now)
+    except Exception as e:                                   # belt and braces
+        print(f"external feed skipped: {e}")
 
     # 1. Resolve the best available stage. sources.resolve() already applies
     #    its own freshness and plausibility gates and will reject a sensor

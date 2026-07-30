@@ -336,6 +336,55 @@ def demo_inputs():
     return {"double_springs": {"stage_series": rising, "storm_rain_in": 1.0, "soil_pct": 88.0, "antecedent_5day": 2.5},
             "aahp": {"storm_rain_in": 1.5, "soil_pct": 88.0, "antecedent_5day": 2.5}}
 
+# ---------------------------------------------------------------------
+# EXTERNAL FEEDS  (feeds.py — survey wiring 2026-07-30)
+#   upwind      : measured approach-arc rain -> tiered_posture(upwind=...)
+#                 gov_gauges (no-key USGS precip + Synoptic) is primary;
+#                 feeds.upwind_outlook (ECONet/Synoptic) is the fallback.
+#   gov bundle  : Tuckasegee validation gauges, NWS alerts, gridded FFG,
+#                 NWM forecast spine. Display/cross-check only — NEVER a
+#                 posture input (two-tier design).
+# ---------------------------------------------------------------------
+@st.cache_data(ttl=240, show_spinner=False)
+def fetch_upwind():
+    try:
+        import gov_gauges
+        import live_rainfall as lr
+        rows = gov_gauges.gauge_rows()
+        steering = lr.steering_flow()
+        return gov_gauges.upwind_outlook(rows, steering)
+    except Exception:
+        pass
+    try:
+        import feeds
+        return feeds.upwind_outlook()
+    except Exception:
+        return None
+
+@st.cache_data(ttl=240, show_spinner=False)
+def fetch_gov_bundle():
+    out = {"status": {}}
+    try:
+        import feeds
+    except Exception as e:
+        out["status"]["feeds"] = f"import failed: {e}"
+        return out
+    jobs = (("context", feeds.tuckasegee_context),
+            ("alerts", feeds.active_alerts),
+            ("ffg", feeds.ffg_at),
+            ("nwm", lambda: feeds.nwm_forecast(
+                feeds.NWM_REACH_CULLOWHEE or feeds.NWM_REACH_AT_GAUGE)))
+    for name, fn in jobs:
+        try:
+            out[name] = fn()
+            out["status"][name] = "live"
+        except Exception as e:
+            out[name] = None
+            out["status"][name] = "none"
+            out.setdefault("errors", {})[name] = f"{type(e).__name__}"
+    return out
+
+
 def demo_orographic():
     a = orographic.lift_potential("aahp", 66, 95, 26.6, 25, 135)
     d = orographic.lift_potential("double_springs", 63, 88, 27.0, 15, 130)
@@ -393,7 +442,9 @@ if not demo:
         pass  # forcing unavailable (no network / sources) — hook falls back to priming
 oro = demo_orographic() if demo else {}
 rw = flood_network.routed_assessment("belk", inputs, orographic_by_site=oro)
-tp = flood_network.tiered_posture(rw)
+upwind = None if demo else fetch_upwind()
+gov = {"status": {}} if demo else fetch_gov_bundle()
+tp = flood_network.tiered_posture(rw, upwind=upwind)
 lvl = tp.headline
 col = SEV[lvl]
 
@@ -427,6 +478,18 @@ st.markdown(f"""
   downstream mainstem is a validation reference, not an input to either tier.</div>
 </div>
 """, unsafe_allow_html=True)
+
+# official NWS alerts overlay (feeds.active_alerts — point query at the campus)
+_alerts = (gov.get("alerts") or []) if not demo else []
+_flood_alerts = [a for a in _alerts if "Flood" in (a.get("event") or "")]
+if _flood_alerts:
+    a = _flood_alerts[0]
+    ac = SEV["EMERGENCY"] if "Warning" in a["event"] else SEV["WATCH"]
+    st.markdown(
+        f'<div class="threat" style="border-color:{ac};padding:10px 16px;margin-top:8px;">'
+        f'<span style="color:{ac};font-weight:700;">NWS {a["event"]}</span> '
+        f'<span class="site-detail">{(a.get("headline") or "")[:160]} — official NWS product '
+        f'(independent of NOAH posture)</span></div>', unsafe_allow_html=True)
 
 # legend
 chips = "".join(
@@ -620,13 +683,67 @@ for sid, inp in inputs.items():
                            index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in series])
         st.line_chart(sdf, height=200)
 
-# system status / provenance
-st.markdown('<div class="eyebrow">System status — data sources & confidence</div>', unsafe_allow_html=True)
-
 def chip(label, status):
     c = STATUS_COLOR.get(status, "#888")
     return (f'<span class="chip" style="background:{c}14;color:{c};border-color:{c}55;">'
             f'{label}: {status}</span>')
+
+# ---------------------------------------------------------------------
+# DOWNSTREAM VALIDATION — Tuckasegee mainstem (measured; display-only)
+# The gauged mainstem validates the model; by design it never drives posture.
+# ---------------------------------------------------------------------
+if not demo and gov.get("context"):
+    ctx = gov["context"]
+    st.markdown('<div class="eyebrow">Downstream validation — Tuckasegee mainstem '
+                '(measured · not a posture input)</div>', unsafe_allow_html=True)
+    up_, dn_ = ctx.get("upstream", {}), ctx.get("downstream", {})
+    def _lv(d, code):
+        v = d.get(code)
+        return v[1] if isinstance(v, (list, tuple)) else None
+    cats = up_.get("flood_categories_ft", {})
+    inflow = ctx.get("local_inflow_cfs")
+
+    def _gchips(d):
+        parts = []
+        s, q = _lv(d, "00065"), _lv(d, "00060")
+        if s is not None:
+            parts.append(chip(f"stage {s} ft", "live"))
+        if q is not None:
+            parts.append(chip(f"{q:,.0f} cfs", "live"))
+        return "".join(parts) or chip("no data", "none")
+
+    st.markdown(
+        f'<div class="chiprow"><span class="chip-label">USGS 03508050 · TKRN7 (above CC mouth)</span>'
+        + _gchips(up_)
+        + chip(f'action {cats.get("action")} ft · minor {cats.get("minor")} ft', "modeled")
+        + '</div>'
+        f'<div class="chiprow"><span class="chip-label">USGS 03510577 (below CC mouth)</span>'
+        + _gchips(dn_)
+        + (chip(f'local inflow ≈ {inflow:,.0f} cfs (CC+Scott+Savannah, unlagged)', "modeled") if inflow is not None else "")
+        + '</div>', unsafe_allow_html=True)
+    _sup = ctx.get("stage_series_up") or []
+    if _sup:
+        sdf = pd.DataFrame({"Tuckasegee @ TKRN7 stage (ft)": [s for _, s in _sup]},
+                           index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in _sup])
+        st.line_chart(sdf, height=160)
+
+# NWM forecast spine (GOV_ESTIMATE tier — the modeled companion to NOAH's engine)
+if not demo and gov.get("nwm"):
+    st.markdown('<div class="eyebrow">National Water Model — short-range reach forecast '
+                '(GOV_ESTIMATE · forecast spine)</div>', unsafe_allow_html=True)
+    ndf = pd.DataFrame({"NWM flow (cfs)": [q for _, q in gov["nwm"]]},
+                       index=[datetime.fromtimestamp(t, TIMEZONE) for t, _ in gov["nwm"]])
+    st.line_chart(ndf, height=160)
+    import feeds as _f
+    _rid = _f.NWM_REACH_CULLOWHEE or _f.NWM_REACH_AT_GAUGE
+    _note = ("Cullowhee Creek reach" if _f.NWM_REACH_CULLOWHEE
+             else "Tuckasegee mainstem reach at TKRN7 — pin NWM_REACH_CULLOWHEE in feeds.py "
+                  "(feeds.resolve_reach) to point this at the creek itself")
+    st.markdown(f'<div class="site-detail" style="color:#8A97A4;">Reach {_rid} · {_note}.</div>',
+                unsafe_allow_html=True)
+
+# system status / provenance
+st.markdown('<div class="eyebrow">System status — data sources & confidence</div>', unsafe_allow_html=True)
 
 def site_status(sid, key):
     d = inputs.get(sid, {})
@@ -642,6 +759,23 @@ for sid in ["belk"] + flood_network.contributing_sites("belk"):
         parts.append(chip("lift", ("synthetic" if demo else "live") if sid in oro else "none"))
     rows.append(f'<div class="chiprow"><span class="chip-label">{name}</span>{"".join(parts)}</div>')
 st.markdown("".join(rows), unsafe_allow_html=True)
+
+# external feeds row (feeds.py + gov_gauges wiring)
+if not demo:
+    fparts = [chip("USGS mainstem", gov["status"].get("context", "none")),
+              chip("NWS alerts", gov["status"].get("alerts", "none")),
+              chip("FFG", gov["status"].get("ffg", "none")),
+              chip("NWM spine", gov["status"].get("nwm", "none")),
+              chip("upwind arc", "live" if (upwind and upwind.get("contributors")) else "none")]
+    ffg_vals = gov.get("ffg") or {}
+    if any(v for v in ffg_vals.values()):
+        _f1, _f3, _f6 = (ffg_vals.get(k) for k in ("ffg1h", "ffg3h", "ffg6h"))
+        _txt = " · ".join(f"{w}: {v:.2f}\"" for w, v in
+                          (("1h", _f1), ("3h", _f3), ("6h", _f6)) if v is not None)
+        fparts.append(chip(f"rain-to-flood {_txt}", "modeled"))
+    st.markdown('<div class="chiprow" style="margin-top:6px;"><span class="chip-label">External feeds</span>'
+                + "".join(fparts) + '</div>', unsafe_allow_html=True)
+
 st.markdown('<div class="chiprow" style="margin-top:6px;"><span class="chip-label">Model parameters</span>'
             + "".join(chip(i.replace("_", " "), s) for i, s, _ in flood_network.describe_provenance())
             + '</div>', unsafe_allow_html=True)
@@ -657,7 +791,9 @@ st.markdown(f"""
   <span class="mono">7 ft = {flood_engine.mannings_discharge_cfs(7):,.0f} cfs ·
   9 ft = {flood_engine.mannings_discharge_cfs(9):,.0f} cfs ·
   11 ft = {flood_engine.mannings_discharge_cfs(11):,.0f} cfs</span></div>
-  <div style="margin-top:6px;"><b>Data sources.</b> NWS · HRRR · ECMWF forecast · USGS gauges ·
+  <div style="margin-top:6px;"><b>Data sources.</b> NWS · HRRR · ECMWF forecast · USGS gauges
+  (03508050/TKRN7 · 03510577) · National Water Model (NWPS) · SERFC gridded FFG ·
+  measured upwind arc (USGS precip + Synoptic via gov_gauges) ·
   in-network LoRa sensors (rain, soil moisture, stream stage).</div>
   <div class="disclaimer">Research prototype developed at Western Carolina University.
   This demonstration uses synthetic data and provisional parameters pending field calibration.

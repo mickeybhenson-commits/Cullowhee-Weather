@@ -69,7 +69,8 @@ class TestPIBand(unittest.TestCase):
             self.assertGreaterEqual(hi, best - 1e-6, f"{bid}: hi<best")
 
     def test_helene_up503_band(self):
-        # memo §3: Helene band edges ~19 (WARNING) and 500 (EMERGENCY)
+        # DESIGN-STORM stress input (10 in Type II), NOT observed Helene:
+        # exercises pi_band mechanics at a high-flow input.
         m = cwm.assess("CC-UP-503", 10, 0.25)
         best, lo, hi = fr.pi_band(m["calib_q"], "CC-UP-503")
         self.assertTrue(15 <= round(lo) <= 25, f"lo={lo}")
@@ -149,9 +150,25 @@ class TestHeleneBacktest(unittest.TestCase):
         self.assertEqual(set(fixed),
                          {"CC-UP-503", "CC-TIL-705", "CC-MS-1100", "CC-SPD-1830"})
 
-    def test_campus_emergency(self):
+    def test_campus_emergency_design_storm(self):
+        # bt.run() is the DESIGN-STORM stress test (10 in Type II), not the
+        # observed event. Campus is EMERGENCY under that hypothetical shape.
         rows = {r["bid"]: r for r in bt.run()}
         self.assertEqual(rows["CC-WCU-2260"]["eng_posture"], "EMERGENCY")
+
+    def test_observed_matches_surveyed_marks(self):
+        # OBSERVED Helene (real ~40-h hyetograph) must reproduce the surveyed
+        # NCGS high-water marks within tolerance.
+        for mk, (pred, surv, diff) in bt.mark_reconciliation().items():
+            self.assertLessEqual(abs(diff), bt.GT_MARK_TOL_FT,
+                                 f"mark {mk}: model {pred} vs surveyed {surv}")
+
+    def test_observed_campus_below_emergency(self):
+        # OBSERVED campus peak is well below the 11 ft EMERGENCY threshold
+        # (design-storm gave 11.2 ft; the real hyetograph gives ~8.4 ft).
+        obs = {r["bid"]: r for r in bt.run_observed()}
+        self.assertLess(obs["CC-WCU-2260"]["stage"], 11.0)
+        self.assertIn(obs["CC-WCU-2260"]["posture"], ("WATCH", "WARNING"))
 
 
 if __name__ == "__main__":

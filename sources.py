@@ -77,7 +77,8 @@ Q_RAIN_1H = "rain_1h"        # trailing 1-hour rainfall
 Q_RAIN_STORM = "rain_storm"  # storm-total / worst upcoming 24-h analog
 Q_RAIN_5DAY = "rain_5day"    # antecedent 5-day rainfall
 Q_SOIL = "soil_moisture_pct" # 0-100 % of available capacity
-Q_STAGE = "stage_ft"         # observed creek stage
+Q_STAGE = "stage_ft"         # observed creek stage (NOAH sensors, 5-min cadence)
+Q_STAGE_GOV = "stage_ft_gov" # state/partner gage stage (FIMAN: 30-min cadence)
 Q_WIND_SPEED = "wind_speed_mph"
 Q_WIND_DIR = "wind_dir_deg"
 
@@ -88,6 +89,7 @@ FRESH_S = {
     Q_RAIN_5DAY: 12 * 3600,
     Q_SOIL: 6 * 3600,
     Q_STAGE: 12 * 60,
+    Q_STAGE_GOV: 75 * 60,    # 2.5 x FIMAN's 30-min service interval
     Q_WIND_SPEED: 30 * 60,
     Q_WIND_DIR: 30 * 60,
 }
@@ -99,6 +101,7 @@ RANGE = {
     Q_RAIN_5DAY: (0.0, 40.0),
     Q_SOIL: (0.0, 100.0),
     Q_STAGE: (0.0, 40.0),
+    Q_STAGE_GOV: (0.0, 40.0),
     Q_WIND_SPEED: (0.0, 150.0),
     Q_WIND_DIR: (0.0, 360.0),
 }

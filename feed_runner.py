@@ -113,6 +113,11 @@ def publish_external(outdir: Path, now: datetime) -> None:
     _try("alerts", lambda: feeds.active_alerts()[:5])
     _try("ffg_in", feeds.ffg_at)
     _try("nwm", _nwm)
+
+    def _cucn7():
+        import fiman_source
+        return fiman_source.latest()
+    _try("cucn7", _cucn7)
     (outdir / "external.json").write_text(json.dumps(out, indent=2))
     print("external feed:", out["status"])
 

@@ -89,12 +89,27 @@ def contributing_sites(warning_id):
 # PER-SITE SIGNALS
 # ---------------------------------------------------------------------
 def assess_site(site_id, inputs):
-    series = (inputs or {}).get("stage_series")
-    if not series:
-        return None
-    return fe.assess(series,
-                     soil_moisture_pct=(inputs or {}).get("soil_pct"),
-                     storm_rain_in=(inputs or {}).get("storm_rain_in"))
+    inputs = inputs or {}
+    series = inputs.get("stage_series")
+    if series:
+        return fe.assess(series,
+                         soil_moisture_pct=inputs.get("soil_pct"),
+                         storm_rain_in=inputs.get("storm_rain_in"))
+    # Externally classified MEASURED level (e.g. FIMAN gage 25380 at Speedwell,
+    # classified by the state's own per-gage condition because its datum is
+    # unverified — see fiman_source.py). Enters the CONFIRMATION tier like any
+    # measured stage: a real in-watershed gage, not a forecast. ew_probability
+    # is a conservative fixed mapping, not a calibrated fit.
+    lvl = inputs.get("stage_level")
+    if lvl is not None:
+        from types import SimpleNamespace
+        p = {"NORMAL": 0.05, "WATCH": 0.45,
+             "WARNING": 0.85, "EMERGENCY": 0.97}.get(lvl, 0.05)
+        return SimpleNamespace(level=lvl, ew_probability=p,
+                               stage_ft=inputs.get("stage_ft"),
+                               discharge_cfs=None, rate_ft_hr=None,
+                               source=inputs.get("stage_src"))
+    return None
 
 
 def priming_index(inputs):

@@ -362,6 +362,17 @@ def fetch_upwind():
         return None
 
 @st.cache_data(ttl=240, show_spinner=False)
+def fetch_fiman_speedwell():
+    """Gated MEASURED stage from FIMAN gage 25380 (CUCN7) at Speedwell.
+    Fresh reading -> confirmation-tier input on the speedwell node; stale or
+    unreachable -> None and the tier stays 'pending' (fiman_source gates)."""
+    try:
+        import fiman_source
+        return fiman_source.latest()
+    except Exception:
+        return None
+
+@st.cache_data(ttl=240, show_spinner=False)
 def fetch_gov_bundle():
     out = {"status": {}}
     try:
@@ -441,6 +452,14 @@ if not demo:
     except Exception:
         pass  # forcing unavailable (no network / sources) — hook falls back to priming
 oro = demo_orographic() if demo else {}
+# FIMAN gage 25380 (CUCN7) at Speedwell — the state's in-watershed gage.
+# Fresh + condition-classified -> measured confirmation input on the
+# speedwell node (datum unverified, so FIMAN's own condition sets the level).
+fim = None if demo else fetch_fiman_speedwell()
+if fim and fim.get("fresh") and fim.get("level") is not None:
+    inputs.setdefault("speedwell", {}).update(
+        stage_level=fim["level"], stage_ft=fim.get("stage_ft"),
+        stage_src=fim["source"])
 rw = flood_network.routed_assessment("belk", inputs, orographic_by_site=oro)
 upwind = None if demo else fetch_upwind()
 gov = {"status": {}} if demo else fetch_gov_bundle()
@@ -747,7 +766,10 @@ st.markdown('<div class="eyebrow">System status — data sources & confidence</d
 
 def site_status(sid, key):
     d = inputs.get(sid, {})
-    return ("synthetic" if demo else "live") if d.get(key) is not None else "none"
+    hit = d.get(key) is not None
+    if key == "stage_series" and not hit:
+        hit = d.get("stage_level") is not None      # FIMAN condition-classified
+    return ("synthetic" if demo else "live") if hit else "none"
 
 rows = []
 for sid in ["belk"] + flood_network.contributing_sites("belk"):
@@ -766,7 +788,9 @@ if not demo:
               chip("NWS alerts", gov["status"].get("alerts", "none")),
               chip("FFG", gov["status"].get("ffg", "none")),
               chip("NWM spine", gov["status"].get("nwm", "none")),
-              chip("upwind arc", "live" if (upwind and upwind.get("contributors")) else "none")]
+              chip("upwind arc", "live" if (upwind and upwind.get("contributors")) else "none"),
+              chip("FIMAN 25380", ("live" if fim.get("fresh") else "stale")
+                   if fim else "none")]
     ffg_vals = gov.get("ffg") or {}
     if any(v for v in ffg_vals.values()):
         _f1, _f3, _f6 = (ffg_vals.get(k) for k in ("ffg1h", "ffg3h", "ffg6h"))

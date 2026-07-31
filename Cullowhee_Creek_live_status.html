@@ -384,6 +384,12 @@ var tries=0,timer=setInterval(function(){
     }
     if(u.local_inflow_cfs!=null)
       h+=row("Local inflow (unlagged)","&asymp; "+Math.round(u.local_inflow_cfs).toLocaleString()+" cfs");
+    var c7=x.cucn7||null;
+    if(c7&&c7.stage_ft!=null){
+      var c7v=c7.stage_ft.toFixed(2)+" ft &middot; "+esc(c7.condition||"?");
+      if(!c7.fresh) c7v+=" <b style='color:#f2882d'>stale "+(c7.age_min!=null?Math.round(c7.age_min)+"m":"")+"</b>";
+      h+=row("Cullowhee Ck @ Speedwell <span style='color:#5f7488'>(FIMAN 25380)</span>",c7v);
+    }
     var f=x.ffg_in||{};
     if(f.ffg1h!=null||f.ffg3h!=null||f.ffg6h!=null){
       var ff=[]; if(f.ffg1h!=null)ff.push("1h "+f.ffg1h.toFixed(1)+"&Prime;");

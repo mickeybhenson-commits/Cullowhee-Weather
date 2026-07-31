@@ -106,7 +106,11 @@
   .frame iframe{display:block;width:100%;height:100%;border:0}
   .frame-live{aspect-ratio:16/9}
   .frame-tall{aspect-ratio:4/3}
-  @media (max-width:640px){.frame-live,.frame-tall{aspect-ratio:3/4}}
+  /* break embeds out of the text column: near-full-viewport width, capped
+     so tall aspect ratios never exceed the screen */
+  .frame-breakout{width:min(94vw,1560px);position:relative;left:50%;transform:translateX(-50%)}
+  .frame-live,.frame-tall{max-height:85vh}
+  @media (max-width:640px){.frame-live,.frame-tall{aspect-ratio:3/4;max-height:none}}
   .caption{font-family:var(--mono);font-size:12px;color:var(--faint);margin:16px 0 0;line-height:1.6;letter-spacing:.01em}
   .caption b{color:var(--slate);font-weight:500}
 
@@ -223,7 +227,7 @@
   <p class="eyebrow">Current conditions</p>
   <h2>What the creek is doing right now</h2>
   <p class="section-lede">The live view — the same map the system runs on. Each sub-basin is colored by its status, from normal through watch, warning, and emergency.</p>
-  <div class="frame frame-live">
+  <div class="frame frame-live frame-breakout">
     <iframe id="liveMap" title="Live Cullowhee Creek watershed status map" loading="lazy" style="display:none"></iframe>
     <div class="map-fallback" id="mapFallback">
       <p>The live watershed map opens in its own window.</p>
@@ -238,7 +242,7 @@
   <p class="eyebrow">Storm track watch</p>
   <h2>Watching the Atlantic and Gulf before it reaches the mountains.</h2>
   <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion.</p>
-  <div class="frame frame-live">
+  <div class="frame frame-live frame-breakout">
     <iframe id="stormWatch" title="NOAH storm track watch — live NHC guidance for the Cullowhee corridor" loading="lazy"></iframe>
   </div>
   <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
@@ -248,7 +252,7 @@
   <p class="eyebrow">How it works</p>
   <h2>The whole system, in one model</h2>
   <p class="section-lede">The sensors in the creek, the gateways that carry the data out, the satellites overhead, and the weather that drives it all. Drag to look around; switch between the sensor network, the forecast layer, and the campus alert ladder.</p>
-  <div class="frame frame-tall">
+  <div class="frame frame-tall frame-breakout">
     <iframe id="model3d" title="Interactive 3D model of the NOAH and SKYE system" loading="lazy"></iframe>
   </div>
   <p class="caption">Interactive · the terrain is schematic and sensor positions are indicative — a diagram of how the parts fit, not a survey map.</p>

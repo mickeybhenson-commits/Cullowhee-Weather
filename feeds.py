@@ -273,26 +273,50 @@ FFG_MS = ("https://mapservices.weather.noaa.gov/raster/rest/services/"
 
 def ffg_at(lat=LAT, lon=LON):
     """SERFC gridded FFG sampled at a point -> {'ffg1h':in,'ffg3h':in,'ffg6h':in}.
-    Layer indexing discovered dynamically (service layout occasionally shifts)."""
+
+    The service nests each duration as a GROUP layer ("Flash Flood Guidance
+    01 Hour") whose queryable raster is its "Image" CHILD layer — identify on
+    the group returns nothing (the all-None bug seen 2026-07-30). So: find the
+    groups, then resolve each to its Image child via parentLayerId, and parse
+    any attribute that looks like a pixel value."""
     info = _get(f"{FFG_MS}", {"f": "json"})
-    wanted = {}
-    for lyr in info.get("layers", []):
-        nm = lyr["name"].lower()
-        for tag, key in (("1", "ffg1h"), ("3", "ffg3h"), ("6", "ffg6h")):
-            if f"{tag} hour" in nm or f"{tag}-hour" in nm or f"{tag}hr" in nm:
-                wanted[key] = lyr["id"]
+    layers = info.get("layers", [])
+    groups = {}                                   # group layer id -> our key
+    for lyr in layers:
+        nm = str(lyr.get("name", "")).lower()
+        for tag, key in (("01", "ffg1h"), ("03", "ffg3h"), ("06", "ffg6h")):
+            if f"{tag} hour" in nm:
+                groups[lyr["id"]] = key
+    target = {}                                   # our key -> layer id to query
+    for lyr in layers:
+        if (str(lyr.get("name", "")).strip().lower() == "image"
+                and lyr.get("parentLayerId") in groups):
+            target[groups[lyr["parentLayerId"]]] = lyr["id"]
+    for gid, key in groups.items():               # fallback: query the group
+        target.setdefault(key, gid)
+
     out = {}
-    for key, lid in wanted.items():
+    for key, lid in target.items():
         j = _get(f"{FFG_MS}/identify",
                  {"geometry": f"{lon},{lat}", "geometryType": "esriGeometryPoint",
                   "sr": 4326, "layers": f"all:{lid}", "tolerance": 1,
                   "mapExtent": f"{lon-.1},{lat-.1},{lon+.1},{lat+.1}",
                   "imageDisplay": "400,400,96", "returnGeometry": "false",
                   "f": "json"})
-        try:
-            out[key] = float(j["results"][0]["attributes"].get("Pixel Value"))
-        except Exception:
-            out[key] = None
+        val = None
+        for res in j.get("results", []):
+            for k, v in (res.get("attributes") or {}).items():
+                kl = k.lower()
+                if ("pixel" in kl or kl in ("value", "service pixel value")) \
+                        and v not in (None, "", "NoData", "NaN"):
+                    try:
+                        val = float(v)
+                        break
+                    except (TypeError, ValueError):
+                        continue
+            if val is not None:
+                break
+        out[key] = val
     return out
 
 

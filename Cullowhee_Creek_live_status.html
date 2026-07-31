@@ -155,6 +155,12 @@
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
     <div class="sbleg-f">rows sorted worst-first &middot; updates live</div>
   </div>
+  <h4 id="exthdr" style="margin-top:9px;border-top:1px solid rgba(255,255,255,.12);padding-top:8px;">Measured &amp; official <span id="exttog">&#9662;</span></h4>
+  <div id="extwrap">
+    <div id="extalert"></div>
+    <div id="extbody" style="font-size:10.5px;color:#c9d6e2;white-space:normal;line-height:1.5;">loading gov feed&hellip;</div>
+    <div class="sbleg-f" id="extstamp" style="margin-top:4px;"></div>
+  </div>
 </div>
 <div id="provbanner">Modeled watershed status · in-stream gauges pending</div>
 <div id="top" class="panel">
@@ -344,4 +350,72 @@ var tries=0,timer=setInterval(function(){
 </script>
 
 <script>!function(){var t=document.getElementById("introwrap"),e=document.getElementById("introok"),n=document.getElementById("aboutbtn");function d(){t&&(t.style.display="none")}e&&e.addEventListener("click",d),n&&n.addEventListener("click",function(){t&&(t.style.display="flex")}),t&&t.addEventListener("click",function(e){e.target===t&&d()})}();</script>
+<script>
+/* ===== MEASURED & OFFICIAL — feed/external.json (published every 30 min by
+   feed_runner.publish_external; USGS mainstem, NWS alerts, FFG, NWM).
+   Measured government data shown beside the modeled table on purpose: the
+   contrast is the point. Panel degrades silently if the feed is missing. ===== */
+(function(){
+  var hdr=document.getElementById("exthdr"), wrap=document.getElementById("extwrap");
+  if(hdr&&wrap){hdr.addEventListener("click",function(){
+    var c=wrap.style.display==="none"; wrap.style.display=c?"":"none";
+    document.getElementById("exttog").innerHTML=c?"▾":"▸";});}
+  function esc(s){return String(s==null?"":s).replace(/[<>&"]/g,function(c){
+    return {"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];});}
+  function row(l,v){return "<div style='display:flex;justify-content:space-between;gap:10px;"+
+    "border-top:1px solid rgba(255,255,255,.06);padding:2px 0;'><span style='color:#8aa0b2;'>"+
+    l+"</span><span style='font-variant-numeric:tabular-nums;'>"+v+"</span></div>";}
+  function render(x){
+    var b=document.getElementById("extbody"), a=document.getElementById("extalert"),
+        st=document.getElementById("extstamp");
+    if(!b) return;
+    var h="";
+    var u=(x.usgs||{}), up=u.upstream||{}, dn=u.downstream||{};
+    function lv(d,c){var v=d[c];return (v&&v.length===2)?v[1]:null;}
+    var s1=lv(up,"00065"), q1=lv(up,"00060"), s2=lv(dn,"00065"), q2=lv(dn,"00060");
+    if(s1!=null){
+      var cats=up.flood_categories_ft||{}, warnTxt=(cats.action!=null)?(" &middot; action "+cats.action+" ft"):"";
+      h+=row("Tuckasegee @ TKRN7 <span style='color:#5f7488'>(above mouth)</span>",
+             s1.toFixed(2)+" ft"+(q1!=null?" &middot; "+Math.round(q1).toLocaleString()+" cfs":"")+warnTxt);
+    }
+    if(s2!=null){
+      h+=row("Tuckasegee @ Barker's Ck <span style='color:#5f7488'>(below mouth)</span>",
+             s2.toFixed(2)+" ft"+(q2!=null?" &middot; "+Math.round(q2).toLocaleString()+" cfs":""));
+    }
+    if(u.local_inflow_cfs!=null)
+      h+=row("Local inflow (unlagged)","&asymp; "+Math.round(u.local_inflow_cfs).toLocaleString()+" cfs");
+    var f=x.ffg_in||{};
+    if(f.ffg1h!=null||f.ffg3h!=null||f.ffg6h!=null){
+      var ff=[]; if(f.ffg1h!=null)ff.push("1h "+f.ffg1h.toFixed(1)+"&Prime;");
+      if(f.ffg3h!=null)ff.push("3h "+f.ffg3h.toFixed(1)+"&Prime;");
+      if(f.ffg6h!=null)ff.push("6h "+f.ffg6h.toFixed(1)+"&Prime;");
+      h+=row("Rain-to-flood (FFG)",ff.join(" &middot; "));
+    }
+    var n=x.nwm||{};
+    if(n.series&&n.series.length){
+      var pk=0,pt=null;for(var i=0;i<n.series.length;i++){if(n.series[i][1]>pk){pk=n.series[i][1];pt=n.series[i][0];}}
+      var when=pt?new Date(pt*1000).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"";
+      h+=row("NWM next 18h peak"+(n.reach_is_cullowhee?"":" <span style='color:#5f7488'>(mainstem)</span>"),
+             Math.round(pk).toLocaleString()+" cfs"+(when?" @ "+when:""));
+    }
+    b.innerHTML=h||"gov feed empty";
+    var al=(x.alerts||[]).filter(function(e){return /Flood/.test(e.event||"");});
+    if(a){a.innerHTML=al.length?
+      "<div style='background:rgba(180,35,24,.25);border:1px solid #B42318;border-radius:6px;"+
+      "padding:4px 8px;margin:4px 0 6px;font-size:10.5px;color:#ffd9bd;'><b>NWS "+esc(al[0].event)+
+      "</b> &mdash; official product; see weather.gov/gsp</div>":
+      "<div style='font-size:9.5px;color:#7f93a5;margin:2px 0 4px;'>No active NWS flood products at the campus point.</div>";}
+    if(st&&x.fetched_utc){
+      var age=Math.round((Date.now()-new Date(x.fetched_utc).getTime())/60000);
+      st.innerHTML="USGS &middot; NWS &middot; NWM &middot; SERFC &mdash; published "+
+        (age<1?"just now":age+" min ago")+(age>75?" <b style='color:#f2882d'>(stale)</b>":"");
+    }
+  }
+  fetch("feed/external.json?t="+Date.now()).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status); return r.json();}).then(render)
+  .catch(function(){var b=document.getElementById("extbody");
+    if(b) b.innerHTML="<span style='color:#7f93a5;font-size:10px;'>gov feed not published yet "+
+      "(appears after the next 30-min Action run)</span>";});
+})();
+</script>
 </body></html>

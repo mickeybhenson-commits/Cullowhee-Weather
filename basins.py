@@ -47,6 +47,18 @@ REG_SRC = "USGS StreamStats regional regression, NC SIR 2023-5006 (6/2026 deline
 # warning. Source: NOAH operations handoff (120-min actionable lead).
 LEAD_REQ_MIN = 120
 
+# --- LEARNED EVENTS (2026-07-31): Hurricane Helene 2024-09-27 -----------------
+# Surveyed by NC Geodetic Survey (marks 4827-4831, +/-0.05 ft NAVD88) + USACE;
+# anchored by USGS 03508050 (peak 17.26 ft = 2128.71 NAVD88; gage zero 2111.45).
+# CORRECTED READING (see HELENE_DECISION.md / backtest_helene.py): Helene was a
+# ~200-yr RAIN that produced only a ~5-10-yr PEAK/STAGE (rain fell over ~40 h);
+# rp_band below is PEAK-FLOW return period, not rain frequency. Full set:
+# cullowhee_helene_marks_RAW.csv.
+HELENE_2024 = dict(event="Helene", date="2024-09-27", rp_band=(5, 12),
+                   rain_rp="~200-yr", runoff_ratio=0.40,
+                   note="peak/stage ~5-10 yr from the real ~40-h hyetograph; "
+                        "matches surveyed NCGS marks within ~0.5 ft")
+
 BASINS = {
 
  "CC-UP-503": dict(
@@ -59,7 +71,8 @@ BASINS = {
     rating="rectangular",
     section=dict(w=29.7, d=1.78, n=0.045, s=0.0888),                 # Bieger App-Highlands-D
     bankfull_curve="Appalachian Highlands D (Blue Ridge eq EXCLUDED: DA 5.03 < 5.46 floor)",
-    out_of_bank_10yr=0.99, tva_wse=None, bed_ft=None, learned=None,
+    out_of_bank_10yr=0.99, tva_wse=None, bed_ft=None, 
+    learned=[dict(HELENE_2024, note="no in-basin mark; band inferred from downstream marks + regional gage")],
     thr_ft=(1.78, 2.67, 3.56), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
     tc_min=40, tc_src="Kirpich (buildsheet); NRCS-wet pending TR-55 segmental",
     stage_sensor=None,  # buildsheet: anchor MB7067 / confirmation A02YYUW, role-dependent
@@ -75,7 +88,8 @@ BASINS = {
     rating="rectangular",
     section=dict(w=45.7, d=2.32, n=0.045, s=0.0446),                 # Bieger Blue Ridge P (in range)
     bankfull_curve="Blue Ridge P (DA 11 > 5.46 floor)",
-    out_of_bank_10yr=1.09, tva_wse=None, bed_ft=None, learned=None,
+    out_of_bank_10yr=1.09, tva_wse=None, bed_ft=None, 
+    learned=[dict(HELENE_2024, note="upstream NCGS marks 4827-4829 (2128.02-2132.75 NAVD88) bracket this reach outlet")],
     thr_ft=(2.32, 3.48, 4.64), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
     tc_min=86, tc_src="Kirpich 86 vs NRCS-wet 142 (ambiguous); calibration absorbs the spread",
     stage_sensor=None,
@@ -106,7 +120,8 @@ BASINS = {
     rating="rectangular",
     section=dict(w=55.7, d=2.71, n=0.045, s=0.0425),                 # Bieger Blue Ridge P (in range)
     bankfull_curve="Blue Ridge P (DA 18.3 > 5.46 floor)",
-    out_of_bank_10yr=1.07, tva_wse=None, bed_ft=None, learned=None,
+    out_of_bank_10yr=1.07, tva_wse=None, bed_ft=None, 
+    learned=[dict(HELENE_2024, marks={4827: 2131.707, 4828: 2132.754, 4829: 2128.020}, note="NCGS marks just downstream of pour (Speedwell reach), NAVD88, +/-0.05 ft")],
     thr_ft=(2.71, 4.07, 5.42), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
     tc_min=91, tc_src="Kirpich (buildsheet); NRCS-wet 146",
     stage_sensor=None, note=""),
@@ -159,7 +174,8 @@ BASINS = {
     out_of_bank_10yr=2.36,
     tva_wse={10:(2580,2079.2), 100:(5155,2081.5), 500:(7305,2082.9)},  # Table 2 XS mile 0.89 (open ch)
     bed_ft=2070.5,   # = 100-yr WSE - 11 ft road datum; CONFIRM warning-point mile / survey thalweg
-    learned=None,
+    
+    learned=[dict(HELENE_2024, marks={4830: 2121.240, 4831: 2109.728}, obs_wse_vs_10yr_ft=(0.32, 0.51), est_campus_stage_ft=8.4, campus_posture_status="UNRESOLVED: no surveyed campus stage; nearest mark ~700 m upstream")],
     thr_ft=(7.0, 9.0, 11.0), thr_src="VALIDATED: 11 ft = water in road (field); 9/11 bracket TVA 10/100-yr",
     tc_min=127, tc_src="Kirpich (buildsheet); NRCS-wet 182. Lead-adequate.",
     stage_sensor=None,  # Belk rooftop gateway nearby; ultrasonic TBD

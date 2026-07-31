@@ -1,0 +1,8 @@
+source,mark_id,stream,lat,lon,elev_ft,datum,quality,notes
+NCGS,4827,Cullowhee Creek,35.289341659,-83.181999672,2131.707,NAVD88(assumed),Excellent +/-0.05 ft,Speedwell reach
+NCGS,4828,Cullowhee Creek,35.289223723,-83.180854275,2132.754,NAVD88(assumed),Excellent +/-0.05 ft,Speedwell reach
+NCGS,4829,Cullowhee Creek,35.290572294,-83.182867672,2128.020,NAVD88(assumed),Excellent +/-0.05 ft,Speedwell reach
+NCGS,4830,Cullowhee Creek,35.293910040,-83.182571970,2121.240,NAVD88(assumed),Excellent +/-0.05 ft,SPD->campus reach (in FRIS coverage)
+NCGS,4831,Cullowhee Creek,35.300114305,-83.181015522,2109.728,NAVD88(assumed),Excellent +/-0.05 ft,SPD->campus reach (in FRIS coverage)
+USGS,03508050-peak,Tuckasegee River,35.2878,-83.1439,2128.71,NAVD88,Approved gage record,"Helene peak 2024-09-27 11:00 EDT; stage 17.26 ft => gage zero 2111.45 NAVD88; 2nd highest since 2004"
+USACE,2315(TSR-36-R),Tuckasegee River,35.32422463,-83.18850701,2047.705,NAVD88,Excellent,mainstem ~0.8 km below Cullowhee Ck mouth (backwater anchor)

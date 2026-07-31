@@ -305,18 +305,29 @@ def ffg_at(lat=LAT, lon=LON):
                   "f": "json"})
         val = None
         for res in j.get("results", []):
-            for k, v in (res.get("attributes") or {}).items():
-                kl = k.lower()
-                if ("pixel" in kl or kl in ("value", "service pixel value")) \
-                        and v not in (None, "", "NoData", "NaN"):
-                    try:
-                        val = float(v)
-                        break
-                    except (TypeError, ValueError):
-                        continue
+            att = res.get("attributes") or {}
+            # exact data-value key first; NEVER the renderer's 0-255 stretch
+            # ("Stretched.Pixel Value" published 53/69/90-inch nonsense 2026-07-31)
+            candidates = [v for k, v in att.items()
+                          if k.strip().lower() == "pixel value"]
+            candidates += [v for k, v in att.items()
+                           if "pixel" in k.lower()
+                           and "stretch" not in k.lower()
+                           and k.strip().lower() != "pixel value"]
+            for v in candidates:
+                if v in (None, "", "NoData", "NaN"):
+                    continue
+                try:
+                    val = float(v)
+                    break
+                except (TypeError, ValueError):
+                    continue
             if val is not None:
                 break
-        out[key] = val
+        # plausibility gate: FFG is inches of rain-to-flood; anything outside
+        # (0, 15] is a units/renderer artifact — publish nothing rather than
+        # a wrong number (the panel hides the row on None).
+        out[key] = val if (val is not None and 0.0 < val <= 15.0) else None
     return out
 
 

@@ -17,15 +17,33 @@ import streamlit.components.v1 as components
 import pydeck as pdk
 from google.cloud import firestore
 
+# Import each engine module on its own so ONE bad module cannot silently disable
+# the others. These were previously a single try/except: flood_profile.py was
+# imported last, so a SyntaxError there set FLOOD_OK=False and took the whole
+# flood console down with it, even though flood_engine / flood_network /
+# orographic had all imported fine.
+#
+# The trio below is load-bearing — the console cannot render without it, so a
+# failure here still stops the app (with the failing module named).
+_FLOOD_ERRS = []
+for _mod in ("flood_engine", "flood_network", "orographic"):
+    try:
+        globals()[_mod] = __import__(_mod)
+    except Exception as _e:
+        _FLOOD_ERRS.append(f"{_mod}: {_e}")
+FLOOD_OK = not _FLOOD_ERRS
+_FLOOD_ERR = "; ".join(_FLOOD_ERRS)
+
+# flood_profile is OPTIONAL: it only backs the corridor map, the reach table and
+# the schematic. Those panels degrade individually (see PROFILE_OK below) rather
+# than taking down posture, routing and lead time with them.
 try:
-    import flood_engine
-    import flood_network
-    import orographic
     import flood_profile
-    FLOOD_OK = True
+    PROFILE_OK = True
+    _PROFILE_ERR = ""
 except Exception as _e:
-    FLOOD_OK = False
-    _FLOOD_ERR = str(_e)
+    PROFILE_OK = False
+    _PROFILE_ERR = str(_e)
 
 # ---------------------------------------------------------------------
 # CONFIG
@@ -588,6 +606,8 @@ with st.container(border=True):
         padding:3px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;">Demonstration</span>
     </div>""", unsafe_allow_html=True)
     try:
+        if not PROFILE_OK:
+            raise RuntimeError(f"flood_profile unavailable — {_PROFILE_ERR}")
         _basin = flood_profile.BASIN_FEATURE
         _nodes = flood_profile.map_nodes()
         _reaches = flood_profile.map_reaches()
@@ -650,18 +670,24 @@ with st.container(border=True):
         'tributary names are placeholders to confirm.</div>', unsafe_allow_html=True)
 
 with st.expander("Reach detail \u2014 depth, discharge, drainage area"):
-    _rows = flood_profile.reaches()
-    st.dataframe(
-        [{'Stream': r['stream'], 'Reach': r['name'], 'Level': r['level'], 'Length (mi)': r['length_mi'],
-          'Depth up\u2192dn (ft)': f"{r['up_depth_ft']:.1f} \u2192 {r['dn_depth_ft']:.1f}",
-          'Discharge up\u2192dn (cfs)': f"{r['up_discharge_cfs']:,} \u2192 {r['dn_discharge_cfs']:,}",
-          'Drainage area up\u2192dn (mi\u00b2)': f"{r['up_area_sqmi']} \u2192 {r['dn_area_sqmi']}"} for r in _rows],
-        use_container_width=True, hide_index=True)
+    if not PROFILE_OK:
+        st.info(f"Reach detail unavailable: {_PROFILE_ERR}")
+    else:
+        _rows = flood_profile.reaches()
+        st.dataframe(
+            [{'Stream': r['stream'], 'Reach': r['name'], 'Level': r['level'], 'Length (mi)': r['length_mi'],
+              'Depth up\u2192dn (ft)': f"{r['up_depth_ft']:.1f} \u2192 {r['dn_depth_ft']:.1f}",
+              'Discharge up\u2192dn (cfs)': f"{r['up_discharge_cfs']:,} \u2192 {r['dn_discharge_cfs']:,}",
+              'Drainage area up\u2192dn (mi\u00b2)': f"{r['up_area_sqmi']} \u2192 {r['dn_area_sqmi']}"} for r in _rows],
+            use_container_width=True, hide_index=True)
 
 with st.expander("Schematic view (no basemap)"):
-    components.html(
-        '<div style="font-family:Inter,system-ui,sans-serif">' + flood_profile.corridor_svg() + '</div>',
-        height=600, scrolling=False)
+    if not PROFILE_OK:
+        st.info(f"Schematic unavailable: {_PROFILE_ERR}")
+    else:
+        components.html(
+            '<div style="font-family:Inter,system-ui,sans-serif">' + flood_profile.corridor_svg() + '</div>',
+            height=600, scrolling=False)
 
 st.markdown('<div class="eyebrow">Incoming weather — forecast precipitation</div>', unsafe_allow_html=True)
 fc = fetch_best_7day(); days = fc.get("days", [])

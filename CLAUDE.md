@@ -223,8 +223,26 @@ streamlit run streamlit_app.py
 ```
 
 Needs Google Cloud credentials for Firestore (project `ee-dashboard-477704`,
-database `cullowhee`). The flood-engine imports are wrapped in try/except and the
-app degrades rather than crashes when they fail — preserve that.
+database `cullowhee`). The engine imports degrade rather than crash — preserve
+that, and preserve the **split**:
+
+* `flood_engine` / `flood_network` / `orographic` are load-bearing. Each is
+  imported separately so the error names the actual module; any failure sets
+  `FLOOD_OK = False` and stops the app.
+* `flood_profile` is optional — it only backs the corridor map, reach table and
+  schematic. It gets its own `PROFILE_OK`, and those three panels degrade
+  individually.
+
+These were one shared `try` until 2026-08. `flood_profile` was imported last, so
+a syntax error there set `FLOOD_OK = False` and silently disabled the entire
+flood console even though the other three had imported fine. Don't merge them
+back into one block.
+
+**Target Python 3.11, not 3.12.** CI and `.devcontainer` both pin 3.11, so
+PEP 701 syntax — nested same-quote f-strings like `f'{d["k"]}'` written with
+inner single quotes — is a **SyntaxError** here. That is exactly what broke
+`flood_profile.py`. Inside a single-quoted f-string, subscript with double
+quotes.
 
 ### Module self-tests
 
@@ -275,7 +293,7 @@ sides with `max()` over `_RANK`, where `"N/A"` scores **-1 — below `NORMAL`**.
 flood at the mouth would disappear. The stage cross-check (`depth_ft`,
 `stage_posture`) *is* legitimately N/A there; the operative posture is not.
 
-### Missing modules referenced by the code
+### Broken import paths (pre-existing)
 
 `test_model.py` is imported by `outlook_engine.py`, `live_rainfall.py`,
 `wetness.py` (lazily, inside a function), and `pages/1_Test_Model.py` — but **it
@@ -285,6 +303,16 @@ is not in the repository**. Those import paths are currently broken. Likewise
 that functionality, say so rather than reconstructing `test_model.py` from
 guesses — its `BASINS` dict and `run_case()` carry calibration values that must
 match `basins.py`.
+
+Separately, `wetness.py` (`from flood_rating import depth_from_q, posture`) and
+`outlook_engine.py` (`from flood_rating import posture as _posture`) both import
+a name **`flood_rating.posture` no longer exports** — so `import wetness` raises
+`ImportError`. The 2026-07 improvement set renamed it `posture_stage()` and
+demoted it to a cross-check. **Do not paper over this with an alias**: for the
+seven non-campus reaches `posture_stage` rides the collapsed out-of-bank
+rectangular rating, which is the exact under-warning §2 was written to fix. Each
+caller needs a deliberate decision about whether it wants `assess()` (the
+operative posture) or `posture_stage()` (the cross-check).
 
 ### Duplicated files
 

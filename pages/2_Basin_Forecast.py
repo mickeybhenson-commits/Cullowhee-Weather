@@ -61,11 +61,6 @@ mode = st.radio("Forcing", ["Live forecast", "Scenario"], horizontal=True,
 fc = None
 if mode == "Live forecast":
     fc = live_forecast()
-    if not fc.get("ok"):
-        st.error(f"Live rainfall unavailable — {fc.get('error')}. "
-                 "No forecast is shown rather than a fabricated one; "
-                 "switch to **Scenario** to exercise the engine.")
-        st.stop()
 else:
     c1, c2 = st.columns(2)
     qpf = c1.slider("24-hr QPF (in)", 0.0, 14.0, 4.8, 0.1,
@@ -76,6 +71,16 @@ else:
     fc = F.forecast_all({b: {"qpf_in": qpf, "wetness": w} for b in routed_order()})
     fc.update(ok=True, generated_utc="scenario (not live)",
               source=f"SCENARIO: QPF={qpf} in / 24 hr, wetness={w}")
+
+# Single validity gate for both paths. st.stop() only halts when a script run
+# context is present, so the SystemExit below is what actually guarantees we
+# never fall through to `ws["posture"]` on a None watershed.
+if not fc or not fc.get("ok") or not fc.get("watershed"):
+    st.error(f"Live rainfall unavailable — {(fc or {}).get('error', 'no forecast')}. "
+             "No forecast is shown rather than a fabricated one; "
+             "switch to **Scenario** to exercise the engine.")
+    st.stop()
+    raise SystemExit
 
 ws = fc["watershed"]
 rows = fc["basins"]

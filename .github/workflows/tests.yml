@@ -16,6 +16,12 @@ jobs:
         with:
           python-version: "3.11"
 
+      # Catches syntax errors anywhere in the tree, including files nothing
+      # imports. flood_profile.py sat broken on a Python 3.12-only nested-quote
+      # f-string that no test or import would have surfaced on 3.11.
+      - name: Syntax check every Python file
+        run: python -m compileall -q .
+
       # The engine, the forecast pipeline and their tests are stdlib-only by
       # design, so the gate runs without installing anything. Only the Streamlit
       # UI needs requirements.txt, and that is not exercised here.
@@ -41,4 +47,5 @@ jobs:
           python lead_time.py
           python wetness.py
           python test_model.py
+          python flood_profile.py
           python forecast.py --demo 4.8 0.5

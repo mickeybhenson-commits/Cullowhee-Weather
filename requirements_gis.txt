@@ -1,0 +1,23 @@
+# GIS tooling deps — NOT needed by the app, the forecast, or the feed.
+#
+# requirements.txt deliberately does not carry these: geopandas and rasterio
+# are large, and nothing on the live forecast path imports them. Install only
+# when running one of the three standalone GIS tools below, which otherwise
+# fail with a bare ModuleNotFoundError that says nothing about which extra to
+# install.
+#
+#   pip install -r requirements_gis.txt
+#
+# bfe_to_thresholds.py   HEC-RAS/FIS base-flood-elevation -> surveyed stage
+#                        thresholds (the §5 emitter; runs when the shapefiles
+#                        arrive). Needs pyshp + shapely + pyproj.
+# merge_subbasins.py     merges delineated sub-basin polygons. geopandas, shapely.
+# landuse_cn.py          NLCD/SSURGO -> per-basin curve number. geopandas,
+#                        rasterio, numpy.
+
+pyshp>=2.3
+shapely>=2.0
+pyproj>=3.6
+geopandas>=0.14
+rasterio>=1.3
+numpy>=1.24

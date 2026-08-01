@@ -300,7 +300,16 @@
   // ---- live map embed ----
   // Paste the address of your live watershed map between the quotes to embed it here.
   // Leave it empty and the section shows an "Open the live map" button instead.
-  var DASHBOARD_URL = "Cullowhee_Creek_live_status.html";
+  //
+  // Points at live.html, the MAINTAINED watershed page. It previously pointed at
+  // Cullowhee_Creek_live_status.html, a hand-dropped MINIFIED snapshot that had
+  // since diverged: no spatial storm cell, no hydrograph routing, no orographic
+  // factors, and a superseded CC-UP-503 drainage area (5.35 mi^2, which
+  // basins.py replaced with 5.03). Nothing generates that file — there is no
+  // build step — and nothing else references it, so it could only drift further.
+  // live.html also reads feed/forecast.json, so the public page now shows the
+  // published Python engine's posture for all eight basins.
+  var DASHBOARD_URL = "live.html";
 
   (function(){
     var frame = document.getElementById('liveMap');

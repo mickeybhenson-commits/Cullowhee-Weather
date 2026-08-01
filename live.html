@@ -96,6 +96,7 @@ body.whatif-on .radartiles{opacity:0!important;pointer-events:none}
     <div><b>~RP / stage</b> &mdash; modeled flood magnitude. Tributaries: return period in years (e.g. ~100&nbsp;yr). WCU campus: river stage in feet.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
     <div class="sbleg-f">rows sorted worst-first &middot; updates live</div>
+    <div class="sbleg-f" id="sbsrc" style="margin-top:2px;"></div>
   </div>
   <h4 id="exthdr" style="margin-top:9px;border-top:1px solid rgba(255,255,255,.12);padding-top:8px;">Measured &amp; official <span id="exttog">&#9662;</span></h4>
   <div id="extwrap">
@@ -390,7 +391,17 @@ function repaint(){
     if(markerByBid[b]) markerByBid[b].setStyle({fillColor:SEV[lvlOf(b)]});});
   if(mode==="live"){
     const r=document.getElementById("liveread");
-    if(liveErr){ r.innerHTML="live weather unavailable &mdash; "+liveErr+". Use What&#8209;if."; }
+    /* The in-page engine's own weather fetch failed. If the published forecast
+       loaded, the sub-basin table is still populated from it, so telling the
+       user to switch to What-if would be wrong — say what is actually driving
+       the numbers instead. */
+    if(liveErr && typeof FCAST!=="undefined" && FCAST && FCAST.basins){
+      r.innerHTML="in-browser weather fetch failed &mdash; showing the "+
+        "<b style='color:#45d0c0'>published forecast</b> ("+FCAST.ageTxt+")"+
+        (FCAST.watershed&&FCAST.watershed.posture
+          ? ' &middot; worst: <b style="color:'+(SEV[FCAST.watershed.posture]||"#9AA5B1")+'">'
+            +FCAST.watershed.posture+"</b>" : ""); }
+    else if(liveErr){ r.innerHTML="live weather unavailable &mdash; "+liveErr+". Use What&#8209;if."; }
     else if(!LIVE){ r.textContent="fetching live weather\u2026"; }
     else { const [w,wb]=worst(); const t=lastUpdate?lastUpdate.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"";
       r.innerHTML=`live &middot; ${t} &middot; worst: <b style="color:${SEV[w]}">${w}</b>`+(wb?` (${META[wb].short})`:""); }
@@ -477,6 +488,26 @@ document.getElementById("sld").addEventListener("input",e=>{idx=+e.target.value;
 /* ===== SUB-BASIN STATUS TABLE (status / rain / return-period / lead), worst-first ===== */
 var SBNAME={"CC-MOUTH-2340":"Cullowhee","CC-WCU-2260":"WCU campus","CC-SPD-1830":"Speedwell","CC-MS-1100":"Lower Mountain","CC-TIL-705":"Tilley Creek","CC-UP-503":"Mountain","CC-LB-171":"Long Branch","CC-COX-097":"Cox Branch"};
 function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)return;
+  /* AUTHORITATIVE OVERLAY (feed/forecast.json).
+     The rows arriving here are computed by the JS engine embedded in this page.
+     That engine is a PORT of the Python one, so it can drift from it. When the
+     published forecast is present and fresh, its values replace the ported
+     ones for every basin it covers, so this page shows the same numbers the
+     Python engine, its unit tests and the Helene back-test agree on.
+     LIVE MODE ONLY: What-if is a user-driven scenario the published forecast
+     knows nothing about, so it always keeps the interactive JS engine. */
+  var srcEl=document.getElementById("sbsrc"), usedFcast=false;
+  if(typeof mode!=="undefined" && mode==="live" && typeof FCAST!=="undefined"
+     && FCAST && FCAST.basins){
+    rows=rows.map(function(r){
+      var f=FCAST.basins[r.bid]; if(!f) return r;
+      usedFcast=true;
+      return {bid:r.bid, lv:f.posture, rain:f.qpf_in,
+              rp:(f.rp_best_yr!=null?f.rp_best_yr:r.rp),
+              stage:(f.stage_total_ft!=null?f.stage_total_ft:r.stage),
+              conf:f.confidence, band:f.rp_band_yr, lead:f.tc_min};
+    });
+  }
   var rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0};
   rows=rows.slice().sort(function(a,b){ return (rank[b.lv]||0)-(rank[a.lv]||0) || (b.rp||0)-(a.rp||0); });
   var html="";
@@ -487,8 +518,21 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
     else if(r.bid==="CC-MOUTH-2340"){ rpS=(r.rp!=null)? "~"+Math.round(r.rp)+" yr":"—"; }
     else { rpS=(r.rp!=null)? "~"+Math.round(r.rp)+" yr":"—"; }
     var lead=(typeof LEADMIN!=="undefined"&&LEADMIN[r.bid]!=null)? LEADMIN[r.bid]+" min":"—";
-    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
-  tb.innerHTML=html; }
+    /* confidence band as a hover title when the published forecast supplied it */
+    var tip="";
+    if(r.conf){ var b=r.band&&r.band[0]!=null?(" ["+Math.round(r.band[0])+"–"+Math.round(r.band[1])+" yr]"):"";
+      tip=" title=\""+String(r.conf).replace(/"/g,"")+b+"\""; }
+    html+="<tr"+tip+"><td>"+(SBNAME[r.bid]||r.bid)+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
+  tb.innerHTML=html;
+  if(srcEl) srcEl.innerHTML = usedFcast
+    ? ("source: <b style='color:#45d0c0'>published engine</b> &middot; "+FCAST.ageTxt
+       + (FCAST.watershed&&FCAST.watershed.posture
+          ? " &middot; watershed <b style='color:"+(SEV[FCAST.watershed.posture]||"#9AA5B1")+"'>"
+            +FCAST.watershed.posture+"</b>" : ""))
+    : (typeof mode!=="undefined" && mode==="whatif"
+        ? "source: in-page engine (what-if scenario)"
+        : "source: in-page engine &middot; "+(typeof FCASTNOTE!=="undefined"?FCASTNOTE:"published forecast not loaded"));
+}
 (function(){ var h=document.getElementById("sbhdr"); if(h)h.addEventListener("click",function(){
   var p=document.getElementById("sbtable"); p.classList.toggle("collapsed");
   document.getElementById("sbtog").innerHTML=p.classList.contains("collapsed")?"▸":"▾"; }); })();
@@ -811,6 +855,50 @@ L.control.layers({"Carto Voyager":base,"Topographic":terrain},
   .catch(function(){var b=document.getElementById("extbody");
     if(b) b.innerHTML="<span style='color:#7f93a5;font-size:10px;'>gov feed not published yet "+
       "(appears after the next 30-min Action run)</span>";});
+})();
+</script>
+<script>
+/* ===== PUBLISHED PER-BASIN FORECAST — feed/forecast.json =====
+   Written every 30 min by feed_runner.publish_forecast() from forecast.py:
+   live QPF (rolling 24-h max) + 30-day API antecedent -> the calibrated Python
+   engine -> a posture, return period, confidence band and stage for all eight
+   basins. This page carries a JS PORT of that engine; the port is what fills
+   the sub-basin table when this feed is absent, and a port can drift from the
+   original. Loading the published values makes the public page agree with the
+   Python engine, its unit tests and the Helene back-test.
+
+   FRESHNESS: the feed is republished every 30 min, so anything older than
+   STALE_MIN is not trusted. Stale published values are NOT shown with a
+   warning badge — the page silently keeps the in-page engine instead, because
+   that one recomputes from live weather in the browser and is therefore the
+   fresher of the two. A flood page should never prefer old numbers.
+
+   This block must never break the page: every failure path just leaves FCAST
+   null and the existing engine renders exactly as before. ===== */
+var FCAST=null, FCASTNOTE="published forecast not loaded";
+(function(){
+  var STALE_MIN=90;
+  function ageTxt(m){ return m<1?"just now":(m<60?Math.round(m)+" min ago"
+                        :(m/60).toFixed(1)+" h ago"); }
+  function done(){ try{ if(typeof repaint==="function") repaint(); }catch(e){} }
+  fetch("feed/forecast.json?t="+Date.now()).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status); return r.json();
+  }).then(function(x){
+    if(!x || !x.ok || !x.basins || !Object.keys(x.basins).length){
+      FCASTNOTE = "published forecast unavailable"
+        + (x && x.error ? " (" + String(x.error).slice(0,60) + ")" : "");
+      return;
+    }
+    var age=(Date.now()-new Date(x.generated_utc).getTime())/60000;
+    if(!isFinite(age)||age>STALE_MIN){
+      FCASTNOTE="published forecast stale ("+ageTxt(age)+")"; return;
+    }
+    x.ageTxt=ageTxt(age);
+    FCAST=x;
+  }).catch(function(e){
+    FCASTNOTE="published forecast not there yet (appears after the next "+
+              "30-min Action run)";
+  }).then(done);
 })();
 </script>
 </body></html>

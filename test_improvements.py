@@ -16,6 +16,7 @@ import flood_rating as fr
 import lead_time as lt
 import flood_ensemble as fe
 import backtest_helene as bt
+import confluence_status as cs
 
 NON_CAMPUS = [b for b in routed_order() if b not in ("CC-WCU-2260", "CC-MOUTH-2340")]
 
@@ -92,9 +93,76 @@ class TestAssess(unittest.TestCase):
             self.assertEqual(a["basis"], "discharge frequency (USGS regression)")
             self.assertIsNotNone(a["rp_band"])
 
-    def test_mouth_out_of_scope(self):
+    def test_mouth_posts_creek_side_not_na(self):
+        # The mouth is rating="none" (no valid stage rating: TVA's mile-0 sections
+        # are Tuckasegee-backwater controlled). It is NOT postureless. assess()
+        # returns the CREEK half of the confluence - its own §2 discharge
+        # frequency - and confluence_status adds the backwater half.
+        #
+        # This must never go back to "N/A": confluence_status combines the two
+        # sides with max() over _RANK, where "N/A" scores -1, i.e. BELOW NORMAL.
+        # An "N/A" creek side would therefore be masked by a quiet river and a
+        # creek-driven flood at the mouth would vanish. See the safety assertion
+        # in TestConfluenceMouth.test_creek_side_cannot_be_masked_by_quiet_river.
         a = fr.assess(5000, "CC-MOUTH-2340")
-        self.assertEqual(a["posture"], "N/A")
+        self.assertEqual(a["rating"], "none")
+        self.assertNotEqual(a["posture"], "N/A")
+        self.assertIn(a["posture"], ("NORMAL", "WATCH", "WARNING", "EMERGENCY"))
+        # creek-only: no PI band, and the basis/confidence must say backwater is
+        # excluded so no caller mistakes this for the operational posture.
+        self.assertIsNone(a["rp_band"])
+        self.assertIn("backwater not included", a["confidence"])
+        self.assertIn("confluence_status", a["basis"])
+        # The distinction the old expectation collapsed: the STAGE cross-check is
+        # "N/A" at the mouth (out_of_bank_10yr = 3.02, no valid rating, thr_ft None)
+        # while the OPERATIVE posture is a real discharge-frequency call.
+        self.assertIsNone(a["depth_ft"])
+        self.assertEqual(a["stage_posture"], "N/A")
+        self.assertNotEqual(a["posture"], a["stage_posture"])
+        self.assertFalse(a["thr_validated"])
+
+
+class TestConfluenceMouth(unittest.TestCase):
+    """The mouth's two entry points must agree, and the combination must never
+    under-call the creek side."""
+
+    def test_entry_points_agree(self):
+        # flood_rating.assess and confluence_status.creek_posture run the same
+        # chain (calibrate_peak -> rp_from_q -> category_from_rp). If they ever
+        # drift, the console and the engine disagree about the same node.
+        for q in (500, 2000, 5000, 12000):
+            a = fr.assess(q, "CC-MOUTH-2340")
+            cat, rp, cq = cs.creek_posture(q)
+            self.assertEqual(a["posture"], cat, f"posture drift at {q} cfs")
+            self.assertEqual(a["rp_best"], rp, f"return-period drift at {q} cfs")
+            self.assertEqual(a["calib_q"], cq, f"calibrated-Q drift at {q} cfs")
+
+    def test_creek_side_cannot_be_masked_by_quiet_river(self):
+        # THE safety property. Tuckasegee well below its NWS action stage (13 ft)
+        # => river NORMAL; the creek is running a ~12-yr flow. The confluence must
+        # still post the creek's call, driven by runoff.
+        r = cs.confluence_status(model_peak_q_cfs=5000, gage_ht_ft=5.2)
+        self.assertEqual(r["river"]["posture"], "NORMAL")
+        self.assertEqual(r["creek"]["posture"], "WARNING")
+        self.assertEqual(r["confluence_posture"], "WARNING")
+        self.assertEqual(r["driver"], "creek-runoff")
+
+    def test_confluence_is_worse_of_both_sides(self):
+        rank = cs._RANK
+        for q in (500, 5000, 12000):
+            creek_cat, _, _ = cs.creek_posture(q)
+            for gh in (5.2, 13.5, 16.5, 19.5):          # normal/action/minor/moderate
+                r = cs.confluence_status(model_peak_q_cfs=q, gage_ht_ft=gh)
+                river_cat = r["river"]["posture"]
+                self.assertEqual(
+                    rank[r["confluence_posture"]],
+                    max(rank[creek_cat], rank[river_cat]),
+                    f"confluence under-called at q={q}, gage={gh}")
+
+    def test_na_ranks_below_normal(self):
+        # Documents WHY the mouth must not return "N/A" - this is the ranking
+        # that would swallow it.
+        self.assertLess(cs._RANK.get("N/A", -1), cs._RANK["NORMAL"])
 
 
 class TestLeadTime(unittest.TestCase):

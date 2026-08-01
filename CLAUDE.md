@@ -254,7 +254,7 @@ that is the sandbox, not a regression. Don't "fix" it by stubbing the connectors
 There is no pytest config and no test runner script. Two styles coexist:
 
 ```bash
-python -m unittest test_improvements -v   # unittest (20 tests)
+python -m unittest test_improvements -v   # unittest (24 tests)
 python test_gov_gauges.py                 # script-style; prints PASS/FAIL, exits 1 on failure
 python test_gov_sources.py
 python test_flood_network_upwind.py
@@ -264,13 +264,16 @@ All tests are **network-free** — they feed synthetic payloads shaped like the
 real USGS/Synoptic responses. Keep it that way; a test that needs the internet
 cannot gate a warning system.
 
-**Known failing test (pre-existing):** `test_improvements.TestAssess.test_mouth_out_of_scope`
-expects `assess(..., "CC-MOUTH-2340")["posture"] == "N/A"`, but the engine
-returns a creek-only posture (`WARNING` at the self-test forcing) labelled
-"backwater not included here". The test and the engine disagree about what the
-mouth should return; the confluence logic moved to `confluence_status.py`. Decide
-deliberately which one is right before changing either — don't just make the test
-pass. The other 19 pass.
+**All suites currently pass.** Note `TestConfluenceMouth` in
+`test_improvements.py`: it pins the mouth node's contract, which is easy to get
+wrong. `CC-MOUTH-2340` is `rating="none"` but **not postureless** — `assess()`
+returns the *creek* half of the confluence (its own §2 discharge frequency) and
+`confluence_status.py` adds the Tuckasegee backwater half. It must never revert
+to returning `"N/A"` for `posture`, because `confluence_status` combines the two
+sides with `max()` over `_RANK`, where `"N/A"` scores **-1 — below `NORMAL`**. An
+`"N/A"` creek side would be silently masked by a quiet river, and a creek-driven
+flood at the mouth would disappear. The stage cross-check (`depth_ft`,
+`stage_posture`) *is* legitimately N/A there; the operative posture is not.
 
 ### Missing modules referenced by the code
 

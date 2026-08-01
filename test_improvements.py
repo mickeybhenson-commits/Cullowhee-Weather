@@ -92,9 +92,20 @@ class TestAssess(unittest.TestCase):
             self.assertEqual(a["basis"], "discharge frequency (USGS regression)")
             self.assertIsNotNone(a["rp_band"])
 
-    def test_mouth_out_of_scope(self):
+    def test_mouth_reports_creek_side_only(self):
+        # The mouth floods by BACKWATER from the Tuckasegee, which the creek's
+        # own rating cannot represent (basins.py sets rating="none"). The engine
+        # deliberately no longer returns a bare "N/A" here: it reports the CREEK
+        # half of the confluence by discharge frequency and says so in `basis`,
+        # leaving the river half to confluence_status.py. What must stay true is
+        # that it never claims a stage or an operational posture of its own.
         a = fr.assess(5000, "CC-MOUTH-2340")
-        self.assertEqual(a["posture"], "N/A")
+        self.assertEqual(a["rating"], "none")
+        self.assertIsNone(a["depth_ft"])
+        self.assertIn("backwater", a["basis"])
+        self.assertIn("backwater not included", a["confidence"])
+        self.assertIn(a["posture"], ("NORMAL", "WATCH", "WARNING", "EMERGENCY"))
+        self.assertFalse(BASINS["CC-MOUTH-2340"]["role"] == "warning_point")
 
 
 class TestLeadTime(unittest.TestCase):

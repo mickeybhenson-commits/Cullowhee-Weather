@@ -74,14 +74,14 @@ def incremental_runoff(hyeto, CN):
     for i in range(1,len(cumQ)): inc.append(cumQ[i]-cumQ[i-1])
     return inc, cumQ[-1], cumP[-1]
 
-def unit_hydrograph(DA, TcHr, dt=DT):
-    Tp=0.6*TcHr+dt/2.0; Tb=2.67*Tp; qp=PRF*DA/Tp; ords=[]; t=0.0
+def unit_hydrograph(DA, TcHr, dt=DT, prf=PRF):
+    Tp=0.6*TcHr+dt/2.0; Tb=2.67*Tp; qp=prf*DA/Tp; ords=[]; t=0.0
     while t<=Tb:
         ords.append(max(qp*t/Tp if t<=Tp else qp*(Tb-t)/(Tb-Tp),0.0)); t+=dt
     return ords
 
-def peak_discharge(hyeto, CN, DA, TcHr):
-    incr,_,_ = incremental_runoff(hyeto,CN); uh=unit_hydrograph(DA,TcHr)
+def peak_discharge(hyeto, CN, DA, TcHr, dt=DT, prf=PRF):
+    incr,_,_ = incremental_runoff(hyeto,CN); uh=unit_hydrograph(DA,TcHr,dt=dt,prf=prf)
     h=[0.0]*(len(incr)+len(uh))
     for i,r in enumerate(incr):
         if r<=0: continue

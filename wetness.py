@@ -41,7 +41,10 @@ import math
 from datetime import date
 
 from basins import BASINS
-from flood_rating import depth_from_q, posture
+# posture_stage is the stage-vs-threshold call. It was named `posture` before the
+# 2026-07 improvement set split the stage path from the frequency path (§2); this
+# module's posture_total() is the stage cross-check, so it wants the stage form.
+from flood_rating import depth_from_q, posture_stage as posture
 
 # ----------------------------------------------------------------------------
 # 1. CONTINUOUS CURVE NUMBER
@@ -200,14 +203,17 @@ def posture_total(calib_q_cfs, bid):
 
 def assess_wet(bid, qpf_in, wetness, PRF=484.0, dt_hr=0.25):
     """Upgraded per-basin chain: continuous CN + baseflow-inclusive posture.
-    Mirrors test_model.run_case per-basin body; that legacy stepped path is
-    left untouched for the tabletop harness."""
-    import test_model as tm
-    b = tm.BASINS[bid]
+
+    Runs on cwm_model, the faithful port of the deployed engine. (This used to
+    call test_model.py, which is no longer in the repo; cwm_model carries the
+    same rainfall -> SCS hyetograph -> NRCS-CN -> unit-hydrograph chain and the
+    same per-basin DA/Tc/CN2, so the numbers are unchanged.)"""
+    import cwm_model as cwm
+    b = cwm.BASINS[bid]
     from flood_rating import calibrate_peak
     CN = cn_from_wetness(b["CN2"], wetness)
-    qp = tm.peak_discharge_cfs(tm.storm_hyetograph(qpf_in, dt_hr=dt_hr),
-                               CN, b["DA"], b["Tc"] / 60.0, PRF=PRF, dt_hr=dt_hr)
+    qp = cwm.peak_discharge(cwm.storm_hyetograph(qpf_in, dt=dt_hr),
+                            CN, b["DA"], b["Tc"] / 60.0, dt=dt_hr, prf=PRF)
     cq = calibrate_peak(qp, bid)
     storm = depth_from_q(cq, bid)
     stage = stage_total_from_q(cq, bid)

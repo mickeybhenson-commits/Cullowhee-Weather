@@ -50,19 +50,29 @@ MAX_GAP_MIN = 45
 
 
 # ---------------------------------------------------------------------------
-# TODO(mickey): this is the one hook you need to fill in.
+# MODELED STAGE  (the hook that used to be an unfilled TODO)
 #
-# Return the current modeled stage in feet, or None if the model cannot
-# produce one right now. Returning None is a legitimate answer and is handled
+# forecast.py runs the live chain — Open-Meteo QPF + 30-day API antecedent ->
+# cwm_model rainfall/runoff/unit-hydrograph -> flood_rating calibration — for
+# all eight basins, and returns the TOTAL modeled stage at the warning point
+# (CC-WCU-2260, the WCU campus). That basin is the right one to publish here:
+# it is the only reach with a field-VALIDATED stage rating (TVA 7/9/11 ft,
+# where 11 ft = water in the road), and publish_feed.LOCAL_LEVELS and
+# flood_engine.THRESH are those same three numbers, so the value lands on the
+# scale the publisher already expects.
+#
+# Returns None on any failure. That is a legitimate answer and is handled
 # correctly downstream — the feed publishes "No Data" rather than a number.
-#
-# This most likely wraps whatever live_rainfall.py / flood_profile.py /
-# flood_rating.py already do to turn current QPF + antecedent conditions into
-# a stage. Do NOT return a placeholder constant here; a plausible fake number
-# on a public URL is the failure mode this whole design is trying to avoid.
+# No placeholder constant is ever returned; a plausible fake number on a public
+# URL is the failure mode this whole design exists to avoid.
 # ---------------------------------------------------------------------------
-def get_modeled_stage_ft() -> Optional[float]:
-    return None
+def get_modeled_stage_ft(fc: Optional[dict] = None) -> Optional[float]:
+    try:
+        import forecast
+        return forecast.modeled_stage_ft(fc)
+    except Exception as e:                                   # pragma: no cover
+        print(f"modeled stage unavailable: {type(e).__name__}: {e}")
+        return None
 
 
 def _load(path: Path, default):
@@ -122,6 +132,49 @@ def publish_external(outdir: Path, now: datetime) -> None:
     print("external feed:", out["status"])
 
 
+# ---------------------------------------------------------------------------
+# PER-BASIN FORECAST  (feed/forecast.json)
+#
+# The single published site is the campus warning point, but the watershed has
+# eight basins and six of them are lead-limited (Tc < 120 min), so an
+# observation-only product cannot warn them in time. This writes the full
+# per-basin forecast — posture, return period, confidence band, ensemble spread
+# and lead time for every basin — alongside the site feed.
+#
+# Guarded individually: this step must NEVER sink the publish run.
+# ---------------------------------------------------------------------------
+def publish_forecast(outdir: Path, now: datetime) -> Optional[dict]:
+    try:
+        import forecast
+    except Exception as e:                                   # pragma: no cover
+        print(f"forecast import failed: {e}")
+        return None
+    try:
+        fc = forecast.run(now=now)
+    except Exception as e:                                   # pragma: no cover
+        fc = {"ok": False, "error": f"{type(e).__name__}: {e}",
+              "generated_utc": now.isoformat(), "basins": {}, "watershed": None}
+    try:
+        (outdir / "forecast.json").write_text(json.dumps(fc, indent=2))
+    except Exception as e:                                   # pragma: no cover
+        print(f"forecast write failed: {e}")
+    if fc.get("ok"):
+        ws = fc["watershed"]
+        print(f"forecast: watershed={ws['posture']} "
+              f"warning_point={ws['warning_point_posture']} "
+              f"basins={len(fc['basins'])} max_qpf={ws['max_qpf_in']}in")
+    else:
+        print(f"forecast unavailable: {fc.get('error')}")
+    return fc
+
+
+def _ws_posture(fc: Optional[dict]) -> Optional[str]:
+    """Watershed roll-up posture from a forecast dict, or None if unavailable."""
+    if not fc or not fc.get("ok") or not fc.get("watershed"):
+        return None
+    return fc["watershed"]["posture"]
+
+
 def _trend_from_rate(rate: Optional[float]) -> str:
     if rate is None:
         return "Unknown"
@@ -151,12 +204,16 @@ def main() -> None:
     except Exception as e:                                   # belt and braces
         print(f"external feed skipped: {e}")
 
+    # Per-basin forecast for all eight basins. Runs once and is reused below as
+    # the modeled-stage source, so the live chain is not fetched twice.
+    fc = publish_forecast(OUTDIR, now)
+
     # 1. Resolve the best available stage. sources.resolve() already applies
     #    its own freshness and plausibility gates and will reject a sensor
     #    that has gone quiet or is reporting nonsense, falling back down the
     #    tier chain. We trust that and do not second-guess it here.
     reading = sources.resolve(
-        sources.Q_STAGE, BASIN_ID, get_modeled_stage_ft(), now=now
+        sources.Q_STAGE, BASIN_ID, get_modeled_stage_ft(fc), now=now
     )
 
     if not reading.valid or reading.value is None:
@@ -174,6 +231,7 @@ def main() -> None:
             "updated_utc": now.isoformat(),
             "source_tier": reading.tier,
             "source_note": reading.note or "no valid stage",
+            "watershed_posture": _ws_posture(fc),
         }, indent=2))
         return
 
@@ -237,6 +295,7 @@ def main() -> None:
         "updated_utc": now.isoformat(),
         "source_tier": reading.tier,
         "source_note": reading.note,
+        "watershed_posture": _ws_posture(fc),
     }, indent=2))
 
     print(f"published stage={a.stage_ft:.2f} level={a.level} "

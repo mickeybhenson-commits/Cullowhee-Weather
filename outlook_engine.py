@@ -27,7 +27,9 @@ HOOK (in flood_network.tiered_posture, Outlook tier):
 """
 
 import test_model as tm
-from flood_rating import posture as _posture   # noqa: F401  (kept for callers)
+# posture_stage is the stage-vs-threshold call; it was named `posture` before the
+# 2026-07 improvement set split the stage path from the frequency path (§2).
+from flood_rating import posture_stage as _posture   # noqa: F401  (kept for callers)
 
 # Gateway/sensor site -> CC-* basin whose calibration + rating to apply.
 SITE_TO_BASIN = {

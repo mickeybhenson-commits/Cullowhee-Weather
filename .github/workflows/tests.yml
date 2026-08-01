@@ -1,0 +1,44 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # The engine, the forecast pipeline and their tests are stdlib-only by
+      # design, so the gate runs without installing anything. Only the Streamlit
+      # UI needs requirements.txt, and that is not exercised here.
+      - name: Engine + forecast unit tests
+        run: python -m unittest test_improvements test_forecast -v
+
+      # These predate the unittest suites and use their own check() harness,
+      # so `unittest discover` cannot see them. Each exits non-zero on failure.
+      - name: Script-style test harnesses
+        run: |
+          python test_gov_gauges.py
+          python test_gov_sources.py
+          python test_flood_network_upwind.py
+
+      # README_improvements.md: "exits 0 only if it reproduces the WCU ground
+      # truth ... so it doubles as a CI gate". This is that gate.
+      - name: Hurricane Helene back-test (validation gate)
+        run: python backtest_helene.py
+
+      - name: Engine self-tests still run clean
+        run: |
+          python flood_rating.py
+          python lead_time.py
+          python wetness.py
+          python test_model.py
+          python forecast.py --demo 4.8 0.5

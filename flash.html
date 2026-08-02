@@ -44,6 +44,13 @@
   #sbtable .ramp{height:8px;border-radius:3px;margin:7px 0 3px;
     background:linear-gradient(90deg,#2b3a8f,#1f7a8c,#45d0c0,#e2b52b,#f2882d,#ef5350)}
   #sbtable .rampax{display:flex;justify-content:space-between;font-size:8.5px;color:#7f93a5}
+  #sbtable .sblede{font-size:9.5px;color:#9db2c4;line-height:1.45;margin:0 0 7px;white-space:normal}
+  #sbtable .sblede b{color:#c2d0dc}
+  #sbtable .sbdef{margin-top:6px;white-space:normal;line-height:1.45}
+  #sbtable .readkey{margin-top:4px}
+  #sbtable .readkey div{display:flex;gap:7px;align-items:flex-start;margin:3px 0;white-space:normal}
+  #sbtable .readkey .sbpill{flex:0 0 auto;margin-top:1px}
+  #sbtable.collapsed .sblede{display:none}
 
   /* About card — collapsed by default, sits where live.html puts #radarctl */
   #about{bottom:14px;left:12px;max-width:360px;font-size:.74rem;color:#33404d}
@@ -85,8 +92,14 @@
 
 <div id="sbtable">
   <h4 id="sbhead">Sub-basin readings <span id="sbchev">▾</span></h4>
+  <div class="sblede">What a national flash-flood model makes of each sub-basin right now.
+    <b>Modeled, not measured</b> — a second opinion, not a warning.</div>
   <table>
-    <thead><tr><th>Sub-basin</th><th>Value</th><th>Reading</th></tr></thead>
+    <thead><tr>
+      <th>Sub-basin</th>
+      <th title="The FLASH grid value for the selected layer, sampled at this sub-basin's label point">Value</th>
+      <th title="Where that value sits against the NWS published thresholds">Reading</th>
+    </tr></thead>
     <tbody id="rows"></tbody>
   </table>
   <div class="sbhint" id="sbhint">reading the published feed…</div>
@@ -94,6 +107,10 @@
     <div class="ramp"></div>
     <div class="rampax"><span id="rax0">low</span><span id="rax1">high</span></div>
     <div id="raxNote" style="margin-top:5px"></div>
+    <div class="sbdef"><b>Value</b> — <span id="valDef"></span></div>
+    <div class="sbdef"><b>Reading</b> — where that number falls against the
+      published NWS thresholds:</div>
+    <div id="readKey" class="readkey"></div>
     <div class="sbleg-f" id="sbstamp">—</div>
   </div>
 </div>
@@ -190,12 +207,57 @@
   L.control.scale({imperial:true, metric:true}).addTo(map);
   }
 
+  // Column definitions are written per layer, because "Reading" means a
+  // different thing for unit streamflow than for a rainfall recurrence
+  // interval, and a legend that says otherwise is worse than none.
+  var READ_KEYS = {
+    unitq: [["BELOW","under 2.0 — no flash flooding indicated"],
+            ["LIKELY","2.0 or more — flash flooding likely (≈180 cfs mi⁻²)"],
+            ["SIGNIFICANT","6.0 or more — significant flooding likely"]],
+    ffg1:  [["BELOW","under 100% — rain below flash flood guidance"],
+            ["APPROACHING","100% or more — rain has reached guidance"],
+            ["LIKELY","120% or more — the band that caught 75% of reports"]],
+    ffg3:  [["BELOW","under 100% — rain below flash flood guidance"],
+            ["APPROACHING","100% or more — rain has reached guidance"],
+            ["LIKELY","120% or more — the band that caught 75% of reports"]],
+    ari:   [["BELOW","under 10 years — unremarkable rainfall"],
+            ["LIKELY","10 years or more — an uncommon rainfall"],
+            ["SIGNIFICANT","100 years or more — a rare rainfall"]],
+    soil:  [["BELOW","no published threshold — context for the other layers"]]
+  };
+  var VALUE_DEF = {
+    unitq: "modeled streamflow per unit of drainage area, in m³ s⁻¹ km⁻². " +
+           "Scale-free, so every sub-basin is judged against the same number " +
+           "regardless of size.",
+    ffg1:  "observed rainfall as a percentage of the 1-hour flash flood " +
+           "guidance for that location — how close the rain has come to what " +
+           "it takes to flood there.",
+    ffg3:  "observed rainfall as a percentage of the 3-hour flash flood " +
+           "guidance for that location.",
+    ari:   "how rare the observed rainfall is, in years between events. " +
+           "Rarity of the rain, not of the flooding it causes.",
+    soil:  "modeled soil saturation, percent. Wetter ground turns the next " +
+           "rainfall into runoff faster."
+  };
+
+  function drawDefs(){
+    $("valDef").textContent = VALUE_DEF[current.k] || "";
+    var rows = READ_KEYS[current.k] || [];
+    $("readKey").innerHTML = rows.map(function(r){
+      return '<div><span class="sbpill p-' + r[0] + '">' + r[0] + "</span><span>" +
+             esc(r[1]) + "</span></div>";
+    }).join("") +
+    '<div><span class="sbpill p-PENDING">PENDING</span><span>no value published yet ' +
+    '— the map reads the grid directly, these numbers come from the feed</span></div>';
+  }
+
   function drawTiles(){
-    if (!HAS_L) return;
-    if (tiles){ map.removeLayer(tiles); tiles = null; }
+    drawDefs();
     $("rax0").textContent = current.ax[0];
     $("rax1").textContent = current.ax[1];
     $("raxNote").innerHTML = "<b>" + esc(current.label) + "</b> · " + esc(current.note);
+    if (!HAS_L) return;
+    if (tiles){ map.removeLayer(tiles); tiles = null; }
     if (!bundle) return;
     var opts = {
       layers: current.layer, styles: "raster/default", format: "image/png",

@@ -62,6 +62,10 @@
   #about .body b{color:#13212E}
   #about.collapsed .body{display:none}
   #about .chev{color:#8a9aa8;font-weight:700}
+  #top .chk{display:flex;align-items:center;gap:6px;font-weight:700;font-size:.75rem;
+    white-space:nowrap;cursor:pointer}
+  #top .chk input{accent-color:#234F86;width:14px;height:14px}
+  #top input[type=range]:disabled{opacity:.4}
   @media (max-width:640px){#about{display:none}}
 </style>
 </head>
@@ -82,9 +86,10 @@
     <label for="mapPal">Colours</label>
     <select id="mapPal" class="mini" style="font-weight:700"><option>…</option></select>
   </div>
-  <div class="ctl" style="min-width:190px">
-    <label for="mapOp">Opacity</label>
-    <input type="range" id="mapOp" min="8" max="100" value="35">
+  <div class="ctl" style="min-width:250px">
+    <label class="chk"><input type="checkbox" id="fillOn" checked> Colour sub-basins</label>
+    <label class="chk"><input type="checkbox" id="gridOn"> FLASH grid</label>
+    <input type="range" id="mapOp" min="8" max="100" value="35" disabled>
     <span class="read" id="opRead">35%</span>
   </div>
   <div id="headline" class="headline hl-PENDING">LOADING</div>
@@ -176,8 +181,20 @@
   var PALETTES = ["psu-viridis","psu-plasma","psu-inferno","seq-BuYlRd","seq-cubeYF",
                   "div-BuRd","seq-Heat","occam","x-Rainbow","rainbow",""];
 
+  // Same severity ladder live.html paints its sub-basins with, so a green
+  // basin means the same thing on both pages.
+  var SEV = {
+    BELOW:        "#1A7A52",
+    APPROACHING:  "#C08A00",
+    LIKELY:       "#C2410C",
+    SIGNIFICANT:  "#B42318",
+    STALE:        "#6b7c8a",
+    PENDING:      "#6b7c8a"
+  };
+
   var wmsBase = WMS_DEFAULT, bundle = null, current = LAYERS[0], palette = "",
-      opacity = 0.35, tiles = null, basins = null, lastFlash = null;
+      opacity = 0.35, tiles = null, basins = null, lastFlash = null,
+      fillOn = true, gridOn = false;
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
@@ -258,7 +275,7 @@
     $("raxNote").innerHTML = "<b>" + esc(current.label) + "</b> · " + esc(current.note);
     if (!HAS_L) return;
     if (tiles){ map.removeLayer(tiles); tiles = null; }
-    if (!bundle) return;
+    if (!gridOn || !bundle) return;
     var opts = {
       layers: current.layer, styles: "raster/default", format: "image/png",
       transparent: true, version: "1.3.0",
@@ -339,9 +356,9 @@
     .then(function(r){ return r.json(); })
     .then(function(gj){
       basins = L.geoJSON(gj, {
-        style: function(){ return {color:"#ffffff", weight:1.6, opacity:.9, fill:false}; },
+        style: basinStyle,
         onEachFeature: function(f, lyr){
-          lyr.bindPopup("<b>" + esc(f.properties.name) + "</b><br>" + esc(f.properties.basin_id));
+          lyr.bindPopup(function(){ return popupFor(f.properties); });
         }
       }).addTo(map);
       basins.setZIndex(400);
@@ -369,6 +386,39 @@
     if (k === "ari") return v >= 100 ? "SIGNIFICANT" : (v >= 10 ? "LIKELY" : "BELOW");
     return "BELOW";
   }
+
+  // ---------- sub-basin status fill ----------
+  function readingFor(id){
+    var f = lastFlash;
+    if (!f || !f.basins || !f.basins[id]) return "PENDING";
+    if (f.fresh === false && f.age_min != null) return "STALE";
+    var v = current.feedKey ? f.basins[id][current.feedKey] : null;
+    return classify(current.k, (v != null && isFinite(v)) ? v : null);
+  }
+  function valueFor(id){
+    var f = lastFlash;
+    if (!f || !f.basins || !f.basins[id] || !current.feedKey) return null;
+    var v = f.basins[id][current.feedKey];
+    return (v != null && isFinite(v)) ? Number(v) : null;
+  }
+  function basinStyle(feat){
+    var r = readingFor(feat.properties.basin_id);
+    return {
+      color: "#ffffff", weight: 1.6, opacity: .9,
+      fill: fillOn,
+      fillColor: SEV[r] || SEV.PENDING,
+      fillOpacity: fillOn ? (r === "PENDING" || r === "STALE" ? .28 : .5) : 0
+    };
+  }
+  function popupFor(p){
+    var id = p.basin_id, v = valueFor(id), r = readingFor(id);
+    return "<b>" + esc(p.name) + "</b><br>" +
+      '<span style="color:#5b6b78">' + esc(id) + "</span><br>" +
+      esc(current.label) + ": <b>" +
+      (v == null ? "—" : v.toFixed(current.dp)) + "</b><br>" +
+      '<span style="color:' + (SEV[r] || SEV.PENDING) + ';font-weight:800">' + r + "</span>";
+  }
+  function restyleBasins(){ if (basins) basins.setStyle(basinStyle); }
 
   function drawRows(){
     var f = lastFlash;
@@ -407,16 +457,17 @@
     if (!f){
       setHeadline("PENDING");
       $("sbhint").textContent = "The published feed carries no FLASH block yet — the map reads the grid directly.";
-      drawRows(); return;
+      drawRows(); restyleBasins(); return;
     }
     if (f.enabled === false){
       setHeadline("PENDING");
       $("sbhint").textContent = f.note || "connector disabled";
-      drawRows(); return;
+      drawRows(); restyleBasins(); return;
     }
 
     setHeadline(f.headline || "PENDING");
     drawRows();
+    restyleBasins();
 
     var bits = [];
     if (f.valid_utc) bits.push("grid " + String(f.valid_utc).replace("T"," ").slice(0,16) + "Z");
@@ -445,7 +496,13 @@
   });
   $("mapProd").addEventListener("change", function(e){
     current = LAYERS[parseInt(e.target.value,10)];
-    drawTiles(); drawRows();
+    drawTiles(); drawRows(); restyleBasins();
+  });
+  $("fillOn").addEventListener("change", function(e){ fillOn = e.target.checked; restyleBasins(); });
+  $("gridOn").addEventListener("change", function(e){
+    gridOn = e.target.checked;
+    $("mapOp").disabled = !gridOn;
+    drawTiles();
   });
   $("mapPal").addEventListener("change", function(e){ palette = e.target.value; drawTiles(); });
   $("mapOp").addEventListener("input", function(e){

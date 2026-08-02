@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-02T17:20:12.887058+00:00",
+  "fetched_utc": "2026-08-02T17:26:04.315283+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -301,7 +301,7 @@
     "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 47.3,
+    "age_min": 53.1,
     "fresh": true,
     "last_updated_utc": "2026-08-02T16:33:00+00:00",
     "datum_verified": false,
@@ -341,7 +341,7 @@
       "bundle_interval_min": 60,
       "publish_interval_min": 30,
       "typical_age_min": "0-35",
-      "fresh_gate_min": 90.0,
+      "fresh_gate_min": 150.0,
       "explanation": "FLASH itself steps every 10 minutes, but the GRIB2 files are packaged hourly and post near the end of the hour they cover, and this feed republishes every 30 minutes. So what you see is typically 0-35 minutes old. FLASH's 10-minute cadence does not survive this path. Treat it as after-the-fact corroboration and as a calibration benchmark \u2014 not as a lead-time source, since headwater lead times here are of the same order as the lag."
     },
     "enabled": true,
@@ -368,7 +368,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-MS-1100": {
@@ -381,7 +381,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-TIL-705": {
@@ -394,7 +394,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-SPD-1830": {
@@ -407,7 +407,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-COX-097": {
@@ -420,7 +420,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-LB-171": {
@@ -433,7 +433,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-WCU-2260": {
@@ -446,7 +446,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       },
       "CC-MOUTH-2340": {
@@ -459,15 +459,15 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "STALE",
+        "reading": "BELOW",
         "error": null
       }
     },
-    "headline": "STALE",
-    "fresh": false,
-    "age_min": 90.3,
+    "headline": "BELOW",
+    "fresh": true,
+    "age_min": 96.1,
     "valid_utc": "2026-08-02T15:50:00+00:00",
-    "note": "stale \u2014 newest FLASH step is 90 min old",
+    "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }
 }

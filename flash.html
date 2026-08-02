@@ -160,7 +160,7 @@
     <label for="mapProd">Layer</label>
     <select id="mapProd"></select>
     <label for="mapOp">Opacity</label>
-    <input type="range" id="mapOp" min="15" max="100" value="60">
+    <input type="range" id="mapOp" min="8" max="100" value="35">
     <span class="ramp" title="low to high"></span>
     <span id="rampNote" style="color:var(--faint)"></span>
     <span id="bundleTag">locating grid…</span>
@@ -484,7 +484,7 @@
                   "div-BuRd","seq-Heat","occam","x-Rainbow","rainbow",""];
 
   var wmsBase = TDS_WMS_DEFAULT, bundle = null, current = LAYERS[0],
-      opacity = 0.60, tiles = null, basins = null, started = false, palette = "";
+      opacity = 0.35, tiles = null, basins = null, started = false, palette = "";
 
   var map = L.map('map', {zoomControl:true, attributionControl:true})
              .setView([35.263, -83.20], 12);

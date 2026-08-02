@@ -171,14 +171,27 @@
   }
 
   // ---------- map ----------
-  var map = L.map('map', {zoomControl:true}).setView([35.263,-83.20], 12);
+  // If the Leaflet CDN is blocked or down, the map is lost but the readings
+  // are not — they come from the published feed and need no library at all.
+  var HAS_L = (typeof L !== "undefined");
+  var map = HAS_L ? L.map('map', {zoomControl:true}).setView([35.263,-83.20], 12) : null;
+  if (!HAS_L){
+    document.getElementById('map').innerHTML =
+      '<div style="position:absolute;inset:0;display:flex;align-items:center;' +
+      'justify-content:center;color:#5b6b78;font-size:13px;text-align:center;padding:30px">' +
+      'The map library could not load, so the raster is unavailable.<br>' +
+      'The sub-basin readings below are unaffected.</div>';
+  }
+  if (HAS_L){
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:19, attribution:'Esri'}).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
     {maxZoom:19, opacity:.85, className:'roads'}).addTo(map);
   L.control.scale({imperial:true, metric:true}).addTo(map);
+  }
 
   function drawTiles(){
+    if (!HAS_L) return;
     if (tiles){ map.removeLayer(tiles); tiles = null; }
     $("rax0").textContent = current.ax[0];
     $("rax1").textContent = current.ax[1];
@@ -260,7 +273,7 @@
   }
 
   // ---------- sub-basin outlines ----------
-  fetch("cullowhee_subbasins.geojson?v=" + Date.now())
+  if (HAS_L) fetch("cullowhee_subbasins.geojson?v=" + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(gj){
       basins = L.geoJSON(gj, {
@@ -394,7 +407,8 @@
   drawRows();
   loadFeed();
   setInterval(loadFeed, REFRESH_MS);
-  probeBundle(0, useBundle);
+  if (HAS_L) probeBundle(0, useBundle);
+  else banner("NSSL FLASH · map library unavailable · readings still live");
 })();
 </script>
 </body>

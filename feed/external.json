@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-02T17:50:49.263869+00:00",
+  "fetched_utc": "2026-08-02T18:02:12.157612+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": 623.5,
     "stage_series_up": [
-      [
-        1785672000,
-        5.25
-      ],
       [
         1785672900,
         5.24
@@ -132,10 +128,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1785672000,
-        3.45
-      ],
       [
         1785672900,
         3.45
@@ -317,7 +309,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 47.9,
+    "age_min": 59.3,
     "fresh": true,
     "last_updated_utc": "2026-08-02T17:03:00+00:00",
     "datum_verified": false,
@@ -481,7 +473,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 120.9,
+    "age_min": 132.3,
     "valid_utc": "2026-08-02T15:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

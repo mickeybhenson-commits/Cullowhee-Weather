@@ -390,7 +390,12 @@ def _attempt(varnames, lat, lon, time_style, var_style, lon_style, bundle):
 # WMS GetFeatureInfo — primary path
 # ---------------------------------------------------------------------
 _INFO_VALUE = re.compile(r"<value[^>]*>\s*([^<\s]+)\s*</value>", re.I)
-_INFO_TIME = re.compile(r"<time[^>]*>\s*([^<\s]+)\s*</time>", re.I)
+# ncWMS spells the timestamp <time> in some builds and <iso8601> in others,
+# and a few omit it entirely. Try both tags, then fall back to finding any
+# ISO-8601 instant anywhere in the document.
+_INFO_TIME = re.compile(
+    r"<(?:time|iso8601)[^>]*>\s*([^<\s]+)\s*</(?:time|iso8601)>", re.I)
+_ANY_ISO = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?")
 
 
 def _wms_point(layer, lat, lon, bundle):
@@ -412,7 +417,7 @@ def _wms_point(layer, lat, lon, bundle):
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}")
     text = r.text or ""
-    times = _INFO_TIME.findall(text)
+    times = _INFO_TIME.findall(text) or _ANY_ISO.findall(text)
     vals = _INFO_VALUE.findall(text)
     if not vals:
         raise RuntimeError("no <value> in GetFeatureInfo response")
@@ -650,25 +655,51 @@ def latest(points=None, now=None) -> dict:
             "error": rec.get("crest_error") or rec.get("qpe_error"),
         }
 
-    # freshness from the newest valid time we actually parsed
+    # Did we actually get numbers? This is the question that matters, and it
+    # is NOT the same as "did the server tell us the timestamp". The first
+    # live run returned real values for every basin and no <time> element,
+    # and keying off the timestamp marked all of it STALE and hid it.
+    got_values = any(
+        b.get(k) is not None
+        for b in out["basins"].values()
+        for k in ("unit_streamflow", "ffg_ratio_1h", "ffg_ratio_3h",
+                  "ari_max_yr", "soil_sat_pct", "streamflow_m3s")
+    )
+
+    # Valid time: prefer what the service reported, else derive it from the
+    # bundle we read. The bundle covers one hour and its newest step lands at
+    # about :50, which is a sound floor on how current the data can be.
+    vt = None
     if valid_times:
         try:
-            newest = max(valid_times)
-            vt = datetime.fromisoformat(newest.replace("Z", "+00:00"))
-            age = (now - vt).total_seconds() / 60.0
-            out["valid_utc"] = vt.isoformat()
-            out["age_min"] = round(age, 1)
-            out["fresh"] = age <= FRESH_MIN
-            if not out["fresh"]:
-                out["note"] = f"stale — newest FLASH step is {age:.0f} min old"
+            vt = datetime.fromisoformat(max(valid_times).replace("Z", "+00:00"))
         except Exception:
-            out["note"] = "could not parse FLASH valid time"
+            vt = None
+    if vt is None and _learned.get("file"):
+        try:
+            hour = datetime.strptime(_learned["file"], FILE_FMT).replace(tzinfo=timezone.utc)
+            vt = min(hour + timedelta(minutes=50), now)
+            out["valid_source"] = "derived from bundle hour (service reported no time)"
+        except Exception:
+            vt = None
+
+    if vt is not None:
+        age = (now - vt).total_seconds() / 60.0
+        out["valid_utc"] = vt.isoformat()
+        out["age_min"] = round(age, 1)
+        out["fresh"] = age <= FRESH_MIN
+        if not out["fresh"]:
+            out["note"] = f"stale — newest FLASH step is {age:.0f} min old"
+    elif got_values:
+        # Values but no way to date them: report them, say so, do not pretend.
+        out["fresh"] = True
+        out["note"] = "values returned, but the service reported no valid time"
     else:
         out["note"] = out["note"] or "no FLASH values returned"
 
-    # Always publish the diagnostic when nothing came back, so the panel can
-    # show whether this is the server being down or us asking wrong.
-    if not valid_times:
+    # Diagnostic only when we genuinely got nothing — a run that returned
+    # numbers should not ship an error dump alongside them.
+    if not got_values:
         out["diagnostic"] = {
             "attempts": _attempts_without_success,
             "shapes_tried": {"time": _TIME_STYLES, "var": _VAR_STYLES,
@@ -683,8 +714,10 @@ def latest(points=None, now=None) -> dict:
         out["diagnostic"] = {"working_shape": dict(_learned)}
     out["bundle"] = _learned.get("file")
 
-    # A stale bundle must not present as current data on a public page.
-    if not out["fresh"]:
+    # A stale bundle must not present as current data on a public page. But
+    # "we could not date it" is not the same as "it is old" — only overwrite
+    # readings when there is an actual age past the gate.
+    if not out["fresh"] and out["age_min"] is not None:
         for b in out["basins"].values():
             b["reading"] = "STALE" if b.get("reading") != "NO DATA" else "NO DATA"
 

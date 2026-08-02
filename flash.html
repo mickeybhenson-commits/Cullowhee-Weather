@@ -460,22 +460,24 @@
   // and only real signal is painted.
   var LAYERS = [
     {k:"unitq", layer:"FLASH_CREST_MAXUNITSTREAMFLOW_surface", log:true,
-     label:"Unit streamflow", range:[0.02,6], note:"to 6 m³ s⁻¹ km⁻² · 2.0 likely, 6.0 significant"},
+     label:"Unit streamflow", range:[0.10,6], note:"0.1 – 6 m³ s⁻¹ km⁻² · 2.0 likely, 6.0 significant"},
     {k:"ffg1",  layer:"FLASH_QPE_FFG01H_surface", log:false,
-     label:"QPE / FFG 1 h",  range:[1,200], note:"to 200 % · 100 % = rain equals guidance"},
+     label:"QPE / FFG 1 h",  range:[10,200], note:"10 – 200 % · 100 % = rain equals guidance"},
     {k:"ffg3",  layer:"FLASH_QPE_FFG03H_surface", log:false,
-     label:"QPE / FFG 3 h",  range:[1,200], note:"to 200 %"},
+     label:"QPE / FFG 3 h",  range:[10,200], note:"10 – 200 %"},
     {k:"ari",   layer:"FLASH_QPE_ARIMAX_surface", log:true,
-     label:"Rain recurrence", range:[0.5,100], note:"to 100 yr · rarity of the rain, not the flood"},
+     label:"Rain recurrence", range:[1,100], note:"1 – 100 yr · rarity of the rain, not the flood"},
     {k:"soil",  layer:"FLASH_CREST_MAXSOILSAT_surface", log:false,
-     label:"Soil saturation", range:[1,100], note:"to 100 % · modeled, not measured"}
+     label:"Soil saturation", range:[5,100], note:"5 – 100 % · modeled, not measured"}
   ];
 
   // ncWMS palette names differ between server builds, so probe rather than
-  // guess. Multi-colour first: this install's default is a single-hue blue
-  // ramp, which makes a quiet day and a dead layer look the same.
-  var PALETTES = ["x-Rainbow","rainbow","psu-viridis","seq-BuYlRd","div-BuRd",
-                  "psu-plasma","occam","ferret","seq-Heat",""];
+  // guess. Perceptually ordered ramps first: the server default here is a
+  // single-hue blue, which makes a quiet day and a dead layer look identical,
+  // while rainbow ramps invent visual edges the data does not have. Rainbow
+  // stays in the list only as a last resort.
+  var PALETTES = ["psu-viridis","psu-plasma","psu-inferno","seq-BuYlRd","seq-cubeYF",
+                  "div-BuRd","seq-Heat","occam","x-Rainbow","rainbow",""];
 
   var wmsBase = TDS_WMS_DEFAULT, bundle = null, current = LAYERS[0],
       opacity = 0.70, tiles = null, basins = null, started = false, palette = "";
@@ -529,7 +531,7 @@
       var u = wmsBase + "/" + bundle +
         "?service=WMS&version=1.3.0&request=GetMap&layers=" + LAYERS[0].layer +
         "&styles=raster/default&format=image/png&transparent=true&crs=CRS:84" +
-        "&bbox=-83.25,35.20,-83.15,35.33&width=8&height=8&colorscalerange=0.02,6" +
+        "&bbox=-83.25,35.20,-83.15,35.33&width=8&height=8&colorscalerange=0.1,6" +
         (name ? "&palette=" + encodeURIComponent(name) : "");
       var img = new Image(), settled = false;
       function finish(ok){

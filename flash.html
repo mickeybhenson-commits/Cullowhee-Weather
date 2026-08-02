@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOAH — NSSL FLASH cross-check · Cullowhee Creek</title>
+<meta name="description" content="NSSL FLASH gridded flash-flood products sampled at each Cullowhee Creek sub-basin, against published NWS thresholds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* palette matched to index.html so the embed reads as one surface */
+  :root{
+    --abyss:#0a161a; --shoal:#102128; --shoal2:#0e1c22;
+    --mist:#e9f1ef; --slate:#8aa6a6; --faint:#5c7576;
+    --current:#45d0c0; --watch:#e2b52b; --warning:#f2882d; --emergency:#ef5350;
+    --line:#20363c;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--shoal2);color:var(--mist);
+    font-family:var(--mono);font-size:13px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;
+  }
+  a{color:var(--slate)}
+  a:hover{color:var(--current)}
+
+  /* ---------- header ---------- */
+  header{
+    padding:14px 20px 12px;border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;flex:0 0 auto;
+  }
+  header h1{
+    font-family:var(--disp);font-size:15px;font-weight:500;letter-spacing:.02em;
+    margin:0;color:var(--mist);
+  }
+  .tierchip{
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    border:1px solid var(--line);border-radius:2px;padding:2px 7px;color:var(--faint);
+  }
+  #stamp{margin-left:auto;color:var(--faint);font-size:11.5px;text-align:right}
+  #stamp .stale{color:var(--warning)}
+  #stamp .live{color:var(--current)}
+
+  /* ---------- headline ---------- */
+  .headline{
+    margin:16px 20px 0;border:1px solid var(--line);border-left-width:5px;
+    border-radius:4px;background:var(--shoal);padding:13px 17px;
+  }
+  .headline .lvl{font-family:var(--disp);font-size:20px;font-weight:700;letter-spacing:.04em}
+  .headline .say{color:var(--slate);margin-top:3px;font-size:12.5px;max-width:78ch}
+  .r-BELOW .lvl,.r-NODATA .lvl{color:var(--current)}
+  .r-BELOW{border-left-color:var(--current)}
+  .r-APPROACHING .lvl{color:var(--watch)} .r-APPROACHING{border-left-color:var(--watch)}
+  .r-LIKELY .lvl{color:var(--warning)}    .r-LIKELY{border-left-color:var(--warning)}
+  .r-SIGNIFICANT .lvl{color:var(--emergency)} .r-SIGNIFICANT{border-left-color:var(--emergency)}
+  .r-NODATA,.r-STALE{border-left-color:var(--faint)}
+  .r-STALE .lvl,.r-NODATA .lvl{color:var(--faint)}
+
+  /* ---------- table ---------- */
+  .wrap{flex:1 1 auto;overflow:auto;padding:16px 20px 8px}
+  table{width:100%;border-collapse:collapse}
+  thead th{
+    text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);
+    padding:0 10px 7px 0;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  tbody td{padding:9px 10px 9px 0;border-bottom:1px solid rgba(32,54,60,.55);vertical-align:middle}
+  tbody tr:hover{background:rgba(69,208,192,.035)}
+  .bid{font-size:11px;color:var(--faint)}
+  .bname{font-family:var(--disp);font-size:13.5px;color:var(--mist)}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .none{color:var(--faint)}
+
+  /* unit-streamflow bar, log-ish scale capped at the significant threshold */
+  .bar{position:relative;height:7px;border-radius:2px;background:rgba(255,255,255,.05);
+       min-width:110px;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--current);border-radius:2px}
+  .bar.warn i{background:var(--warning)} .bar.sig i{background:var(--emergency)}
+  .bar u{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--slate);opacity:.6}
+  .barwrap{display:flex;align-items:center;gap:9px}
+
+  .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+       border:1px solid;border-radius:2px;padding:1px 6px;white-space:nowrap}
+  .t-BELOW{color:var(--current);border-color:rgba(69,208,192,.4)}
+  .t-APPROACHING{color:var(--watch);border-color:rgba(226,181,43,.45)}
+  .t-LIKELY{color:var(--warning);border-color:rgba(242,136,45,.5)}
+  .t-SIGNIFICANT{color:var(--emergency);border-color:rgba(239,83,80,.5)}
+  .t-STALE,.t-NODATA{color:var(--faint);border-color:var(--line)}
+
+  /* ---------- footer ---------- */
+  footer{
+    flex:0 0 auto;padding:12px 20px 16px;border-top:1px solid var(--line);
+    color:var(--faint);font-size:11px;line-height:1.65;
+  }
+  footer b{color:var(--slate);font-weight:500}
+  .thresholds{color:var(--slate)}
+
+  /* ---------- states ---------- */
+  #msg{margin:16px 20px;padding:14px 17px;border:1px dashed var(--line);
+       border-radius:4px;color:var(--slate);font-size:12.5px;max-width:80ch}
+  #msg b{color:var(--mist);font-weight:500}
+  #msg code{color:var(--current);font-size:11.5px}
+  .hidden{display:none !important}
+
+  @media (max-width:720px){
+    .col-opt{display:none}
+    body{font-size:12px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NSSL FLASH — flash-flood cross-check</h1>
+  <span class="tierchip" title="Modeled government estimate. Informs the Outlook tier only.">GOV_ESTIMATE · cross-check</span>
+  <div id="stamp">—</div>
+</header>
+
+<div id="headline" class="headline r-NODATA">
+  <div class="lvl" id="hlLevel">LOADING</div>
+  <div class="say" id="hlSay">Reading the published feed…</div>
+</div>
+
+<div id="msg" class="hidden"></div>
+
+<div class="wrap">
+  <table id="tbl" class="hidden">
+    <thead>
+      <tr>
+        <th>Sub-basin</th>
+        <th>FLASH reading</th>
+        <th>Unit streamflow <span style="text-transform:none;letter-spacing:0">(m³ s⁻¹ km⁻²)</span></th>
+        <th class="col-opt">QPE / FFG</th>
+        <th class="col-opt">Rain ARI</th>
+        <th class="col-opt">Soil sat.</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<footer>
+  <div class="thresholds">
+    <b>Thresholds (NWS FLASH product poster / WDTD warning training):</b>
+    unit streamflow ≥ <b>2.0</b> m³ s⁻¹ km⁻² — flash flooding likely (onset band 2.0–2.5, ≈180–230 cfs mi⁻²);
+    ≥ <b>6.0</b> — significant flooding likely.
+    QPE/FFG ratio &gt; <b>100%</b> increasingly likely; &gt; <b>120%</b> captured 75% of observed flash-flood reports.
+  </div>
+  <details style="margin-top:7px">
+    <summary style="cursor:pointer;color:var(--slate)">What this is, and what it is not</summary>
+    <div style="margin-top:5px">
+    A third independent opinion alongside NOAH's own engine and the National Water Model —
+    NSSL FLASH runs the CREST hydrologic model on MRMS rainfall at 1&nbsp;km / 10&nbsp;min, and unit streamflow is
+    scale-free, so every sub-basin is judged against the same published number regardless of drainage area.
+    It is <b>modeled, not measured</b>: it can inform a Watch, and it never raises a Warning or an Emergency on its own —
+    those require a measured stream rise.
+    <b>Forcing caveat:</b> FLASH eats MRMS, and this watershed sits in the KGSP radar beam-blockage gap,
+    so a FLASH miss here may be a radar miss rather than a model miss.
+    </div>
+  </details>
+  <div style="margin-top:7px" id="srcline"></div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var FEED = "feed/external.json";
+  var REFRESH_MS = 5 * 60 * 1000;          // feed itself republishes every 30 min
+
+  var SAY = {
+    "SIGNIFICANT": "FLASH modeled unit streamflow is above the significant-flooding threshold somewhere on the roster.",
+    "LIKELY":      "FLASH puts at least one sub-basin above the flash-flooding-likely threshold.",
+    "APPROACHING": "Rainfall is approaching flash flood guidance in at least one sub-basin.",
+    "BELOW":       "FLASH is below its flash-flooding thresholds across the roster.",
+    "STALE":       "The newest FLASH grid is older than the freshness gate — showing no current reading.",
+    "NO DATA":     "No FLASH values available right now."
+  };
+
+  function cls(reading){
+    var k = String(reading || "NO DATA").replace(/\s+/g, "");
+    return (k === "NODATA") ? "NODATA" : k;
+  }
+  function fmt(v, digits){
+    if (v === null || v === undefined || v === "") return null;
+    var n = Number(v);
+    return isFinite(n) ? n.toFixed(digits === undefined ? 2 : digits) : null;
+  }
+  function cell(v, digits, suffix){
+    var s = fmt(v, digits);
+    return s === null
+      ? '<span class="none">—</span>'
+      : '<span class="num">' + s + (suffix || "") + "</span>";
+  }
+  function esc(s){
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Bar is scaled to the significant threshold so the two published trip
+  // points sit at fixed, readable positions rather than floating with the data.
+  function bar(uq){
+    if (uq === null || uq === undefined || !isFinite(Number(uq))) return "";
+    var v = Number(uq), SIG = 6.0, LIKELY = 2.0;
+    var pct = Math.max(0, Math.min(100, (v / SIG) * 100));
+    var k = v >= SIG ? "sig" : (v >= LIKELY ? "warn" : "");
+    return '<div class="bar ' + k + '">' +
+             '<i style="width:' + pct.toFixed(1) + '%"></i>' +
+             '<u style="left:' + ((LIKELY / SIG) * 100).toFixed(1) + '%" title="2.0 — flash flooding likely"></u>' +
+           "</div>";
+  }
+
+  function show(id, on){
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle("hidden", !on);
+  }
+
+  function message(html){
+    var el = document.getElementById("msg");
+    el.innerHTML = html;
+    show("msg", true);
+    show("tbl", false);
+  }
+
+  function setHeadline(reading, say){
+    var box = document.getElementById("headline");
+    box.className = "headline r-" + cls(reading);
+    document.getElementById("hlLevel").textContent = reading || "NO DATA";
+    document.getElementById("hlSay").textContent = say || SAY[reading] || "";
+  }
+
+  function stamp(feedTime, flash){
+    var el = document.getElementById("stamp");
+    var bits = [];
+    if (feedTime){
+      var d = new Date(feedTime);
+      if (!isNaN(d)) bits.push("feed " + d.toISOString().replace("T", " ").slice(0, 16) + "Z");
+    }
+    if (flash && flash.age_min !== null && flash.age_min !== undefined){
+      var stale = !flash.fresh;
+      bits.push('<span class="' + (stale ? "stale" : "live") + '">FLASH grid '
+                + Math.round(flash.age_min) + " min old" + (stale ? " · STALE" : "") + "</span>");
+    }
+    el.innerHTML = bits.join(" · ") || "—";
+  }
+
+  function render(feed){
+    var flash = feed && feed.flash;
+    var status = (feed && feed.status && feed.status.flash) || null;
+
+    stamp(feed && feed.fetched_utc, flash);
+
+    if (!flash){
+      setHeadline("NO DATA", "The FLASH connector did not return anything on the last publish run.");
+      message("<b>FLASH is not in the published feed yet.</b><br>" +
+              (status ? "Last publish reported: <code>" + esc(status) + "</code>.<br>" : "") +
+              "Once <code>flash_source.py</code> is enabled the feed carries a <code>flash</code> block and this window fills in.");
+      return;
+    }
+
+    if (flash.enabled === false){
+      setHeadline("NO DATA", "The FLASH connector is present but switched off.");
+      message("<b>FLASH connector is disabled.</b><br>" +
+              esc(flash.note || "") + "<br><br>" +
+              "Run <code>python flash_source.py</code> on a normal network to confirm the request shape, " +
+              "then set <code>NOAH_FLASH_ENABLED=1</code> in the publish workflow. " +
+              "Until then this window deliberately shows nothing rather than a number nobody has verified.");
+      return;
+    }
+
+    var basins = flash.basins || {};
+    var ids = Object.keys(basins);
+    if (!ids.length){
+      setHeadline("NO DATA", SAY["NO DATA"]);
+      message("<b>No sub-basin values returned.</b><br>" + esc(flash.note || ""));
+      return;
+    }
+
+    setHeadline(flash.headline || "NO DATA",
+                flash.fresh === false ? SAY["STALE"] : SAY[flash.headline]);
+
+    var html = "";
+    ids.forEach(function(bid){
+      var b = basins[bid] || {};
+      var reading = b.reading || "NO DATA";
+      html += "<tr>" +
+        '<td><div class="bname">' + esc(b.name || bid) + "</div>" +
+            '<div class="bid">' + esc(bid) + "</div></td>" +
+        '<td><span class="tag t-' + cls(reading) + '">' + esc(reading) + "</span>" +
+            (b.error ? '<div class="bid" title="' + esc(b.error) + '">fetch error</div>' : "") +
+        "</td>" +
+        '<td><div class="barwrap">' + bar(b.unit_streamflow) +
+            cell(b.unit_streamflow, 2) + "</div></td>" +
+        '<td class="col-opt">' + cell(b.ffg_ratio_1h, 0, "%") + "</td>" +
+        '<td class="col-opt">' + cell(b.ari_max_yr, 0, " yr") + "</td>" +
+        '<td class="col-opt">' + cell(b.soil_sat_pct, 0, "%") + "</td>" +
+      "</tr>";
+    });
+    document.getElementById("rows").innerHTML = html;
+    show("msg", false);
+    show("tbl", true);
+
+    var src = document.getElementById("srcline");
+    src.innerHTML = "<b>Source:</b> " + esc(flash.source || "NSSL FLASH") +
+      (flash.valid_utc ? " · grid valid " + esc(String(flash.valid_utc).replace("T", " ").slice(0, 16)) + "Z" : "") +
+      (flash.endpoint ? '<br><b>Endpoint:</b> ' + esc(flash.endpoint) +
+        " — a university THREDDS server, not a NOAA endpoint; fine for a cross-check, not for anything load-bearing." : "");
+  }
+
+  function load(){
+    fetch(FEED + "?v=" + Date.now(), {cache: "no-store"})
+      .then(function(r){
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(render)
+      .catch(function(e){
+        setHeadline("NO DATA", "Could not read the published feed.");
+        message("<b>Could not load <code>" + FEED + "</code>.</b><br>" + esc(e.message) +
+                "<br><br>This page reads the same static feed the live map does, so it only works " +
+                "where that file is served — the deployed site, or a local web server. Opening it " +
+                "straight off the filesystem will fail here.");
+      });
+  }
+
+  load();
+  setInterval(load, REFRESH_MS);
+})();
+</script>
+</body>
+</html>

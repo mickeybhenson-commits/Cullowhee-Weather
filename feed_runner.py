@@ -75,9 +75,11 @@ def _load(path: Path, default):
 # ---------------------------------------------------------------------------
 # EXTERNAL GOVERNMENT FEEDS  (feeds.py — survey wiring 2026-07-30)
 # Writes feed/external.json: measured USGS mainstem context, official NWS
-# alerts, gridded FFG, and the NWM reach forecast. Every connector is guarded
-# individually — this step must NEVER sink the publish run. Consumed by
-# live.html ("Measured & official" panel) and anyone else reading the feed.
+# alerts, gridded FFG, the NWM reach forecast, and the NSSL FLASH cross-check
+# (added 2026-08-02). Every connector is guarded individually — this step must
+# NEVER sink the publish run. Consumed by live.html ("Measured & official"
+# panel), flash.html (the FLASH window embedded in index.html), and anyone
+# else reading the feed.
 # ---------------------------------------------------------------------------
 def publish_external(outdir: Path, now: datetime) -> None:
     out = {"fetched_utc": now.isoformat(), "status": {}}
@@ -118,6 +120,16 @@ def publish_external(outdir: Path, now: datetime) -> None:
         import fiman_source
         return fiman_source.latest()
     _try("cucn7", _cucn7)
+
+    # NSSL FLASH — third independent opinion on the roster (GOV_ESTIMATE).
+    # Ships disabled: flash_source.latest() returns a status dict with
+    # enabled=false until NOAH_FLASH_ENABLED is set, so this costs one
+    # dict construction and no network until the self-test has passed.
+    def _flash():
+        import flash_source
+        return flash_source.latest()
+    _try("flash", _flash)
+
     (outdir / "external.json").write_text(json.dumps(out, indent=2))
     print("external feed:", out["status"])
 

@@ -158,6 +158,7 @@
     <p class="lede">After Hurricane Helene, the streams that flood fastest in these mountains still had no gauges. This puts sensors in the water and weather in the picture — to buy the one thing that matters in a flash flood: a little time.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#now">See current conditions</a>
+      <a class="btn btn-ghost" href="#crosscheck">Independent cross-check</a>
       <a class="btn btn-ghost" href="#watch">Storm track watch</a>
       <a class="btn btn-ghost" href="#how">Explore the system</a>
     </div>
@@ -238,6 +239,16 @@
   <p class="caption">Right now this runs on <b>forecast rainfall and NEXRAD radar</b>. The in-stream sensors deploy over the 2026–27 season; until then, some thresholds stay deliberately cautious.</p>
 </section>
 
+<section id="crosscheck" class="section reveal">
+  <p class="eyebrow">Independent cross-check</p>
+  <h2>A second opinion from a model that never heard of this creek.</h2>
+  <p class="section-lede">NOAA's National Severe Storms Laboratory runs FLASH — a hydrologic model over the whole country at one-kilometre resolution, updating every ten minutes. It knows nothing about Cullowhee Creek in particular, which is exactly what makes it useful: when a national model and this system agree, that agreement means something. Its headline number is <em>unit streamflow</em> — flow per unit of drainage area — so a small headwater and the full watershed can be judged against the same published threshold.</p>
+  <div class="frame frame-live frame-breakout">
+    <iframe id="flashWindow" title="NSSL FLASH flash-flood cross-check for the Cullowhee Creek sub-basins" loading="lazy"></iframe>
+  </div>
+  <p class="caption"><b>Modeled, not measured</b> — this can raise a watch, never a warning · thresholds are the NWS's own published values, not ours · FLASH is driven by radar rainfall, and these mountains sit in a known radar gap, so a quiet reading here is weaker evidence than a loud one · <a href="flash.html" target="_blank" rel="noopener">open the cross-check full screen</a></p>
+</section>
+
 <section id="watch" class="section reveal">
   <p class="eyebrow">Storm track watch</p>
   <h2>Watching the Atlantic and Gulf before it reaches the mountains.</h2>
@@ -273,7 +284,7 @@
 
 <footer class="foot">
   <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies</p>
-  <p><a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+  <p><a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="flash.html">FLASH cross-check</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
 </footer>
 
 <script>
@@ -330,6 +341,12 @@
   (function(){
     var w = document.getElementById('stormWatch');
     if(w){ w.src = bust('storm_watch.html'); }
+  })();
+
+  // ---- NSSL FLASH cross-check embed (same cache-busting) ----
+  (function(){
+    var f = document.getElementById('flashWindow');
+    if(f){ f.src = bust('flash.html'); }
   })();
 </script>
 </body>

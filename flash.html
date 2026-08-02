@@ -607,6 +607,10 @@
   (function(){
     var scrim = $("introScrim");
     if (!scrim) return;
+    // Embedded in index.html the section copy around the frame already carries
+    // this, and a modal inside a landing-page embed blocks the very thing the
+    // reader scrolled to. Same framed-check index.html uses for its dev banner.
+    if (window.self !== window.top){ scrim.parentNode.removeChild(scrim); return; }
     function close(){
       scrim.classList.add("gone");
       document.removeEventListener("keydown", onKey);

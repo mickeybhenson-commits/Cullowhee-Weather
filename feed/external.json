@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-02T17:13:22.604245+00:00",
+  "fetched_utc": "2026-08-02T17:20:12.887058+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": 625.6,
     "stage_series_up": [
-      [
-        1785669300,
-        5.24
-      ],
       [
         1785670200,
         5.25
@@ -128,10 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1785669300,
-        3.46
-      ],
       [
         1785670200,
         3.46
@@ -309,7 +301,7 @@
     "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 40.4,
+    "age_min": 47.3,
     "fresh": true,
     "last_updated_utc": "2026-08-02T16:33:00+00:00",
     "datum_verified": false,
@@ -376,7 +368,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-MS-1100": {
@@ -389,7 +381,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-TIL-705": {
@@ -402,7 +394,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-SPD-1830": {
@@ -415,7 +407,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-COX-097": {
@@ -428,7 +420,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-LB-171": {
@@ -441,7 +433,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-WCU-2260": {
@@ -454,7 +446,7 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       },
       "CC-MOUTH-2340": {
@@ -467,15 +459,15 @@
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
-        "reading": "BELOW",
+        "reading": "STALE",
         "error": null
       }
     },
-    "headline": "BELOW",
-    "fresh": true,
-    "age_min": 83.4,
+    "headline": "STALE",
+    "fresh": false,
+    "age_min": 90.3,
     "valid_utc": "2026-08-02T15:50:00+00:00",
-    "note": "",
+    "note": "stale \u2014 newest FLASH step is 90 min old",
     "valid_source": "derived from bundle hour (service reported no time)"
   }
 }

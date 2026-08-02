@@ -195,10 +195,16 @@ UNITQ_SIGNIFICANT = 6.0
 FFG_RATIO_LIKELY = 100.0
 FFG_RATIO_STRONG = 120.0
 
-# Freshness. Bundles land hourly and the publish job runs every 30 min, so in
-# normal operation the newest sample is 0-60 min old. 90 min allows one late
-# bundle before we call it stale; past that the panel shows stale, not a number.
-FRESH_MIN = 90.0
+# Freshness. This was 90 minutes and it was wrong: it marked normal operation
+# stale. Count the real chain -- a bundle covers hour H, its newest step lands
+# near H:50, it posts around H:54, and if THREDDS has not finished exposing it
+# we fall back to H-1. Add a publish cadence of 30 minutes on top and 90-120
+# minutes is an ordinary age, not a fault.
+#
+# 150 minutes is 2.5x the 60-minute bundle interval, the same rule of thumb
+# fiman_source uses (75 min against a 30-minute service). Past that, something
+# really has stopped.
+FRESH_MIN = 150.0
 
 # Plausibility gates. A connector that publishes a wrong number to a public
 # flood page is worse than one that publishes nothing — the FFG stretch-value
@@ -714,12 +720,14 @@ def latest(points=None, now=None) -> dict:
         out["diagnostic"] = {"working_shape": dict(_learned)}
     out["bundle"] = _learned.get("file")
 
-    # A stale bundle must not present as current data on a public page. But
-    # "we could not date it" is not the same as "it is old" — only overwrite
-    # readings when there is an actual age past the gate.
+    # Stale data is flagged, not erased. Overwriting the reading with "STALE"
+    # threw away the one thing a reader wants -- what the model actually said --
+    # and bought no safety doing it: FLASH is GOV_ESTIMATE and cannot raise a
+    # posture on its own. So mark the basin and let the consumer render it
+    # visibly stale alongside its value.
     if not out["fresh"] and out["age_min"] is not None:
         for b in out["basins"].values():
-            b["reading"] = "STALE" if b.get("reading") != "NO DATA" else "NO DATA"
+            b["stale"] = True
 
     # Roster-wide headline: the worst reading anywhere upstream.
     rank = {"NO DATA": 0, "STALE": 0, "BELOW": 1, "APPROACHING": 2,

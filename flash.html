@@ -50,6 +50,10 @@
   #sbtable .readkey{margin-top:4px}
   #sbtable .readkey div{display:flex;gap:7px;align-items:flex-start;margin:3px 0;white-space:normal}
   #sbtable .readkey .sbpill{flex:0 0 auto;margin-top:1px}
+  /* Stale rows keep their reading — dimmed, with the age in the stamp below.
+     Hiding the number would lose information without buying any safety. */
+  #sbtable tr.stale td{opacity:.55}
+  #sbtable tr.stale .sbpill{filter:grayscale(.55)}
   #sbtable.collapsed .sblede{display:none}
 
   /* About card — collapsed by default, sits where live.html puts #radarctl */
@@ -391,7 +395,6 @@
   function readingFor(id){
     var f = lastFlash;
     if (!f || !f.basins || !f.basins[id]) return "PENDING";
-    if (f.fresh === false && f.age_min != null) return "STALE";
     var v = current.feedKey ? f.basins[id][current.feedKey] : null;
     return classify(current.k, (v != null && isFinite(v)) ? v : null);
   }
@@ -407,7 +410,7 @@
       color: "#ffffff", weight: 1.6, opacity: .9,
       fill: fillOn,
       fillColor: SEV[r] || SEV.PENDING,
-      fillOpacity: fillOn ? (r === "PENDING" || r === "STALE" ? .28 : .5) : 0
+      fillOpacity: fillOn ? (r === "PENDING" ? .28 : (isStale() ? .3 : .5)) : 0
     };
   }
   function popupFor(p){
@@ -416,7 +419,12 @@
       '<span style="color:#5b6b78">' + esc(id) + "</span><br>" +
       esc(current.label) + ": <b>" +
       (v == null ? "—" : v.toFixed(current.dp)) + "</b><br>" +
-      '<span style="color:' + (SEV[r] || SEV.PENDING) + ';font-weight:800">' + r + "</span>";
+      '<span style="color:' + (SEV[r] || SEV.PENDING) + ';font-weight:800">' + r + "</span>" +
+      (isStale() ? '<br><span style="color:#8a6d3b;font-size:11px">grid ' +
+        Math.round(lastFlash.age_min) + ' min old</span>' : "");
+  }
+  function isStale(){
+    return !!(lastFlash && lastFlash.fresh === false && lastFlash.age_min != null);
   }
   function restyleBasins(){ if (basins) basins.setStyle(basinStyle); }
 
@@ -432,9 +440,9 @@
       var b = f.basins[id] || {};
       var v = current.feedKey ? b[current.feedKey] : null;
       var has = (v != null && isFinite(v));
-      var r = (f.fresh === false && f.age_min != null) ? "STALE"
-            : classify(current.k, has ? v : null);
-      html += "<tr>" +
+      var r = classify(current.k, has ? v : null);
+      var stale = (f.fresh === false && f.age_min != null);
+      html += '<tr class="' + (stale ? "stale" : "") + '">' +
         "<td>" + esc(b.name || id) + "</td>" +
         "<td>" + (has ? Number(v).toFixed(current.dp) : "—") + "</td>" +
         '<td><span class="sbpill p-' + r + '">' + r + "</span></td>" +
@@ -472,7 +480,7 @@
     var bits = [];
     if (f.valid_utc) bits.push("grid " + String(f.valid_utc).replace("T"," ").slice(0,16) + "Z");
     if (f.age_min != null) bits.push(Math.round(f.age_min) + " min old");
-    if (f.fresh === false) bits.push("STALE");
+    if (f.fresh === false) bits.push("STALE — readings shown are the last published");
     $("sbstamp").textContent = bits.join(" · ");
     $("sbhint").textContent = f.note ||
       "Values computed server-side and published — this server blocks direct browser queries.";

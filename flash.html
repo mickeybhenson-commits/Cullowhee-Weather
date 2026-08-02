@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOAH — NSSL FLASH cross-check · Cullowhee Creek</title>
+<meta name="description" content="NSSL FLASH gridded flash-flood products sampled at each Cullowhee Creek sub-basin, against published NWS thresholds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* palette matched to index.html so the embed reads as one surface */
+  :root{
+    --abyss:#0a161a; --shoal:#102128; --shoal2:#0e1c22;
+    --mist:#e9f1ef; --slate:#8aa6a6; --faint:#5c7576;
+    --current:#45d0c0; --watch:#e2b52b; --warning:#f2882d; --emergency:#ef5350;
+    --line:#20363c;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--shoal2);color:var(--mist);
+    font-family:var(--mono);font-size:13px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;
+  }
+  a{color:var(--slate)}
+  a:hover{color:var(--current)}
+
+  /* ---------- header ---------- */
+  header{
+    padding:14px 20px 12px;border-bottom:1px solid var(--line);
+    display:flex;flex-wrap:wrap;gap:14px;align-items:baseline;flex:0 0 auto;
+  }
+  header h1{
+    font-family:var(--disp);font-size:15px;font-weight:500;letter-spacing:.02em;
+    margin:0;color:var(--mist);
+  }
+  .tierchip{
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    border:1px solid var(--line);border-radius:2px;padding:2px 7px;color:var(--faint);
+  }
+  #stamp{margin-left:auto;color:var(--faint);font-size:11.5px;text-align:right}
+  #stamp .stale{color:var(--warning)}
+  #stamp .live{color:var(--current)}
+
+  /* ---------- headline ---------- */
+  .headline{
+    margin:16px 20px 0;border:1px solid var(--line);border-left-width:5px;
+    border-radius:4px;background:var(--shoal);padding:13px 17px;
+  }
+  .headline .lvl{font-family:var(--disp);font-size:20px;font-weight:700;letter-spacing:.04em}
+  .headline .say{color:var(--slate);margin-top:3px;font-size:12.5px;max-width:78ch}
+  .r-BELOW .lvl,.r-NODATA .lvl{color:var(--current)}
+  .r-BELOW{border-left-color:var(--current)}
+  .r-APPROACHING .lvl{color:var(--watch)} .r-APPROACHING{border-left-color:var(--watch)}
+  .r-LIKELY .lvl{color:var(--warning)}    .r-LIKELY{border-left-color:var(--warning)}
+  .r-SIGNIFICANT .lvl{color:var(--emergency)} .r-SIGNIFICANT{border-left-color:var(--emergency)}
+  .r-NODATA,.r-STALE{border-left-color:var(--faint)}
+  .r-STALE .lvl,.r-NODATA .lvl{color:var(--faint)}
+
+  /* ---------- map ---------- */
+  .maprow{flex:0 0 auto;margin:14px 20px 0;border:1px solid var(--line);border-radius:4px;
+          overflow:hidden;background:#061013;position:relative}
+  #map{height:40vh;min-height:230px}
+  .mapbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:7px 12px;
+          background:var(--shoal);border-bottom:1px solid var(--line);font-size:11.5px}
+  .mapbar label{color:var(--faint);font-size:10px;letter-spacing:.09em;text-transform:uppercase}
+  .mapbar select{background:#0c1a20;color:var(--mist);border:1px solid var(--line);
+                 border-radius:3px;padding:3px 6px;font:11.5px var(--mono)}
+  .mapbar input[type=range]{width:88px;accent-color:var(--current)}
+  #bundleTag{margin-left:auto;color:var(--faint)}
+  #bundleTag .ok{color:var(--current)} #bundleTag .bad{color:var(--warning)}
+  .leaflet-container{background:#061013;font-family:var(--mono)}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--shoal);color:var(--mist);
+        border:1px solid var(--line)}
+  .leaflet-popup-content{margin:8px 11px;font-size:12px}
+  .leaflet-bar a{background:var(--shoal);color:var(--mist);border-color:var(--line)}
+  .leaflet-bar a:hover{background:#16303a}
+  .lbl{font-size:10px;color:#fff;text-shadow:0 0 4px #000,0 0 3px #000;white-space:nowrap}
+  /* The low end of a perceptual ramp is near-black by design and vanishes over
+     aerial imagery. Lift the data, push the basemap back. */
+  .flash-raster{filter:brightness(1.32) saturate(1.16) contrast(.95)}
+  .leaflet-tile-pane > .leaflet-layer:first-child{filter:saturate(.45) brightness(.75)}
+  .ramp{height:9px;border-radius:2px;width:150px;
+        background:linear-gradient(90deg,#0a3d4a,#1f7a8c,#45d0c0,#e2b52b,#f2882d,#ef5350)}
+
+  /* ---------- table ---------- */
+  .wrap{flex:1 1 auto;overflow:auto;padding:14px 20px 8px}
+  table{width:100%;border-collapse:collapse}
+  thead th{
+    text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--faint);
+    padding:0 10px 7px 0;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  tbody td{padding:9px 10px 9px 0;border-bottom:1px solid rgba(32,54,60,.55);vertical-align:middle}
+  tbody tr:hover{background:rgba(69,208,192,.035)}
+  .bid{font-size:11px;color:var(--faint)}
+  .bname{font-family:var(--disp);font-size:13.5px;color:var(--mist)}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .none{color:var(--faint)}
+
+  /* unit-streamflow bar, log-ish scale capped at the significant threshold */
+  .bar{position:relative;height:7px;border-radius:2px;background:rgba(255,255,255,.05);
+       min-width:110px;overflow:hidden}
+  .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--current);border-radius:2px}
+  .bar.warn i{background:var(--warning)} .bar.sig i{background:var(--emergency)}
+  .bar u{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--slate);opacity:.6}
+  .barwrap{display:flex;align-items:center;gap:9px}
+
+  .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+       border:1px solid;border-radius:2px;padding:1px 6px;white-space:nowrap}
+  .t-BELOW{color:var(--current);border-color:rgba(69,208,192,.4)}
+  .t-APPROACHING{color:var(--watch);border-color:rgba(226,181,43,.45)}
+  .t-LIKELY{color:var(--warning);border-color:rgba(242,136,45,.5)}
+  .t-SIGNIFICANT{color:var(--emergency);border-color:rgba(239,83,80,.5)}
+  .t-STALE,.t-NODATA{color:var(--faint);border-color:var(--line)}
+
+  /* ---------- footer ---------- */
+  footer{
+    flex:0 0 auto;padding:12px 20px 16px;border-top:1px solid var(--line);
+    color:var(--faint);font-size:11px;line-height:1.65;
+  }
+  footer b{color:var(--slate);font-weight:500}
+  .thresholds{color:var(--slate)}
+
+  /* ---------- states ---------- */
+  #msg{margin:16px 20px;padding:14px 17px;border:1px dashed var(--line);
+       border-radius:4px;color:var(--slate);font-size:12.5px;max-width:80ch}
+  #msg b{color:var(--mist);font-weight:500}
+  #msg code{color:var(--current);font-size:11.5px}
+  .hidden{display:none !important}
+
+  @media (max-width:720px){
+    .col-opt{display:none}
+    body{font-size:12px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NSSL FLASH — flash-flood cross-check</h1>
+  <span class="tierchip" title="Modeled government estimate. Informs the Outlook tier only.">GOV_ESTIMATE · cross-check</span>
+  <div id="stamp">—</div>
+</header>
+
+<div id="headline" class="headline r-NODATA">
+  <div class="lvl" id="hlLevel">LOADING</div>
+  <div class="say" id="hlSay">Reading the published feed…</div>
+</div>
+
+<div id="msg" class="hidden"></div>
+
+<div class="maprow">
+  <div class="mapbar">
+    <label for="mapProd">Layer</label>
+    <select id="mapProd"></select>
+    <label for="mapOp">Opacity</label>
+    <input type="range" id="mapOp" min="8" max="100" value="35">
+    <span class="ramp" title="low to high"></span>
+    <span id="rampNote" style="color:var(--faint)"></span>
+    <span id="bundleTag">locating grid…</span>
+  </div>
+  <div id="map"></div>
+</div>
+
+<div class="wrap">
+  <table id="tbl" class="hidden">
+    <thead>
+      <tr>
+        <th>Sub-basin</th>
+        <th>FLASH reading</th>
+        <th>Unit streamflow <span style="text-transform:none;letter-spacing:0">(m³ s⁻¹ km⁻²)</span></th>
+        <th class="col-opt">QPE / FFG</th>
+        <th class="col-opt">Rain ARI</th>
+        <th class="col-opt">Soil sat.</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+
+<footer>
+  <div class="thresholds">
+    <b>Thresholds (NWS FLASH product poster / WDTD warning training):</b>
+    unit streamflow ≥ <b>2.0</b> m³ s⁻¹ km⁻² — flash flooding likely (onset band 2.0–2.5, ≈180–230 cfs mi⁻²);
+    ≥ <b>6.0</b> — significant flooding likely.
+    QPE/FFG ratio &gt; <b>100%</b> increasingly likely; &gt; <b>120%</b> captured 75% of observed flash-flood reports.
+  </div>
+  <details style="margin-top:7px" id="methodBox">
+    <summary style="cursor:pointer;color:var(--slate)">How FLASH makes this number, and how current it is</summary>
+    <div style="margin-top:6px" id="methodBody"></div>
+    <div style="margin-top:7px">
+    A third independent opinion alongside NOAH's own engine and the National Water Model —
+    NSSL FLASH runs the CREST hydrologic model on MRMS rainfall at 1&nbsp;km / 10&nbsp;min, and unit streamflow is
+    scale-free, so every sub-basin is judged against the same published number regardless of drainage area.
+    It is <b>modeled, not measured</b>: it can inform a Watch, and it never raises a Warning or an Emergency on its own —
+    those require a measured stream rise.
+    <b>Forcing caveat:</b> FLASH eats MRMS, and this watershed sits in the KGSP radar beam-blockage gap,
+    so a FLASH miss here may be a radar miss rather than a model miss.
+    </div>
+  </details>
+  <div style="margin-top:7px" id="srcline"></div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  var FEED = "feed/external.json";
+  var REFRESH_MS = 5 * 60 * 1000;          // feed itself republishes every 30 min
+
+  var SAY = {
+    "SIGNIFICANT": "FLASH modeled unit streamflow is above the significant-flooding threshold somewhere on the roster.",
+    "LIKELY":      "FLASH puts at least one sub-basin above the flash-flooding-likely threshold.",
+    "APPROACHING": "Rainfall is approaching flash flood guidance in at least one sub-basin.",
+    "BELOW":       "FLASH is below its flash-flooding thresholds across the roster.",
+    "STALE":       "The newest FLASH grid is older than the freshness gate — showing no current reading.",
+    "NO DATA":     "No FLASH values available right now."
+  };
+
+  function cls(reading){
+    var k = String(reading || "NO DATA").replace(/\s+/g, "");
+    return (k === "NODATA") ? "NODATA" : k;
+  }
+  function fmt(v, digits){
+    if (v === null || v === undefined || v === "") return null;
+    var n = Number(v);
+    return isFinite(n) ? n.toFixed(digits === undefined ? 2 : digits) : null;
+  }
+  function cell(v, digits, suffix){
+    var s = fmt(v, digits);
+    return s === null
+      ? '<span class="none">—</span>'
+      : '<span class="num">' + s + (suffix || "") + "</span>";
+  }
+  function esc(s){
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Bar is scaled to the significant threshold so the two published trip
+  // points sit at fixed, readable positions rather than floating with the data.
+  function bar(uq){
+    if (uq === null || uq === undefined || !isFinite(Number(uq))) return "";
+    var v = Number(uq), SIG = 6.0, LIKELY = 2.0;
+    var pct = Math.max(0, Math.min(100, (v / SIG) * 100));
+    var k = v >= SIG ? "sig" : (v >= LIKELY ? "warn" : "");
+    return '<div class="bar ' + k + '">' +
+             '<i style="width:' + pct.toFixed(1) + '%"></i>' +
+             '<u style="left:' + ((LIKELY / SIG) * 100).toFixed(1) + '%" title="2.0 — flash flooding likely"></u>' +
+           "</div>";
+  }
+
+  function show(id, on){
+    var el = document.getElementById(id);
+    if (el) el.classList.toggle("hidden", !on);
+  }
+
+  function message(html){
+    var el = document.getElementById("msg");
+    el.innerHTML = html;
+    show("msg", true);
+    show("tbl", false);
+  }
+
+  function setHeadline(reading, say){
+    var box = document.getElementById("headline");
+    box.className = "headline r-" + cls(reading);
+    document.getElementById("hlLevel").textContent = reading || "NO DATA";
+    document.getElementById("hlSay").textContent = say || SAY[reading] || "";
+  }
+
+  // Method and timing are published with the data rather than hard-coded here,
+  // so this page cannot drift out of sync with what the connector actually does.
+  function methodBlock(flash){
+    var el = document.getElementById("methodBody");
+    if (!el) return;
+    var m = (flash && flash.method) || {}, t = (flash && flash.timing) || {};
+    var rows = [
+      ["Model", m.model],
+      ["Forcing", m.forcing],
+      ["Native resolution", m.native_resolution],
+      ["Operational", m.operational_since],
+      ["How we sample it", m.sampling]
+    ].filter(function(r){ return r[1]; });
+
+    var html = "";
+    if (rows.length){
+      html += '<div style="display:grid;grid-template-columns:max-content 1fr;gap:2px 14px">';
+      rows.forEach(function(r){
+        html += '<div style="color:var(--faint)">' + esc(r[0]) + "</div><div>" + esc(r[1]) + "</div>";
+      });
+      html += "</div>";
+    }
+    if (t.explanation){
+      html += '<div style="margin-top:7px"><b>Timing.</b> ' + esc(t.explanation) + "</div>";
+      if (t.model_step_min && t.bundle_interval_min && t.publish_interval_min){
+        html += '<div style="margin-top:4px;color:var(--faint)">chain: model ' +
+                esc(t.model_step_min) + " min → files packaged " + esc(t.bundle_interval_min) +
+                " min → this feed republishes " + esc(t.publish_interval_min) +
+                " min → page polls 5 min · stale past " + esc(t.fresh_gate_min) + " min</div>";
+      }
+    }
+    el.innerHTML = html || '<span class="none">—</span>';
+  }
+
+  function diagnosticBlock(flash){
+    var d = flash && flash.diagnostic;
+    if (!d || !d.errors || !d.errors.length) return "";
+    var html = '<div style="margin-top:10px"><b>Why it is empty.</b> ' +
+               esc(d.attempts) + " request attempts, none accepted. " +
+               "Distinct failures:</div><ul style=\"margin:5px 0 0 16px;padding:0\">";
+    d.errors.forEach(function(e){
+      html += '<li style="margin:2px 0;color:var(--slate);word-break:break-all">' + esc(e) + "</li>";
+    });
+    html += "</ul>";
+    if (d.hint) html += '<div style="margin-top:6px">' + esc(d.hint) + "</div>";
+    return html;
+  }
+
+  function stamp(feedTime, flash){
+    var el = document.getElementById("stamp");
+    var bits = [];
+    if (feedTime){
+      var d = new Date(feedTime);
+      if (!isNaN(d)) bits.push("feed " + d.toISOString().replace("T", " ").slice(0, 16) + "Z");
+    }
+    if (flash && flash.age_min !== null && flash.age_min !== undefined){
+      var stale = !flash.fresh;
+      bits.push('<span class="' + (stale ? "stale" : "live") + '">FLASH grid '
+                + Math.round(flash.age_min) + " min old" + (stale ? " · STALE" : "") + "</span>");
+    }
+    el.innerHTML = bits.join(" · ") || "—";
+  }
+
+  function render(feed){
+    var flash = feed && feed.flash;
+    var status = (feed && feed.status && feed.status.flash) || null;
+
+    stamp(feed && feed.fetched_utc, flash);
+    methodBlock(flash);
+    // Hand the map whatever the connector learned — chiefly the bundle
+    // filename, so it does not have to guess at the hourly rollover.
+    // Cached as well as pushed: the Leaflet <script> tag blocks parsing, so
+    // on a slow CDN this fetch can resolve before the map module exists.
+    // Push-only would silently lose the bundle name in exactly that case.
+    window.__flashFeedCache = flash;
+    if (window.NOAH_FLASH_MAP) window.NOAH_FLASH_MAP.onFeed(flash);
+
+    if (!flash){
+      setHeadline("NO DATA", "The FLASH connector did not return anything on the last publish run.");
+      message("<b>FLASH is not in the published feed yet.</b><br>" +
+              (status ? "Last publish reported: <code>" + esc(status) + "</code>.<br>" : "") +
+              "Once <code>flash_source.py</code> is enabled the feed carries a <code>flash</code> block and this window fills in.");
+      return;
+    }
+
+    if (flash.enabled === false){
+      setHeadline("NO DATA", "The FLASH connector is present but switched off.");
+      message("<b>FLASH connector is disabled.</b><br>" + esc(flash.note || "") +
+              "<br><br>Set <code>NOAH_FLASH_ENABLED=1</code> in the publish workflow to turn it back on.");
+      return;
+    }
+
+    var basins = flash.basins || {};
+    var ids = Object.keys(basins);
+    var anyValue = ids.some(function(k){
+      var b = basins[k] || {};
+      return b.unit_streamflow !== null && b.unit_streamflow !== undefined;
+    });
+
+    if (!ids.length || !anyValue){
+      setHeadline("NO DATA", "The connector ran but the FLASH service returned nothing usable.");
+      message("<b>No FLASH values on the last publish run.</b><br>" +
+              esc(flash.note || "") + diagnosticBlock(flash));
+      return;
+    }
+
+    setHeadline(flash.headline || "NO DATA",
+                flash.fresh === false ? SAY["STALE"] : SAY[flash.headline]);
+
+    var html = "";
+    ids.forEach(function(bid){
+      var b = basins[bid] || {};
+      var reading = b.reading || "NO DATA";
+      html += "<tr>" +
+        '<td><div class="bname">' + esc(b.name || bid) + "</div>" +
+            '<div class="bid">' + esc(bid) + "</div></td>" +
+        '<td><span class="tag t-' + cls(reading) + '">' + esc(reading) + "</span>" +
+            (b.error ? '<div class="bid" title="' + esc(b.error) + '">fetch error</div>' : "") +
+        "</td>" +
+        '<td><div class="barwrap">' + bar(b.unit_streamflow) +
+            cell(b.unit_streamflow, 2) + "</div></td>" +
+        '<td class="col-opt">' + cell(b.ffg_ratio_1h, 0, "%") + "</td>" +
+        '<td class="col-opt">' + cell(b.ari_max_yr, 0, " yr") + "</td>" +
+        '<td class="col-opt">' + cell(b.soil_sat_pct, 0, "%") + "</td>" +
+      "</tr>";
+    });
+    document.getElementById("rows").innerHTML = html;
+    show("msg", false);
+    show("tbl", true);
+
+    var src = document.getElementById("srcline");
+    src.innerHTML = "<b>Source:</b> " + esc(flash.source || "NSSL FLASH") +
+      (flash.valid_utc ? " · grid valid " + esc(String(flash.valid_utc).replace("T", " ").slice(0, 16)) + "Z" : "") +
+      (flash.endpoint ? '<br><b>Endpoint:</b> ' + esc(flash.endpoint) +
+        " — a university THREDDS server, not a NOAA endpoint; fine for a cross-check, not for anything load-bearing." : "");
+  }
+
+  function load(){
+    fetch(FEED + "?v=" + Date.now(), {cache: "no-store"})
+      .then(function(r){
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(render)
+      .catch(function(e){
+        setHeadline("NO DATA", "Could not read the published feed.");
+        message("<b>Could not load <code>" + FEED + "</code>.</b><br>" + esc(e.message) +
+                "<br><br>This page reads the same static feed the live map does, so it only works " +
+                "where that file is served — the deployed site, or a local web server. Opening it " +
+                "straight off the filesystem will fail here.");
+      });
+  }
+
+  load();
+  setInterval(load, REFRESH_MS);
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------
+   FLASH raster map.
+
+   Draws the FLASH grid straight from the THREDDS WMS endpoint as map tiles,
+   with our own sub-basin outlines over it. Two things make this cheap:
+
+     * WMS tiles are <img> loads, so they are exempt from cross-origin rules.
+       No CORS negotiation, no proxy, no server-side work in the publish job.
+     * Nothing is committed to the repo. The table above is the gated,
+       provenance-stamped record; this layer is a look at the same grid.
+
+   The bundle filename rolls over hourly. We prefer the one the connector
+   actually read (published in feed/external.json), and fall back to probing
+   backwards from the current hour with a tiny 8x8 px GetMap request.
+   --------------------------------------------------------------------- */
+(function(){
+  "use strict";
+  if (typeof L === "undefined") return;          // Leaflet CDN blocked — table still works
+
+  var TDS_WMS_DEFAULT = "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH";
+
+  // Scale minima sit just ABOVE zero on purpose. FLASH reads zero across most
+  // of the map on most days; with a minimum of exactly 0, every dry cell paints
+  // the bottom colour and the watershed washes out in one flat tone that looks
+  // indistinguishable from a broken layer. Starting a hair above zero lets
+  // belowmincolor=transparent drop the dry cells so the basemap shows through
+  // and only real signal is painted.
+  var LAYERS = [
+    {k:"unitq", layer:"FLASH_CREST_MAXUNITSTREAMFLOW_surface", log:true,
+     label:"Unit streamflow", range:[0.10,6], note:"0.1 – 6 m³ s⁻¹ km⁻² · 2.0 likely, 6.0 significant"},
+    {k:"ffg1",  layer:"FLASH_QPE_FFG01H_surface", log:false,
+     label:"QPE / FFG 1 h",  range:[10,200], note:"10 – 200 % · 100 % = rain equals guidance"},
+    {k:"ffg3",  layer:"FLASH_QPE_FFG03H_surface", log:false,
+     label:"QPE / FFG 3 h",  range:[10,200], note:"10 – 200 %"},
+    {k:"ari",   layer:"FLASH_QPE_ARIMAX_surface", log:true,
+     label:"Rain recurrence", range:[1,100], note:"1 – 100 yr · rarity of the rain, not the flood"},
+    {k:"soil",  layer:"FLASH_CREST_MAXSOILSAT_surface", log:false,
+     label:"Soil saturation", range:[5,100], note:"5 – 100 % · modeled, not measured"}
+  ];
+
+  // ncWMS palette names differ between server builds, so probe rather than
+  // guess. Perceptually ordered ramps first: the server default here is a
+  // single-hue blue, which makes a quiet day and a dead layer look identical,
+  // while rainbow ramps invent visual edges the data does not have. Rainbow
+  // stays in the list only as a last resort.
+  var PALETTES = ["psu-viridis","psu-plasma","psu-inferno","seq-BuYlRd","seq-cubeYF",
+                  "div-BuRd","seq-Heat","occam","x-Rainbow","rainbow",""];
+
+  var wmsBase = TDS_WMS_DEFAULT, bundle = null, current = LAYERS[0],
+      opacity = 0.35, tiles = null, basins = null, started = false, palette = "";
+
+  var map = L.map('map', {zoomControl:true, attributionControl:true})
+             .setView([35.263, -83.20], 12);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              {maxZoom:19, attribution:'Esri'}).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+              {maxZoom:19, opacity:.85}).addTo(map);
+  L.control.scale({imperial:true, metric:true}).addTo(map);
+
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function pad(n){ return (n<10?"0":"")+n; }
+  function bundleFor(d){
+    return "MRMS_CONUS_FLASH_" + d.getUTCFullYear() + pad(d.getUTCMonth()+1) +
+           pad(d.getUTCDate()) + "_" + pad(d.getUTCHours()) + "00.grib2";
+  }
+
+  function drawTiles(){
+    if (tiles){ map.removeLayer(tiles); tiles = null; }
+    if (!bundle) return;
+    var opts = {
+      layers: current.layer,
+      styles: "raster/default",
+      format: "image/png",
+      transparent: true,
+      version: "1.3.0",
+      colorscalerange: current.range[0] + "," + current.range[1],
+      abovemaxcolor: "extend",
+      belowmincolor: "transparent",
+      numcolorbands: 100,
+      logscale: !!current.log,
+      opacity: opacity,
+      className: "flash-raster",
+      attribution: "NSSL FLASH via THREDDS WMS"
+    };
+    if (palette) opts.palette = palette;
+    tiles = L.tileLayer.wms(wmsBase + "/" + bundle, opts).addTo(map);
+    tiles.setZIndex(300);
+    if (basins) basins.bringToFront();
+    document.getElementById('rampNote').textContent =
+      current.note + (palette ? " · " + palette : "");
+  }
+
+  // Probe palettes with an 8x8 GetMap each: whatever renders exists on this
+  // build, whatever errors does not. Image loads, so no CORS involved.
+  function probePalettes(done){
+    if (!bundle){ done(); return; }
+    var pending = PALETTES.length, good = [];
+    PALETTES.forEach(function(name, idx){
+      var u = wmsBase + "/" + bundle +
+        "?service=WMS&version=1.3.0&request=GetMap&layers=" + LAYERS[0].layer +
+        "&styles=raster/default&format=image/png&transparent=true&crs=CRS:84" +
+        "&bbox=-83.25,35.20,-83.15,35.33&width=8&height=8&colorscalerange=0.1,6" +
+        (name ? "&palette=" + encodeURIComponent(name) : "");
+      var img = new Image(), settled = false;
+      function finish(ok){
+        if (settled) return; settled = true;
+        if (ok && name) good.push({n:name, i:idx});
+        if (--pending === 0){
+          good.sort(function(a,b){ return a.i - b.i; });
+          palette = good.length ? good[0].n : "";
+          done();
+        }
+      }
+      setTimeout(function(){ finish(false); }, 7000);
+      img.onload = function(){ finish(true); };
+      img.onerror = function(){ finish(false); };
+      img.src = u;
+    });
+  }
+
+  function tag(html){ document.getElementById('bundleTag').innerHTML = html; }
+
+  function probe(offset, done){
+    if (offset > 8){ done(null); return; }
+    var d = new Date(Date.now() - offset*3600*1000);
+    d.setUTCMinutes(0,0,0);
+    var name = bundleFor(d);
+    var url = wmsBase + "/" + name +
+      "?service=WMS&version=1.3.0&request=GetMap&layers=" + LAYERS[0].layer +
+      "&styles=raster/default&format=image/png&transparent=true&crs=CRS:84" +
+      "&bbox=-83.25,35.20,-83.15,35.33&width=8&height=8";
+    var img = new Image(), settled = false;
+    var t = setTimeout(function(){ if(!settled){ settled=true; probe(offset+1, done); } }, 9000);
+    img.onload  = function(){ if(settled) return; settled=true; clearTimeout(t); done({name:name, date:d}); };
+    img.onerror = function(){ if(settled) return; settled=true; clearTimeout(t); probe(offset+1, done); };
+    img.src = url;
+  }
+
+  function useBundle(found){
+    if (!found){ tag('<span class="bad">no FLASH grid reachable</span>'); return; }
+    bundle = found.name;
+    var age = Math.round((Date.now() - found.date.getTime())/60000);
+    tag('<span class="' + (age > 150 ? "bad" : "ok") + '">' +
+        esc(bundle.replace("MRMS_CONUS_FLASH_","")) + "</span> · hour began " + age + " min ago");
+    probePalettes(drawTiles);
+  }
+
+  // sub-basin outlines, same file the rest of the site uses
+  fetch("cullowhee_subbasins.geojson?v=" + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(gj){
+      basins = L.geoJSON(gj, {
+        style: function(){ return {color:"#ffffff", weight:1.5, opacity:.85, fill:false}; },
+        onEachFeature: function(f, lyr){
+          lyr.bindPopup("<b>" + esc(f.properties.name) + "</b><br>" + esc(f.properties.basin_id));
+        }
+      }).addTo(map);
+      basins.setZIndex(400);
+      gj.features.forEach(function(f){
+        var p = f.properties;
+        if (p.label_lat && p.label_lon){
+          L.marker([p.label_lat, p.label_lon], {
+            interactive:false,
+            icon: L.divIcon({className:'', html:'<div class="lbl">'+esc(p.name)+'</div>',
+                             iconSize:[86,13], iconAnchor:[43,6]})
+          }).addTo(map);
+        }
+      });
+      map.fitBounds(basins.getBounds(), {padding:[22,22]});
+    })
+    .catch(function(){ /* outlines are a nicety; the raster still draws */ });
+
+  // controls
+  var sel = document.getElementById('mapProd');
+  LAYERS.forEach(function(l, i){
+    var o = document.createElement('option'); o.value = String(i); o.textContent = l.label;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', function(){
+    current = LAYERS[parseInt(sel.value,10)]; drawTiles();
+  });
+  document.getElementById('mapOp').addEventListener('input', function(e){
+    opacity = parseInt(e.target.value,10)/100;
+    if (tiles) tiles.setOpacity(opacity);
+  });
+
+  window.NOAH_FLASH_MAP = {
+    onFeed: function(flash){
+      if (started) return;
+      started = true;
+      if (flash && flash.wms && flash.wms.base) wmsBase = flash.wms.base;
+      if (flash && flash.bundle){
+        var d = null;
+        var m = String(flash.bundle).match(/_(\d{4})(\d{2})(\d{2})_(\d{2})00\./);
+        if (m) d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4]));
+        useBundle({name: flash.bundle, date: d || new Date()});
+        return;
+      }
+      tag("locating grid…");
+      probe(0, useBundle);
+    }
+  };
+  // The feed may already have arrived while the Leaflet script was loading.
+  if (window.__flashFeedCache) window.NOAH_FLASH_MAP.onFeed(window.__flashFeedCache);
+
+  // If the feed never loads at all, still try to draw something.
+  setTimeout(function(){ if (!started){ started = true; probe(0, useBundle); } }, 4000);
+})();
+</script>
+</body>
+</html>

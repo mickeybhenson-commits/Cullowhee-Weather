@@ -267,6 +267,14 @@
 
   // Same severity ladder live.html paints its sub-basins with, so a green
   // basin means the same thing on both pages.
+  // Sub-basin fill strength. Kept light on purpose: the status is the point,
+  // but the terrain and stream network underneath still have to read through
+  // it. Stale and pending step down from here rather than being separate
+  // guesses, so the ladder stays proportional if this is retuned.
+  var FILL_OPACITY = 0.30;
+  var FILL_STALE   = 0.18;
+  var FILL_PENDING = 0.15;
+
   var SEV = {
     BELOW:        "#1A7A52",
     APPROACHING:  "#C08A00",
@@ -490,7 +498,8 @@
       color: "#ffffff", weight: 1.6, opacity: .9,
       fill: fillOn,
       fillColor: SEV[r] || SEV.PENDING,
-      fillOpacity: fillOn ? (r === "PENDING" ? .28 : (isStale() ? .3 : .5)) : 0
+      fillOpacity: fillOn ? (r === "PENDING" ? FILL_PENDING
+                            : (isStale() ? FILL_STALE : FILL_OPACITY)) : 0
     };
   }
   function popupFor(p){

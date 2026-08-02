@@ -81,6 +81,10 @@
   .leaflet-bar a{background:var(--shoal);color:var(--mist);border-color:var(--line)}
   .leaflet-bar a:hover{background:#16303a}
   .lbl{font-size:10px;color:#fff;text-shadow:0 0 4px #000,0 0 3px #000;white-space:nowrap}
+  /* The low end of a perceptual ramp is near-black by design and vanishes over
+     aerial imagery. Lift the data, push the basemap back. */
+  .flash-raster{filter:brightness(1.32) saturate(1.16) contrast(.95)}
+  .leaflet-tile-pane > .leaflet-layer:first-child{filter:saturate(.3) brightness(.55)}
   .ramp{height:9px;border-radius:2px;width:150px;
         background:linear-gradient(90deg,#0a3d4a,#1f7a8c,#45d0c0,#e2b52b,#f2882d,#ef5350)}
 
@@ -156,7 +160,7 @@
     <label for="mapProd">Layer</label>
     <select id="mapProd"></select>
     <label for="mapOp">Opacity</label>
-    <input type="range" id="mapOp" min="0" max="100" value="70">
+    <input type="range" id="mapOp" min="20" max="100" value="92">
     <span class="ramp" title="low to high"></span>
     <span id="rampNote" style="color:var(--faint)"></span>
     <span id="bundleTag">locating grid…</span>
@@ -480,7 +484,7 @@
                   "div-BuRd","seq-Heat","occam","x-Rainbow","rainbow",""];
 
   var wmsBase = TDS_WMS_DEFAULT, bundle = null, current = LAYERS[0],
-      opacity = 0.70, tiles = null, basins = null, started = false, palette = "";
+      opacity = 0.92, tiles = null, basins = null, started = false, palette = "";
 
   var map = L.map('map', {zoomControl:true, attributionControl:true})
              .setView([35.263, -83.20], 12);
@@ -512,6 +516,7 @@
       numcolorbands: 100,
       logscale: !!current.log,
       opacity: opacity,
+      className: "flash-raster",
       attribution: "NSSL FLASH via THREDDS WMS"
     };
     if (palette) opts.palette = palette;

@@ -58,8 +58,24 @@ NETWORK
 -------
 requests-only, deliberately: the publish job runs from a GitHub Action with
 requirements.txt only (no xarray, no cfgrib, no eccodes). Instead of pulling
-a ~214 MB GRIB2 bundle and decoding it, this asks the THREDDS NetCDF Subset
-Service for a single grid cell as CSV — a few hundred bytes per basin.
+a ~214 MB GRIB2 bundle and decoding it, this reads one grid cell at a time
+over HTTP — a few hundred bytes per basin.
+
+Two services, tried in that order:
+
+  1. WMS GetFeatureInfo  (PRIMARY)  — proven reachable. GetCapabilities lists
+     all 19 FLASH layers and GetMap renders, so this is the path that is known
+     to work end to end. It reads from exactly the grid the map draws, which
+     means the table and the raster can never disagree.
+  2. NCSS grid-as-point CSV (FALLBACK) — kept because it returns units in the
+     response header, but its parameter syntax was never confirmed live.
+
+Worth understanding why this must live server-side: the THREDDS host sends no
+CORS headers. A browser may draw the imagery (images are exempt) but cannot
+read numbers out of it — the standalone viewer's connection check reports
+"Failed to fetch" against GetFeatureInfo, confirmed 2026-08-02. Python has no
+such restriction. That asymmetry is the whole reason the sub-basin table is
+computed here and published, rather than queried from the page.
 
 TIMING — READ THIS BEFORE TREATING IT AS EARLY WARNING
 -------------------------------------------------------
@@ -82,28 +98,21 @@ Getting the real 10-minute cadence would need a source that serves the
 individual grids rather than hourly bundles — worth asking NSSL about in the
 same conversation as a NOAA-hosted endpoint.
 
-STATUS: ENABLED, REQUEST SHAPE UNCONFIRMED.
-The variable names, grid geometry and CSV output option below were read off
-the server's own NCSS form and are reliable. The end-to-end HTTP handshake was
-never completed — this was authored from a sandbox with no egress to that
-host, where every attempt returned a status code with no readable body.
+STATUS
+------
+The WMS endpoint, its layer names, the grid geometry and the CRS list were all
+read off the server's own GetCapabilities document and are reliable. The
+end-to-end handshake still has not been run from the authoring environment,
+which has no egress to that host — so if something is wrong it will be in the
+GetFeatureInfo parameter details, not in the endpoint or the layer names.
 
-Rather than ship dark, this tries a ladder of plausible request shapes
-(_TIME_STYLES x _VAR_STYLES x _LON_STYLES x recent bundles), remembers the
-first that works, and — if none do — publishes a "diagnostic" block carrying
-the attempt count and the actual HTTP errors, which flash.html renders in
-place of the table. A visible "this connector cannot reach its source, here
-is what it tried" beats an empty panel.
+Failures are never silent: a run that returns nothing publishes a "diagnostic"
+block carrying the attempt count and the real HTTP errors, and flash.html
+renders it in place of the table.
 
-To settle it in one run, from campus (a normal network):
+To confirm in one run, from campus (a normal network):
 
     python flash_source.py
-
-It prints every request and the server's first response line. If nothing is
-accepted it tells you to open the NCSS form, fill it in by hand, and copy the
-URL the form builds — that is authoritative. Pinning the winner first in the
-style lists is optional; the ladder finds it either way, it just costs
-requests.
 
     export NOAH_FLASH_ENABLED=0        # to turn the whole thing off
 """
@@ -112,6 +121,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -137,6 +147,22 @@ TDS_BASE = os.environ.get(
     "https://thredds.aos.wisc.edu/thredds/ncss/grid/grib/NCEP/MRMS/CONUS/FLASH",
 )
 FILE_FMT = "MRMS_CONUS_FLASH_%Y%m%d_%H00.grib2"   # hourly bundle, 10-min steps inside
+
+# Same collection, WMS instead of NCSS. This is now the PRIMARY path.
+#
+# Why: the NCSS parameter syntax was never confirmed against the live service,
+# but WMS demonstrably works -- GetCapabilities returns all 19 FLASH layers and
+# GetMap renders. GetFeatureInfo reads a single grid cell from exactly the same
+# grid the map draws, so the table and the raster can no longer disagree.
+#
+# A browser CANNOT use this: the server sends no CORS headers, so a page may
+# draw the imagery but not read values out of it (confirmed 2026-08-02, the
+# viewer's own connection check reports "Failed to fetch"). Python has no such
+# restriction, which is exactly why this belongs in the publish job.
+WMS_BASE = os.environ.get("NOAH_FLASH_WMS", TDS_BASE.replace("/ncss/grid/", "/wms/"))
+
+# WMS layer names carry a vertical-level suffix that the NCSS variable names do not.
+WMS_SUFFIX = "_surface"
 
 # Grid: 0.01 deg, latitude 54.995 -> 20.005 N, longitude 230.005 -> 299.995 E.
 # NOTE the longitude convention is 0-360, not -180..180. NCSS usually converts
@@ -241,8 +267,8 @@ _VAR_STYLES = [
 _LON_STYLES = ["signed", "east360"]
 
 # Filled in by the first successful request so every later basin skips straight
-# to the shape that worked.
-_learned: dict = {"time": None, "var": None, "lon": None, "file": None}
+# to the shape that worked. "mode" records which service answered.
+_learned: dict = {"mode": None, "time": None, "var": None, "lon": None, "file": None}
 
 # Circuit breaker. The full ladder is 5 time x 3 var x 2 lon x 4 bundles = 120
 # attempts. Walking that for 8 basins x 2 families on a day when the server is
@@ -358,6 +384,75 @@ def _attempt(varnames, lat, lon, time_style, var_style, lon_style, bundle):
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}")
     return _parse_csv(r.text)
+
+
+# ---------------------------------------------------------------------
+# WMS GetFeatureInfo — primary path
+# ---------------------------------------------------------------------
+_INFO_VALUE = re.compile(r"<value[^>]*>\s*([^<\s]+)\s*</value>", re.I)
+_INFO_TIME = re.compile(r"<time[^>]*>\s*([^<\s]+)\s*</time>", re.I)
+
+
+def _wms_point(layer, lat, lon, bundle):
+    """One cell from one layer. Returns (value_or_None, time_str).
+
+    A 101x101 frame centred on the point, queried at its middle pixel: the
+    cell that contains the point, at roughly 1 km across a 0.08 deg box.
+    """
+    d = 0.04
+    params = {
+        "service": "WMS", "version": "1.3.0", "request": "GetFeatureInfo",
+        "layers": layer, "query_layers": layer,
+        "crs": "CRS:84",
+        "bbox": f"{lon-d},{lat-d},{lon+d},{lat+d}",
+        "width": "101", "height": "101", "i": "50", "j": "50",
+        "info_format": "text/xml",
+    }
+    r = _session.get(f"{WMS_BASE}/{bundle}", params=params, timeout=TIMEOUT)
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+    text = r.text or ""
+    times = _INFO_TIME.findall(text)
+    vals = _INFO_VALUE.findall(text)
+    if not vals:
+        raise RuntimeError("no <value> in GetFeatureInfo response")
+    raw = vals[-1]                       # newest step last
+    if raw.lower() in ("none", "nan", "null", ""):
+        return None, (times[-1] if times else "")
+    try:
+        v = float(raw)
+    except ValueError:
+        raise RuntimeError(f"unparseable value {raw!r}")
+    if v != v:
+        v = None
+    return v, (times[-1] if times else "")
+
+
+def _fetch_family_wms(varnames, lat, lon):
+    """Same contract as _fetch_family, over WMS. Returns (row, units, time, meta)."""
+    global _attempts_without_success
+    if _learned["mode"] is None and _attempts_without_success >= _MAX_BLIND_ATTEMPTS:
+        raise RuntimeError(
+            f"gave up after {_attempts_without_success} attempts — WMS unreachable")
+    row, tstr, got = {}, "", 0
+    last_err = None
+    for bundle in _first("file", _bundle_names()):
+        row, tstr, got = {}, "", 0
+        for v in varnames:
+            _attempts_without_success += 1
+            try:
+                val, t = _wms_point(v + WMS_SUFFIX, lat, lon, bundle)
+                row[v] = val
+                tstr = t or tstr
+                got += 1
+            except Exception as e:
+                last_err = f"{type(e).__name__}: {e} [wms/{v}/{bundle}]"
+                _note_error(last_err)
+        if got:
+            _learned.update(mode="wms", file=bundle)
+            _attempts_without_success = 0
+            return row, {}, tstr, {"mode": "wms", "bundle": bundle}
+    raise RuntimeError(last_err or "no WMS GetFeatureInfo response")
 
 
 def _fetch_family(varnames, lat, lon):
@@ -520,7 +615,13 @@ def latest(points=None, now=None) -> dict:
         rec = {"name": BASIN_NAMES.get(bid, bid), "lat": la, "lon": lo}
         for fam, varnames in VAR_FAMILIES:
             try:
-                row, units, tstr, meta = _fetch_family(varnames, la, lo)
+                # WMS first (proven reachable); NCSS ladder only if it fails.
+                try:
+                    row, units, tstr, meta = _fetch_family_wms(varnames, la, lo)
+                except Exception:
+                    if _learned["mode"] == "wms":
+                        raise
+                    row, units, tstr, meta = _fetch_family(varnames, la, lo)
                 units_seen.update(units)
                 if tstr:
                     valid_times.append(tstr)

@@ -61,21 +61,51 @@ requirements.txt only (no xarray, no cfgrib, no eccodes). Instead of pulling
 a ~214 MB GRIB2 bundle and decoding it, this asks the THREDDS NetCDF Subset
 Service for a single grid cell as CSV — a few hundred bytes per basin.
 
-STATUS: UNVERIFIED AGAINST THE LIVE SERVICE.
+TIMING — READ THIS BEFORE TREATING IT AS EARLY WARNING
+-------------------------------------------------------
+FLASH steps every 10 minutes. This path does not deliver that:
+
+    model step        10 min
+    GRIB2 bundling    hourly, posted near the END of the hour it covers
+    this feed         republishes every 30 min
+    the page          polls every 5 min
+
+so what a reader sees is typically 0-35 minutes old. Headwater lead times in
+this watershed are of the same order (~33 min from Speedwell to campus on the
+last measured event), which means FLASH on this path CANNOT corroborate a
+signal in time to act on it. It is after-the-fact corroboration and a
+calibration benchmark. It is not a lead-time source. The published payload
+carries this in the "timing" block so the panel states it rather than
+implying ten-minute currency it does not have.
+
+Getting the real 10-minute cadence would need a source that serves the
+individual grids rather than hourly bundles — worth asking NSSL about in the
+same conversation as a NOAA-hosted endpoint.
+
+STATUS: ENABLED, REQUEST SHAPE UNCONFIRMED.
 The variable names, grid geometry and CSV output option below were read off
-the server's own NCSS form. The end-to-end HTTP handshake was NOT completed —
-it was authored from a sandbox with no egress to that host. So this ships
-BEHIND A FLAG and defaults to off:
+the server's own NCSS form and are reliable. The end-to-end HTTP handshake was
+never completed — this was authored from a sandbox with no egress to that
+host, where every attempt returned a status code with no readable body.
 
-    export NOAH_FLASH_ENABLED=1        # turn it on after the self-test passes
+Rather than ship dark, this tries a ladder of plausible request shapes
+(_TIME_STYLES x _VAR_STYLES x _LON_STYLES x recent bundles), remembers the
+first that works, and — if none do — publishes a "diagnostic" block carrying
+the attempt count and the actual HTTP errors, which flash.html renders in
+place of the table. A visible "this connector cannot reach its source, here
+is what it tried" beats an empty panel.
 
-Run the self-test from campus (a normal network), same as feeds.py:
+To settle it in one run, from campus (a normal network):
 
     python flash_source.py
 
-It walks a small ladder of request shapes, prints the raw first line of each
-response, and tells you which one the server accepts. Pin that shape in
-_REQUEST_STYLES (put the winner first) and set the flag.
+It prints every request and the server's first response line. If nothing is
+accepted it tells you to open the NCSS form, fill it in by hand, and copy the
+URL the form builds — that is authoritative. Pinning the winner first in the
+style lists is optional; the ladder finds it either way, it just costs
+requests.
+
+    export NOAH_FLASH_ENABLED=0        # to turn the whole thing off
 """
 
 from __future__ import annotations
@@ -93,10 +123,13 @@ import requests
 UA = "(WCU-NOAH/1.0 mickey.b.henson@gmail.com)"
 TIMEOUT = 25
 
-# Off until the self-test passes on a real network. A connector that has
-# never completed a single live request does not get to publish numbers to
-# a public flood page by default.
-ENABLED = os.environ.get("NOAH_FLASH_ENABLED", "").strip() not in ("", "0", "false", "False")
+# ON by default. The request shape has never been confirmed against the live
+# service from the machine this was written on, so instead of shipping dark
+# this tries a ladder of plausible shapes and reports what it found. If none
+# work, the panel says so with the actual HTTP errors attached — a visible
+# "this connector cannot reach its source" is more useful than an empty page.
+# Set NOAH_FLASH_ENABLED=0 to turn it off.
+ENABLED = os.environ.get("NOAH_FLASH_ENABLED", "1").strip() not in ("0", "false", "False", "no")
 
 # UW-Madison AOS THREDDS — see DEPENDENCY RISK above.
 TDS_BASE = os.environ.get(
@@ -184,24 +217,53 @@ _session.headers.update({"User-Agent": UA})
 # accepted combination of time parameters was not confirmed live. Rather than
 # guess once and fail silently, try a short ladder and remember what worked.
 # Put the winner first after the self-test tells you which it is.
-_REQUEST_STYLES = [
-    "time_last",     # explicit newest timestamp in the bundle
-    "time_all",      # every step in the bundle, take the last row
-    "bare",          # no time parameter at all
-    "time_present",  # only correct while the current bundle is still filling
+#
+# Known failure modes this ladder is designed around, learned the hard way:
+#   * asking for CREST and QPE variables in one request is a 400 — they sit on
+#     different time coordinates (time vs time1) in the same file;
+#   * time=present is a 400 once the bundle's hour has passed, because the
+#     requested instant is outside the file's range;
+#   * the CREST family's last step is :50 while the QPE family's is :58, so a
+#     timestamp valid for one family can be out of range for the other. Hence
+#     "time_mid" asks for :45, which is inside both.
+_TIME_STYLES = [
+    "temporal_all",   # temporal=all — the documented NCSS "every step" form
+    "bare",           # no time parameter at all; server picks its default
+    "time_mid",       # hour+45, inside both families' ranges
+    "time_range",     # explicit time_start/time_end spanning the hour
+    "time_present",   # only valid while the current bundle is still filling
+]
+_VAR_STYLES = [
+    "comma",    # var=a,b,c
+    "repeat",   # var=a&var=b&var=c
+    "single",   # one request per variable — slowest, most likely to be accepted
 ]
 _LON_STYLES = ["signed", "east360"]
 
-# Filled in by the first successful request so subsequent basins skip the ladder.
-_learned: dict = {"style": None, "lon": None, "file": None}
+# Filled in by the first successful request so every later basin skips straight
+# to the shape that worked.
+_learned: dict = {"time": None, "var": None, "lon": None, "file": None}
 
-# Circuit breaker. The ladder is 4 styles x 2 longitude conventions x 4 bundles
-# = 32 attempts. Walking that for all 8 basins x 2 families on a day when the
-# server is down would be 512 requests and could stall the publish Action for
-# minutes. Once nothing has ever worked in this process and we have burned
-# through one basin's worth of attempts, stop trying for the rest of the run.
+# Circuit breaker. The full ladder is 5 time x 3 var x 2 lon x 4 bundles = 120
+# attempts. Walking that for 8 basins x 2 families on a day when the server is
+# down would be nearly two thousand requests and would stall the publish
+# Action. Once nothing has worked and we have burned one basin's worth of
+# attempts, stop trying for the rest of the run and report why.
 _MAX_BLIND_ATTEMPTS = 40
 _attempts_without_success = 0
+# Kept for the panel: the last few distinct failures, so a reader can see
+# whether this is "server down" or "we are asking wrong".
+_errors: list = []
+
+
+def _note_error(msg: str) -> None:
+    # Truncated and capped: this lands in feed/external.json, which is
+    # committed to the repo every 30 minutes. Full request URLs repeated
+    # eight times would be pure churn in the commit log.
+    msg = msg if len(msg) <= 240 else msg[:237] + "..."
+    if msg not in _errors:
+        _errors.append(msg)
+    del _errors[4:]
 
 
 def _bundle_names(now: Optional[datetime] = None, back_hours: int = 4):
@@ -211,19 +273,26 @@ def _bundle_names(now: Optional[datetime] = None, back_hours: int = 4):
     return [(top - timedelta(hours=h)).strftime(FILE_FMT) for h in range(back_hours)]
 
 
-def _params(varnames, lat, lon, style, lon_style, bundle):
+def _params(varnames, lat, lon, time_style, var_style, lon_style, bundle):
     lon_out = lon if lon_style == "signed" else (lon % 360.0)
-    p = {"latitude": f"{lat:.5f}", "longitude": f"{lon_out:.5f}", "accept": "csv",
-         "var": ",".join(varnames)}
-    if style == "time_all":
-        p["time"] = "all"
-    elif style == "time_present":
+    p = {"latitude": f"{lat:.5f}", "longitude": f"{lon_out:.5f}", "accept": "csv"}
+
+    if var_style == "comma":
+        p["var"] = ",".join(varnames)
+    else:                       # "repeat" and "single" both pass a list
+        p["var"] = list(varnames)
+
+    hour = datetime.strptime(bundle, FILE_FMT).replace(tzinfo=timezone.utc)
+    if time_style == "temporal_all":
+        p["temporal"] = "all"
+    elif time_style == "time_present":
         p["time"] = "present"
-    elif style == "time_last":
-        # bundle name carries the hour; its last CREST step is :50, last QPE
-        # step is :58. Ask for the hour's end and let NCSS snap to nearest.
-        stamp = datetime.strptime(bundle, FILE_FMT).replace(tzinfo=timezone.utc)
-        p["time"] = (stamp + timedelta(minutes=58)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elif time_style == "time_mid":
+        p["time"] = (hour + timedelta(minutes=45)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    elif time_style == "time_range":
+        p["time_start"] = hour.strftime("%Y-%m-%dT%H:%M:%SZ")
+        p["time_end"] = (hour + timedelta(minutes=58)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # "bare" adds nothing
     return p
 
 
@@ -272,42 +341,63 @@ def _gate(val, lo, hi):
     return v if lo <= v <= hi else None
 
 
+def _first(learned_key, options):
+    """Whatever worked last time, then everything else."""
+    won = _learned.get(learned_key)
+    return ([won] if won in options else []) + [o for o in options if o != won]
+
+
+def _attempt(varnames, lat, lon, time_style, var_style, lon_style, bundle):
+    """One request. Returns (row, units, time_str) or raises."""
+    global _attempts_without_success
+    _attempts_without_success += 1
+    r = _session.get(f"{TDS_BASE}/{bundle}",
+                     params=_params(varnames, lat, lon, time_style,
+                                    var_style, lon_style, bundle),
+                     timeout=TIMEOUT)
+    if r.status_code != 200:
+        raise RuntimeError(f"HTTP {r.status_code}")
+    return _parse_csv(r.text)
+
+
 def _fetch_family(varnames, lat, lon):
     """Try request shapes until one works. Returns (row, units, time_str, meta)."""
-    global _attempts_without_success
-    if _learned["style"] is None and _attempts_without_success >= _MAX_BLIND_ATTEMPTS:
+    if _learned["time"] is None and _attempts_without_success >= _MAX_BLIND_ATTEMPTS:
         raise RuntimeError(
-            f"FLASH endpoint unreachable — gave up after {_attempts_without_success} "
-            "attempts with no successful request shape")
-
-    styles = ([_learned["style"]] if _learned["style"] else []) + \
-             [s for s in _REQUEST_STYLES if s != _learned["style"]]
-    lons = ([_learned["lon"]] if _learned["lon"] else []) + \
-           [l for l in _LON_STYLES if l != _learned["lon"]]
-    bundles = ([_learned["file"]] if _learned["file"] else []) + \
-              [b for b in _bundle_names() if b != _learned["file"]]
+            f"gave up after {_attempts_without_success} attempts — no request "
+            "shape accepted (see diagnostic)")
 
     last_err = None
-    for bundle in bundles:
-        url = f"{TDS_BASE}/{bundle}"
-        for style in styles:
-            for lon_style in lons:
-                _attempts_without_success += 1
-                try:
-                    r = _session.get(url,
-                                     params=_params(varnames, lat, lon,
-                                                    style, lon_style, bundle),
-                                     timeout=TIMEOUT)
-                    if r.status_code != 200:
-                        last_err = f"HTTP {r.status_code} [{style}/{lon_style}/{bundle}]"
-                        continue
-                    row, units, tstr = _parse_csv(r.text)
-                    _learned.update(style=style, lon=lon_style, file=bundle)
-                    _attempts_without_success = 0
-                    return row, units, tstr, {"style": style, "lon": lon_style,
-                                              "bundle": bundle}
-                except Exception as e:
-                    last_err = f"{type(e).__name__}: {e} [{style}/{lon_style}/{bundle}]"
+    for bundle in _first("file", _bundle_names()):
+        # Re-check mid-ladder, not just on entry: a fully unreachable server
+        # would otherwise cost a whole 120-attempt sweep before we notice.
+        if _learned["time"] is None and _attempts_without_success >= _MAX_BLIND_ATTEMPTS:
+            break
+        for time_style in _first("time", _TIME_STYLES):
+            for var_style in _first("var", _VAR_STYLES):
+                for lon_style in _first("lon", _LON_STYLES):
+                    shape = f"{time_style}/{var_style}/{lon_style}/{bundle}"
+                    try:
+                        if var_style == "single":
+                            # Merge one-variable responses into a single row.
+                            row, units, tstr = {}, {}, ""
+                            for v in varnames:
+                                r_, u_, t_ = _attempt([v], lat, lon, time_style,
+                                                      var_style, lon_style, bundle)
+                                row.update(r_); units.update(u_); tstr = t_ or tstr
+                            if not any(v in row for v in varnames):
+                                raise RuntimeError("no requested variable in response")
+                        else:
+                            row, units, tstr = _attempt(varnames, lat, lon, time_style,
+                                                        var_style, lon_style, bundle)
+                        _learned.update(time=time_style, var=var_style,
+                                        lon=lon_style, file=bundle)
+                        globals()["_attempts_without_success"] = 0
+                        return row, units, tstr, {"time": time_style, "var": var_style,
+                                                  "lon": lon_style, "bundle": bundle}
+                    except Exception as e:
+                        last_err = f"{type(e).__name__}: {e} [{shape}]"
+                        _note_error(last_err)
     raise RuntimeError(last_err or "no FLASH request shape succeeded")
 
 
@@ -360,7 +450,35 @@ def latest(points=None, now=None) -> dict:
         },
         "caveat": ("MRMS-forced — WNC sits in the KGSP radar beam-blockage gap, "
                    "so a FLASH miss here may be a radar miss, not a model miss."),
+        # How the number is made, and how old it can be. Published with the
+        # data so the panel never has to hard-code it and it cannot drift out
+        # of sync with the connector.
+        "method": {
+            "model": "CREST distributed hydrologic model, run inside NSSL's EF5 framework",
+            "forcing": "MRMS multi-radar/multi-sensor QPE (gauge-corrected passes)",
+            "native_resolution": "1 km grid, 10-minute time step, CONUS-wide",
+            "operational_since": "transitioned to NCEP operations 2016",
+            "sampling": ("one grid cell nearest each sub-basin label point, pulled "
+                         "via the THREDDS NetCDF Subset Service — not an "
+                         "area-weighted basin mean"),
+        },
+        "timing": {
+            "model_step_min": 10,
+            "bundle_interval_min": 60,
+            "publish_interval_min": 30,
+            "typical_age_min": "0-35",
+            "fresh_gate_min": FRESH_MIN,
+            "explanation": (
+                "FLASH itself steps every 10 minutes, but the GRIB2 files are "
+                "packaged hourly and post near the end of the hour they cover, "
+                "and this feed republishes every 30 minutes. So what you see is "
+                "typically 0-35 minutes old. FLASH's 10-minute cadence does not "
+                "survive this path. Treat it as after-the-fact corroboration and "
+                "as a calibration benchmark — not as a lead-time source, since "
+                "headwater lead times here are of the same order as the lag."),
+        },
         "enabled": ENABLED,
+        "diagnostic": None,
         "basins": {},
         # Set up front so every exit path — including the disabled and error
         # returns below — yields the same payload shape. A consumer that has
@@ -373,9 +491,14 @@ def latest(points=None, now=None) -> dict:
     }
 
     if not ENABLED:
-        out["note"] = ("disabled — set NOAH_FLASH_ENABLED=1 after "
-                       "`python flash_source.py` passes on a real network")
+        out["note"] = "disabled — NOAH_FLASH_ENABLED is set to 0"
         return out
+
+    # Reset per-run learning so a shape that worked an hour ago is retried
+    # first but a stale bundle name does not pin us to a missing file.
+    _errors.clear()
+    globals()["_attempts_without_success"] = 0
+    _learned["file"] = None
 
     units_seen, valid_times = {}, []
     for bid, (la, lo) in points.items():
@@ -427,6 +550,22 @@ def latest(points=None, now=None) -> dict:
     else:
         out["note"] = out["note"] or "no FLASH values returned"
 
+    # Always publish the diagnostic when nothing came back, so the panel can
+    # show whether this is the server being down or us asking wrong.
+    if not valid_times:
+        out["diagnostic"] = {
+            "attempts": _attempts_without_success,
+            "shapes_tried": {"time": _TIME_STYLES, "var": _VAR_STYLES,
+                             "lon": _LON_STYLES},
+            "bundles_tried": _bundle_names(),
+            "errors": list(_errors),
+            "hint": ("Run `python flash_source.py` from a normal network — it "
+                     "prints each request and the server's first response line, "
+                     "which is what identifies the accepted shape."),
+        }
+    elif _learned["time"]:
+        out["diagnostic"] = {"working_shape": dict(_learned)}
+
     # A stale bundle must not present as current data on a public page.
     if not out["fresh"]:
         for b in out["basins"].values():
@@ -451,40 +590,48 @@ def _selftest() -> int:
     ok_shape = None
     for bundle in _bundle_names():
         for fam, varnames in VAR_FAMILIES:
-            for style in _REQUEST_STYLES:
-                for lon_style in _LON_STYLES:
-                    p = _params(varnames, lat, lon, style, lon_style, bundle)
-                    try:
-                        r = _session.get(f"{TDS_BASE}/{bundle}", params=p, timeout=TIMEOUT)
-                    except Exception as e:
-                        print(f"  {bundle} {fam:<6} {style:<12} {lon_style:<8} "
-                              f"EXC {type(e).__name__}")
-                        continue
-                    head = (r.text or "").splitlines()[:2]
-                    print(f"  {bundle} {fam:<6} {style:<12} {lon_style:<8} "
-                          f"HTTP {r.status_code}")
-                    for h in head:
-                        print(f"      | {h[:150]}")
-                    if r.status_code == 200 and len(head) >= 2:
-                        ok_shape = ok_shape or (style, lon_style, bundle)
+            for time_style in _TIME_STYLES:
+                for var_style in _VAR_STYLES:
+                    for lon_style in _LON_STYLES:
+                        vs = [varnames[0]] if var_style == "single" else varnames
+                        p = _params(vs, lat, lon, time_style, var_style,
+                                    lon_style, bundle)
+                        tag = (f"  {bundle} {fam:<6} {time_style:<13}"
+                               f"{var_style:<8}{lon_style:<9}")
+                        try:
+                            r = _session.get(f"{TDS_BASE}/{bundle}", params=p,
+                                             timeout=TIMEOUT)
+                        except Exception as e:
+                            print(f"{tag}EXC {type(e).__name__}")
+                            continue
+                        head = (r.text or "").splitlines()[:2]
+                        print(f"{tag}HTTP {r.status_code}")
+                        for h in head:
+                            print(f"      | {h[:150]}")
+                        if r.status_code == 200 and len(head) >= 2 and not ok_shape:
+                            ok_shape = (time_style, var_style, lon_style, bundle)
         if ok_shape:
             break
 
     if not ok_shape:
-        print("\nNo request shape worked. Check the dataset list at")
-        print("  https://thredds.aos.wisc.edu/thredds/catalog/grib/NCEP/MRMS/"
+        print("\nNo request shape worked. Next things to check, in order:")
+        print("  1. Is the newest bundle name right? Open")
+        print("     https://thredds.aos.wisc.edu/thredds/catalog/grib/NCEP/MRMS/"
               "CONUS/FLASH/catalog.html")
-        print("and confirm the newest bundle filename, then adjust FILE_FMT.")
+        print("     and compare against FILE_FMT.")
+        print("  2. Open the NCSS form, fill it in by hand, and copy the URL it")
+        print("     builds — that is authoritative:")
+        print(f"     {TDS_BASE}/{_bundle_names()[1]}/pointDataset.html")
+        print("  3. Paste that URL's query string here and adjust _params().")
         return 1
 
-    style, lon_style, bundle = ok_shape
-    print(f"\nWORKING SHAPE: style={style} lon={lon_style} bundle={bundle}")
-    print(f"  -> put \"{style}\" first in _REQUEST_STYLES and "
-          f"\"{lon_style}\" first in _LON_STYLES")
-    print("  -> then: export NOAH_FLASH_ENABLED=1\n")
+    time_style, var_style, lon_style, bundle = ok_shape
+    print(f"\nWORKING SHAPE: time={time_style} var={var_style} lon={lon_style}")
+    print(f"  -> put \"{time_style}\" first in _TIME_STYLES,")
+    print(f"     \"{var_style}\" first in _VAR_STYLES,")
+    print(f"     \"{lon_style}\" first in _LON_STYLES")
+    print("  (optional — the ladder finds it anyway, this just saves requests)\n")
 
-    os.environ["NOAH_FLASH_ENABLED"] = "1"
-    globals()["ENABLED"] = True
     snap = latest()
     print(json.dumps({k: v for k, v in snap.items() if k != "basins"}, indent=2))
     for bid, b in snap["basins"].items():

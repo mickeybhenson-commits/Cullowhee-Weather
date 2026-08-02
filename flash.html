@@ -151,9 +151,10 @@
     ≥ <b>6.0</b> — significant flooding likely.
     QPE/FFG ratio &gt; <b>100%</b> increasingly likely; &gt; <b>120%</b> captured 75% of observed flash-flood reports.
   </div>
-  <details style="margin-top:7px">
-    <summary style="cursor:pointer;color:var(--slate)">What this is, and what it is not</summary>
-    <div style="margin-top:5px">
+  <details style="margin-top:7px" id="methodBox">
+    <summary style="cursor:pointer;color:var(--slate)">How FLASH makes this number, and how current it is</summary>
+    <div style="margin-top:6px" id="methodBody"></div>
+    <div style="margin-top:7px">
     A third independent opinion alongside NOAH's own engine and the National Water Model —
     NSSL FLASH runs the CREST hydrologic model on MRMS rainfall at 1&nbsp;km / 10&nbsp;min, and unit streamflow is
     scale-free, so every sub-basin is judged against the same published number regardless of drainage area.
@@ -234,6 +235,54 @@
     document.getElementById("hlSay").textContent = say || SAY[reading] || "";
   }
 
+  // Method and timing are published with the data rather than hard-coded here,
+  // so this page cannot drift out of sync with what the connector actually does.
+  function methodBlock(flash){
+    var el = document.getElementById("methodBody");
+    if (!el) return;
+    var m = (flash && flash.method) || {}, t = (flash && flash.timing) || {};
+    var rows = [
+      ["Model", m.model],
+      ["Forcing", m.forcing],
+      ["Native resolution", m.native_resolution],
+      ["Operational", m.operational_since],
+      ["How we sample it", m.sampling]
+    ].filter(function(r){ return r[1]; });
+
+    var html = "";
+    if (rows.length){
+      html += '<div style="display:grid;grid-template-columns:max-content 1fr;gap:2px 14px">';
+      rows.forEach(function(r){
+        html += '<div style="color:var(--faint)">' + esc(r[0]) + "</div><div>" + esc(r[1]) + "</div>";
+      });
+      html += "</div>";
+    }
+    if (t.explanation){
+      html += '<div style="margin-top:7px"><b>Timing.</b> ' + esc(t.explanation) + "</div>";
+      if (t.model_step_min && t.bundle_interval_min && t.publish_interval_min){
+        html += '<div style="margin-top:4px;color:var(--faint)">chain: model ' +
+                esc(t.model_step_min) + " min → files packaged " + esc(t.bundle_interval_min) +
+                " min → this feed republishes " + esc(t.publish_interval_min) +
+                " min → page polls 5 min · stale past " + esc(t.fresh_gate_min) + " min</div>";
+      }
+    }
+    el.innerHTML = html || '<span class="none">—</span>';
+  }
+
+  function diagnosticBlock(flash){
+    var d = flash && flash.diagnostic;
+    if (!d || !d.errors || !d.errors.length) return "";
+    var html = '<div style="margin-top:10px"><b>Why it is empty.</b> ' +
+               esc(d.attempts) + " request attempts, none accepted. " +
+               "Distinct failures:</div><ul style=\"margin:5px 0 0 16px;padding:0\">";
+    d.errors.forEach(function(e){
+      html += '<li style="margin:2px 0;color:var(--slate);word-break:break-all">' + esc(e) + "</li>";
+    });
+    html += "</ul>";
+    if (d.hint) html += '<div style="margin-top:6px">' + esc(d.hint) + "</div>";
+    return html;
+  }
+
   function stamp(feedTime, flash){
     var el = document.getElementById("stamp");
     var bits = [];
@@ -254,6 +303,7 @@
     var status = (feed && feed.status && feed.status.flash) || null;
 
     stamp(feed && feed.fetched_utc, flash);
+    methodBlock(flash);
 
     if (!flash){
       setHeadline("NO DATA", "The FLASH connector did not return anything on the last publish run.");
@@ -265,19 +315,22 @@
 
     if (flash.enabled === false){
       setHeadline("NO DATA", "The FLASH connector is present but switched off.");
-      message("<b>FLASH connector is disabled.</b><br>" +
-              esc(flash.note || "") + "<br><br>" +
-              "Run <code>python flash_source.py</code> on a normal network to confirm the request shape, " +
-              "then set <code>NOAH_FLASH_ENABLED=1</code> in the publish workflow. " +
-              "Until then this window deliberately shows nothing rather than a number nobody has verified.");
+      message("<b>FLASH connector is disabled.</b><br>" + esc(flash.note || "") +
+              "<br><br>Set <code>NOAH_FLASH_ENABLED=1</code> in the publish workflow to turn it back on.");
       return;
     }
 
     var basins = flash.basins || {};
     var ids = Object.keys(basins);
-    if (!ids.length){
-      setHeadline("NO DATA", SAY["NO DATA"]);
-      message("<b>No sub-basin values returned.</b><br>" + esc(flash.note || ""));
+    var anyValue = ids.some(function(k){
+      var b = basins[k] || {};
+      return b.unit_streamflow !== null && b.unit_streamflow !== undefined;
+    });
+
+    if (!ids.length || !anyValue){
+      setHeadline("NO DATA", "The connector ran but the FLASH service returned nothing usable.");
+      message("<b>No FLASH values on the last publish run.</b><br>" +
+              esc(flash.note || "") + diagnosticBlock(flash));
       return;
     }
 

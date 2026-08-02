@@ -479,6 +479,21 @@ def latest(points=None, now=None) -> dict:
         },
         "enabled": ENABLED,
         "diagnostic": None,
+        # The bundle we actually read, published so flash.html's WMS map can
+        # start from a known-good filename instead of probing the hourly
+        # rollover blind. Null when no request succeeded; the page falls back
+        # to probing in that case.
+        "bundle": None,
+        "wms": {
+            "base": TDS_BASE.replace("/ncss/grid/", "/wms/"),
+            "layers": {
+                "unit_streamflow": "FLASH_CREST_MAXUNITSTREAMFLOW_surface",
+                "ffg_ratio_1h": "FLASH_QPE_FFG01H_surface",
+                "ffg_ratio_3h": "FLASH_QPE_FFG03H_surface",
+                "ari_max": "FLASH_QPE_ARIMAX_surface",
+                "soil_sat": "FLASH_CREST_MAXSOILSAT_surface",
+            },
+        },
         "basins": {},
         # Set up front so every exit path — including the disabled and error
         # returns below — yields the same payload shape. A consumer that has
@@ -565,6 +580,7 @@ def latest(points=None, now=None) -> dict:
         }
     elif _learned["time"]:
         out["diagnostic"] = {"working_shape": dict(_learned)}
+    out["bundle"] = _learned.get("file")
 
     # A stale bundle must not present as current data on a public page.
     if not out["fresh"]:

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
   /* palette matched to index.html so the embed reads as one surface */
   :root{
@@ -61,8 +62,30 @@
   .r-NODATA,.r-STALE{border-left-color:var(--faint)}
   .r-STALE .lvl,.r-NODATA .lvl{color:var(--faint)}
 
+  /* ---------- map ---------- */
+  .maprow{flex:0 0 auto;margin:14px 20px 0;border:1px solid var(--line);border-radius:4px;
+          overflow:hidden;background:#061013;position:relative}
+  #map{height:40vh;min-height:230px}
+  .mapbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:7px 12px;
+          background:var(--shoal);border-bottom:1px solid var(--line);font-size:11.5px}
+  .mapbar label{color:var(--faint);font-size:10px;letter-spacing:.09em;text-transform:uppercase}
+  .mapbar select{background:#0c1a20;color:var(--mist);border:1px solid var(--line);
+                 border-radius:3px;padding:3px 6px;font:11.5px var(--mono)}
+  .mapbar input[type=range]{width:88px;accent-color:var(--current)}
+  #bundleTag{margin-left:auto;color:var(--faint)}
+  #bundleTag .ok{color:var(--current)} #bundleTag .bad{color:var(--warning)}
+  .leaflet-container{background:#061013;font-family:var(--mono)}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--shoal);color:var(--mist);
+        border:1px solid var(--line)}
+  .leaflet-popup-content{margin:8px 11px;font-size:12px}
+  .leaflet-bar a{background:var(--shoal);color:var(--mist);border-color:var(--line)}
+  .leaflet-bar a:hover{background:#16303a}
+  .lbl{font-size:10px;color:#fff;text-shadow:0 0 4px #000,0 0 3px #000;white-space:nowrap}
+  .ramp{height:9px;border-radius:2px;width:150px;
+        background:linear-gradient(90deg,#0a3d4a,#1f7a8c,#45d0c0,#e2b52b,#f2882d,#ef5350)}
+
   /* ---------- table ---------- */
-  .wrap{flex:1 1 auto;overflow:auto;padding:16px 20px 8px}
+  .wrap{flex:1 1 auto;overflow:auto;padding:14px 20px 8px}
   table{width:100%;border-collapse:collapse}
   thead th{
     text-align:left;font-weight:500;font-size:10.5px;letter-spacing:.1em;
@@ -127,6 +150,19 @@
 </div>
 
 <div id="msg" class="hidden"></div>
+
+<div class="maprow">
+  <div class="mapbar">
+    <label for="mapProd">Layer</label>
+    <select id="mapProd"></select>
+    <label for="mapOp">Opacity</label>
+    <input type="range" id="mapOp" min="0" max="100" value="70">
+    <span class="ramp" title="low to high"></span>
+    <span id="rampNote" style="color:var(--faint)"></span>
+    <span id="bundleTag">locating grid…</span>
+  </div>
+  <div id="map"></div>
+</div>
 
 <div class="wrap">
   <table id="tbl" class="hidden">
@@ -304,6 +340,13 @@
 
     stamp(feed && feed.fetched_utc, flash);
     methodBlock(flash);
+    // Hand the map whatever the connector learned — chiefly the bundle
+    // filename, so it does not have to guess at the hourly rollover.
+    // Cached as well as pushed: the Leaflet <script> tag blocks parsing, so
+    // on a slow CDN this fetch can resolve before the map module exists.
+    // Push-only would silently lose the bundle name in exactly that case.
+    window.__flashFeedCache = flash;
+    if (window.NOAH_FLASH_MAP) window.NOAH_FLASH_MAP.onFeed(flash);
 
     if (!flash){
       setHeadline("NO DATA", "The FLASH connector did not return anything on the last publish run.");
@@ -383,6 +426,172 @@
 
   load();
   setInterval(load, REFRESH_MS);
+})();
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ---------------------------------------------------------------------
+   FLASH raster map.
+
+   Draws the FLASH grid straight from the THREDDS WMS endpoint as map tiles,
+   with our own sub-basin outlines over it. Two things make this cheap:
+
+     * WMS tiles are <img> loads, so they are exempt from cross-origin rules.
+       No CORS negotiation, no proxy, no server-side work in the publish job.
+     * Nothing is committed to the repo. The table above is the gated,
+       provenance-stamped record; this layer is a look at the same grid.
+
+   The bundle filename rolls over hourly. We prefer the one the connector
+   actually read (published in feed/external.json), and fall back to probing
+   backwards from the current hour with a tiny 8x8 px GetMap request.
+   --------------------------------------------------------------------- */
+(function(){
+  "use strict";
+  if (typeof L === "undefined") return;          // Leaflet CDN blocked — table still works
+
+  var TDS_WMS_DEFAULT = "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH";
+
+  var LAYERS = [
+    {k:"unitq", layer:"FLASH_CREST_MAXUNITSTREAMFLOW_surface",
+     label:"Unit streamflow", range:[0,6],   note:"0 – 6 m³ s⁻¹ km⁻² · 2.0 likely, 6.0 significant"},
+    {k:"ffg1",  layer:"FLASH_QPE_FFG01H_surface",
+     label:"QPE / FFG 1 h",  range:[0,200], note:"0 – 200 % · 100 % = rain equals guidance"},
+    {k:"ffg3",  layer:"FLASH_QPE_FFG03H_surface",
+     label:"QPE / FFG 3 h",  range:[0,200], note:"0 – 200 %"},
+    {k:"ari",   layer:"FLASH_QPE_ARIMAX_surface",
+     label:"Rain recurrence", range:[0,100], note:"0 – 100 yr · rarity of the rain, not the flood"},
+    {k:"soil",  layer:"FLASH_CREST_MAXSOILSAT_surface",
+     label:"Soil saturation", range:[0,100], note:"0 – 100 % · modeled, not measured"}
+  ];
+
+  var wmsBase = TDS_WMS_DEFAULT, bundle = null, current = LAYERS[0],
+      opacity = 0.70, tiles = null, basins = null, started = false;
+
+  var map = L.map('map', {zoomControl:true, attributionControl:true})
+             .setView([35.263, -83.20], 12);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+              {maxZoom:19, attribution:'Esri'}).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
+              {maxZoom:19, opacity:.85}).addTo(map);
+  L.control.scale({imperial:true, metric:true}).addTo(map);
+
+  function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function pad(n){ return (n<10?"0":"")+n; }
+  function bundleFor(d){
+    return "MRMS_CONUS_FLASH_" + d.getUTCFullYear() + pad(d.getUTCMonth()+1) +
+           pad(d.getUTCDate()) + "_" + pad(d.getUTCHours()) + "00.grib2";
+  }
+
+  function drawTiles(){
+    if (tiles){ map.removeLayer(tiles); tiles = null; }
+    if (!bundle) return;
+    tiles = L.tileLayer.wms(wmsBase + "/" + bundle, {
+      layers: current.layer,
+      styles: "raster/default",
+      format: "image/png",
+      transparent: true,
+      version: "1.3.0",
+      colorscalerange: current.range[0] + "," + current.range[1],
+      abovemaxcolor: "extend",
+      belowmincolor: "transparent",
+      numcolorbands: 100,
+      logscale: false,
+      opacity: opacity,
+      attribution: "NSSL FLASH via THREDDS WMS"
+    }).addTo(map);
+    tiles.setZIndex(300);
+    if (basins) basins.bringToFront();
+    document.getElementById('rampNote').textContent = current.note;
+  }
+
+  function tag(html){ document.getElementById('bundleTag').innerHTML = html; }
+
+  function probe(offset, done){
+    if (offset > 8){ done(null); return; }
+    var d = new Date(Date.now() - offset*3600*1000);
+    d.setUTCMinutes(0,0,0);
+    var name = bundleFor(d);
+    var url = wmsBase + "/" + name +
+      "?service=WMS&version=1.3.0&request=GetMap&layers=" + LAYERS[0].layer +
+      "&styles=raster/default&format=image/png&transparent=true&crs=CRS:84" +
+      "&bbox=-83.25,35.20,-83.15,35.33&width=8&height=8";
+    var img = new Image(), settled = false;
+    var t = setTimeout(function(){ if(!settled){ settled=true; probe(offset+1, done); } }, 9000);
+    img.onload  = function(){ if(settled) return; settled=true; clearTimeout(t); done({name:name, date:d}); };
+    img.onerror = function(){ if(settled) return; settled=true; clearTimeout(t); probe(offset+1, done); };
+    img.src = url;
+  }
+
+  function useBundle(found){
+    if (!found){ tag('<span class="bad">no FLASH grid reachable</span>'); return; }
+    bundle = found.name;
+    var age = Math.round((Date.now() - found.date.getTime())/60000);
+    tag('<span class="' + (age > 150 ? "bad" : "ok") + '">' +
+        esc(bundle.replace("MRMS_CONUS_FLASH_","")) + "</span> · hour began " + age + " min ago");
+    drawTiles();
+  }
+
+  // sub-basin outlines, same file the rest of the site uses
+  fetch("cullowhee_subbasins.geojson?v=" + Date.now())
+    .then(function(r){ return r.json(); })
+    .then(function(gj){
+      basins = L.geoJSON(gj, {
+        style: function(){ return {color:"#ffffff", weight:1.5, opacity:.85, fill:false}; },
+        onEachFeature: function(f, lyr){
+          lyr.bindPopup("<b>" + esc(f.properties.name) + "</b><br>" + esc(f.properties.basin_id));
+        }
+      }).addTo(map);
+      basins.setZIndex(400);
+      gj.features.forEach(function(f){
+        var p = f.properties;
+        if (p.label_lat && p.label_lon){
+          L.marker([p.label_lat, p.label_lon], {
+            interactive:false,
+            icon: L.divIcon({className:'', html:'<div class="lbl">'+esc(p.name)+'</div>',
+                             iconSize:[86,13], iconAnchor:[43,6]})
+          }).addTo(map);
+        }
+      });
+      map.fitBounds(basins.getBounds(), {padding:[22,22]});
+    })
+    .catch(function(){ /* outlines are a nicety; the raster still draws */ });
+
+  // controls
+  var sel = document.getElementById('mapProd');
+  LAYERS.forEach(function(l, i){
+    var o = document.createElement('option'); o.value = String(i); o.textContent = l.label;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', function(){
+    current = LAYERS[parseInt(sel.value,10)]; drawTiles();
+  });
+  document.getElementById('mapOp').addEventListener('input', function(e){
+    opacity = parseInt(e.target.value,10)/100;
+    if (tiles) tiles.setOpacity(opacity);
+  });
+
+  window.NOAH_FLASH_MAP = {
+    onFeed: function(flash){
+      if (started) return;
+      started = true;
+      if (flash && flash.wms && flash.wms.base) wmsBase = flash.wms.base;
+      if (flash && flash.bundle){
+        var d = null;
+        var m = String(flash.bundle).match(/_(\d{4})(\d{2})(\d{2})_(\d{2})00\./);
+        if (m) d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4]));
+        useBundle({name: flash.bundle, date: d || new Date()});
+        return;
+      }
+      tag("locating grid…");
+      probe(0, useBundle);
+    }
+  };
+  // The feed may already have arrived while the Leaflet script was loading.
+  if (window.__flashFeedCache) window.NOAH_FLASH_MAP.onFeed(window.__flashFeedCache);
+
+  // If the feed never loads at all, still try to draw something.
+  setTimeout(function(){ if (!started){ started = true; probe(0, useBundle); } }, 4000);
 })();
 </script>
 </body>

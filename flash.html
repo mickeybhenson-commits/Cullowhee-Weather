@@ -452,21 +452,33 @@
 
   var TDS_WMS_DEFAULT = "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH";
 
+  // Scale minima sit just ABOVE zero on purpose. FLASH reads zero across most
+  // of the map on most days; with a minimum of exactly 0, every dry cell paints
+  // the bottom colour and the watershed washes out in one flat tone that looks
+  // indistinguishable from a broken layer. Starting a hair above zero lets
+  // belowmincolor=transparent drop the dry cells so the basemap shows through
+  // and only real signal is painted.
   var LAYERS = [
-    {k:"unitq", layer:"FLASH_CREST_MAXUNITSTREAMFLOW_surface",
-     label:"Unit streamflow", range:[0,6],   note:"0 – 6 m³ s⁻¹ km⁻² · 2.0 likely, 6.0 significant"},
-    {k:"ffg1",  layer:"FLASH_QPE_FFG01H_surface",
-     label:"QPE / FFG 1 h",  range:[0,200], note:"0 – 200 % · 100 % = rain equals guidance"},
-    {k:"ffg3",  layer:"FLASH_QPE_FFG03H_surface",
-     label:"QPE / FFG 3 h",  range:[0,200], note:"0 – 200 %"},
-    {k:"ari",   layer:"FLASH_QPE_ARIMAX_surface",
-     label:"Rain recurrence", range:[0,100], note:"0 – 100 yr · rarity of the rain, not the flood"},
-    {k:"soil",  layer:"FLASH_CREST_MAXSOILSAT_surface",
-     label:"Soil saturation", range:[0,100], note:"0 – 100 % · modeled, not measured"}
+    {k:"unitq", layer:"FLASH_CREST_MAXUNITSTREAMFLOW_surface", log:true,
+     label:"Unit streamflow", range:[0.02,6], note:"to 6 m³ s⁻¹ km⁻² · 2.0 likely, 6.0 significant"},
+    {k:"ffg1",  layer:"FLASH_QPE_FFG01H_surface", log:false,
+     label:"QPE / FFG 1 h",  range:[1,200], note:"to 200 % · 100 % = rain equals guidance"},
+    {k:"ffg3",  layer:"FLASH_QPE_FFG03H_surface", log:false,
+     label:"QPE / FFG 3 h",  range:[1,200], note:"to 200 %"},
+    {k:"ari",   layer:"FLASH_QPE_ARIMAX_surface", log:true,
+     label:"Rain recurrence", range:[0.5,100], note:"to 100 yr · rarity of the rain, not the flood"},
+    {k:"soil",  layer:"FLASH_CREST_MAXSOILSAT_surface", log:false,
+     label:"Soil saturation", range:[1,100], note:"to 100 % · modeled, not measured"}
   ];
 
+  // ncWMS palette names differ between server builds, so probe rather than
+  // guess. Multi-colour first: this install's default is a single-hue blue
+  // ramp, which makes a quiet day and a dead layer look the same.
+  var PALETTES = ["x-Rainbow","rainbow","psu-viridis","seq-BuYlRd","div-BuRd",
+                  "psu-plasma","occam","ferret","seq-Heat",""];
+
   var wmsBase = TDS_WMS_DEFAULT, bundle = null, current = LAYERS[0],
-      opacity = 0.70, tiles = null, basins = null, started = false;
+      opacity = 0.70, tiles = null, basins = null, started = false, palette = "";
 
   var map = L.map('map', {zoomControl:true, attributionControl:true})
              .setView([35.263, -83.20], 12);
@@ -486,7 +498,7 @@
   function drawTiles(){
     if (tiles){ map.removeLayer(tiles); tiles = null; }
     if (!bundle) return;
-    tiles = L.tileLayer.wms(wmsBase + "/" + bundle, {
+    var opts = {
       layers: current.layer,
       styles: "raster/default",
       format: "image/png",
@@ -496,13 +508,44 @@
       abovemaxcolor: "extend",
       belowmincolor: "transparent",
       numcolorbands: 100,
-      logscale: false,
+      logscale: !!current.log,
       opacity: opacity,
       attribution: "NSSL FLASH via THREDDS WMS"
-    }).addTo(map);
+    };
+    if (palette) opts.palette = palette;
+    tiles = L.tileLayer.wms(wmsBase + "/" + bundle, opts).addTo(map);
     tiles.setZIndex(300);
     if (basins) basins.bringToFront();
-    document.getElementById('rampNote').textContent = current.note;
+    document.getElementById('rampNote').textContent =
+      current.note + (palette ? " · " + palette : "");
+  }
+
+  // Probe palettes with an 8x8 GetMap each: whatever renders exists on this
+  // build, whatever errors does not. Image loads, so no CORS involved.
+  function probePalettes(done){
+    if (!bundle){ done(); return; }
+    var pending = PALETTES.length, good = [];
+    PALETTES.forEach(function(name, idx){
+      var u = wmsBase + "/" + bundle +
+        "?service=WMS&version=1.3.0&request=GetMap&layers=" + LAYERS[0].layer +
+        "&styles=raster/default&format=image/png&transparent=true&crs=CRS:84" +
+        "&bbox=-83.25,35.20,-83.15,35.33&width=8&height=8&colorscalerange=0.02,6" +
+        (name ? "&palette=" + encodeURIComponent(name) : "");
+      var img = new Image(), settled = false;
+      function finish(ok){
+        if (settled) return; settled = true;
+        if (ok && name) good.push({n:name, i:idx});
+        if (--pending === 0){
+          good.sort(function(a,b){ return a.i - b.i; });
+          palette = good.length ? good[0].n : "";
+          done();
+        }
+      }
+      setTimeout(function(){ finish(false); }, 7000);
+      img.onload = function(){ finish(true); };
+      img.onerror = function(){ finish(false); };
+      img.src = u;
+    });
   }
 
   function tag(html){ document.getElementById('bundleTag').innerHTML = html; }
@@ -529,7 +572,7 @@
     var age = Math.round((Date.now() - found.date.getTime())/60000);
     tag('<span class="' + (age > 150 ? "bad" : "ok") + '">' +
         esc(bundle.replace("MRMS_CONUS_FLASH_","")) + "</span> · hour began " + age + " min ago");
-    drawTiles();
+    probePalettes(drawTiles);
   }
 
   // sub-basin outlines, same file the rest of the site uses

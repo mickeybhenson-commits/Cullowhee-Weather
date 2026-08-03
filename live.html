@@ -69,10 +69,23 @@
       and your own judgment. Do not use it as the sole basis for issuing public alerts.
     </div>
 
-    <p class="how"><b>One measured input is already on the map.</b> The state-operated NCEM FIMAN
-    stream gauge on Cullowhee Creek at Speedwell (site 25380) appears as a diamond marker showing
-    its current <b>measured</b> stage &mdash; an NCEM observation displayed alongside the modeled
-    posture for comparison. It does not drive the basin colors and is not a NOAH product.</p>
+    <p class="how"><b>Watch is what a forecast can earn; Warning has to be measured.</b> Every
+    status here comes from one of two tiers. The <b>Outlook</b> tier &mdash; soil wetness plus
+    forecast rain &mdash; is what buys lead time, but a forecast is lower&#8209;confidence and
+    false&#8209;alarm prone, so it can raise a <b>Watch</b> and no further. <b>Warning</b> and
+    <b>Emergency</b> assert the flood <i>is happening</i>, and that takes the <b>Confirmation</b>
+    tier: a measured stream rise. Where the forecast runs ahead of what any gauge can confirm, the
+    sub&#8209;basin is <b>ringed in the forecast's colour</b> and the status table's
+    <b>Outlook</b> column shows the higher level &mdash; so nothing is hidden, it is just
+    labelled honestly. Today the watershed has exactly <b>one</b> stream gauge, so almost
+    everything you see is Outlook.</p>
+
+    <p class="how"><b>That one measured input.</b> The state-operated NCEM FIMAN stream gauge on
+    Cullowhee Creek at Speedwell (site 25380) appears as a diamond marker showing its current
+    <b>measured</b> stage. It is an NCEM observation, not a NOAH product &mdash; but it is the
+    watershed's only Confirmation&#8209;tier input, so it is the one place a status can exceed
+    Watch. It may only <i>raise</i> Speedwell's status: a gauge reading Normal never pulls a
+    modeled Watch back down, because the model is forecasting rain that has not fallen yet.</p>
 
     <p class="how"><b>Getting more accurate over time.</b> A full environmental sensor network is
     being deployed across the watershed over the coming year &mdash; in&#8209;stream water&#8209;level
@@ -120,10 +133,11 @@
 <div id="map"></div>
 <div id="sbtable">
   <h4 id="sbhdr">Sub-basin status <span id="sbtog">&#9662;</span></h4>
-  <table><thead><tr><th>Sub-basin</th><th>Status</th><th>Rain</th><th>~RP / stage</th><th>Lead</th></tr></thead>
+  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil + forecast rain; capped at WATCH until a stream gauge confirms">Outlook</th><th>Rain</th><th>~RP / stage</th><th>Lead</th></tr></thead>
   <tbody id="sbtbody"></tbody></table>
   <div class="sbleg">
     <div><b>Status</b> &mdash; severity posture: Normal &#9656; Watch &#9656; Warning &#9656; Emergency</div>
+    <div><b>Outlook</b> &mdash; what soil + <i>forecast</i> rain alone imply. Forecast evidence buys lead time at lower confidence, so it can raise a <b>Watch</b> and no further; <b>Warning</b> and <b>Emergency</b> assert the flood is happening and need a measured stream rise. Where the forecast outruns that, this column shows the higher level <i>dashed</i> and the sub-basin is <b>ringed in that colour on the map</b> &mdash; storm coming, not yet confirmed.</div>
     <div><b>Rain</b> &mdash; rainfall driving the status, in inches. Live: peak 24-hr precipitation forecast (QPF) at that sub-basin. What-if: design-storm depth falling over that sub-basin.</div>
     <div><b>~RP / stage</b> &mdash; modeled flood magnitude. Tributaries: return period in years (e.g. ~100&nbsp;yr). WCU campus: creek stage in feet.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
@@ -371,6 +385,22 @@ let idx=4, mode="live", useSoil=false, ONECELL=false;
    on, and which basins share one. Set by resolveCells() in fetchLive. */
 let NCELLS=null, CELLOF={}, CELLMATES={};
 const SEVRANK={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0};
+/* TWO-TIER POSTURE — the rule this whole project is built on, stated in
+   flood_network.py, enforced by outlook_engine._cap, and already rendered as
+   two tiers by streamlit_app.py:
+
+     Outlook       soil + forecast rain          MAX WATCH
+     Confirmation  measured stream stage         drives WARNING / EMERGENCY
+
+   Forecast evidence buys lead time at lower confidence; it is false-alarm
+   prone, and a WARNING asserts the event IS happening. live.html classified
+   straight off forecast rain with no ceiling, so a forecast alone could paint
+   EMERGENCY. Nothing is hidden by fixing that: the uncapped forecast severity
+   stays on the map as the OUTLOOK, in the tooltip, in the table, and as a ring
+   around any basin whose forecast outruns what measurement can confirm. */
+const OUTLOOK_CAP="WATCH";
+function capOutlook(lv){
+  return ((SEVRANK[lv]||0) > SEVRANK[OUTLOOK_CAP]) ? OUTLOOK_CAP : lv; }
 const LIVEST={}; let LIVE=null, lastUpdate=null, liveErr=null;
 /* what-if scenarios were precomputed as storm-only stage; apply the observed
    stage floor and re-classify on total stage (Qb is <2% of design flows). */
@@ -394,12 +424,36 @@ const terrain=L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
 /* ---- active status source: live computed, or what-if scenario ---- */
 function cur(b){ if(mode==="live"&&LIVEST[b]) return LIVEST[b]; return SCEN[idx].st[b]; }
 function lvlOf(b){ const c=cur(b); return c?c.lvl:"N/A"; }
-function styleFor(b){const lv=lvlOf(b);return {color:SEV[lv],weight:2,opacity:.95,fillColor:SEV[lv],fillOpacity:.30};}
+/* Fill = the OPERATIVE posture, which is honest about what is confirmed.
+   Outline = the OUTLOOK, when the forecast outruns it. A yellow basin ringed
+   in red reads as "WATCH now, EMERGENCY-level rain forecast, unconfirmed" -
+   which is exactly true, and keeps the at-a-glance urgency the cap would
+   otherwise cost. dashArray marks it as the unconfirmed tier. */
+function styleFor(b){const lv=lvlOf(b), c=cur(b);
+  const fc=(mode==="live"&&c&&c.fcLvl)?c.fcLvl:lv;
+  const ring=((SEVRANK[fc]||0)>(SEVRANK[lv]||0));
+  return {color:ring?SEV[fc]:SEV[lv], weight:ring?4:2, opacity:.95,
+          dashArray:ring?"6 3":null, fillColor:SEV[lv], fillOpacity:.30};}
 const f1=x=>(x==null?"\u2014":x.toFixed(1));
 const pct=x=>(x==null?"n/a":Math.round(x*100)+"%");
 /* DEV=true (add ?dev=1 or #dev to the URL) shows full model internals.
    Default public view shows posture only + model provenance — no numbers. */
 const DEV=new URLSearchParams(location.search).has("dev")||location.hash==="#dev";
+/* The two tiers, spelled out. Mirrors the Outlook / Confirmation panel that
+   streamlit_app.py already renders, so the two surfaces say the same thing. */
+function tierBlock(b,c){
+  if(mode!=="live"||!c) return "";
+  const oc=SEV[c.outlookLvl]||"#9AA8B5", sc=c.streamLvl?SEV[c.streamLvl]:"#9AA8B5";
+  let s=`<span class="k">Outlook <i>&middot; soil + forecast &middot; max WATCH</i>: `
+       +`<b style="color:${oc}">${c.outlookLvl}</b>`;
+  if(c.capped) s+=` &mdash; forecast alone reads <b style="color:${SEV[c.fcLvl]}">${c.fcLvl}</b>, `
+                  +`held at ${OUTLOOK_CAP} until a gauge confirms`;
+  s+=`</span><br><span class="k">Confirmation <i>&middot; measured stage &middot; sets WARNING/EMERGENCY</i>: `
+     +(c.streamLvl?`<b style="color:${sc}">${c.streamLvl}</b>`
+                  :`<b style="color:#9AA8B5">none</b> &mdash; no stream gauge here yet`)
+     +`</span><br>`;
+  return s;
+}
 function tip(b){
   const m=META[b], c=cur(b);
   const lv=c?c.lvl:"N/A", stg=c&&c.stage!=null?f1(c.stage)+" ft":"\u2014";
@@ -413,6 +467,7 @@ function tip(b){
                 return `<br><span class="k">~1&#8209;in&#8209;${Math.round(c.rp||0)}&#8209;yr flow &middot; lead ~${LEADMIN[b]||"?"} min &middot; conf: ${cf}</span>`;})()
            : ``))+
       `<div class="hr"></div>`+
+      tierBlock(b,c)+
       ((c&&c.gov)
         ? `<span class="k">Confirmed by <b>NCEM FIMAN 25380</b> &mdash; measured `
           +`${c.gov.stage!=null?c.gov.stage.toFixed(2)+" ft":""} &middot; ${c.gov.cond} `
@@ -438,6 +493,7 @@ function tip(b){
        needs the grid-cell provenance MORE than a member of the public, not
        less - this is the number they would otherwise treat as independent. */
     const cn=cellNote(b); if(cn) h+=`<br><span class="k">forcing${cn}</span>`;
+    h+=`<div class="hr"></div>`+tierBlock(b,c);
   }else{ h+=` &middot; <span class="v">${m.da} mi&sup2;</span>`; }
   return h+`</div>`;
 }
@@ -630,7 +686,19 @@ function repaint(){
     if(liveErr){ r.innerHTML="live weather unavailable &mdash; "+liveErr+". Use What&#8209;if."; }
     else if(!LIVE){ r.textContent="fetching live weather\u2026"; }
     else { const [w,wb]=worst(); const t=lastUpdate?lastUpdate.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"";
-      r.innerHTML=`live &middot; ${t} &middot; worst: <b style="color:${SEV[w]}">${w}</b>`+(wb?` (${META[wb].short})`:""); }
+      /* The header is the most-glanced element on the page, so if the forecast
+         is running ahead of what measurement can confirm it has to say so here
+         too - otherwise the cap reads as "nothing much happening". */
+      /* Report the worst basin whose OWN forecast is being held back, not the
+         worst forecast globally. Speedwell confirming a WARNING must not
+         silence "the campus is forecast to reach WARNING and cannot confirm
+         it" - those are different reaches and both need saying. */
+      let fw="NORMAL",fb=null;
+      ORDER.forEach(b=>{const c=cur(b);
+        if(c&&c.capped&&(SEVRANK[c.fcLvl]||0)>(SEVRANK[fw]||0)){fw=c.fcLvl;fb=b;}});
+      const ahead=(fb!==null);
+      r.innerHTML=`live &middot; ${t} &middot; worst: <b style="color:${SEV[w]}">${w}</b>`+(wb?` (${META[wb].short})`:"")
+        +(ahead?` &middot; <span style="color:${SEV[fw]}">outlook <b>${fw}</b>${fb?` (${META[fb].short})`:""} &mdash; forecast, unconfirmed</span>`:""); }
   } else {
     document.getElementById("read").textContent=SCEN[idx].qpf.toFixed(0)+"\u2033 / 24 hr  \u00b7  ARC-"+ROMAN[SCEN[idx].arc];
   }
@@ -707,12 +775,23 @@ function recomputeLive(){
        fiman_source.py deliberately applies no WATCH ceiling here: a fresh
        "Minor Flooding" is a real measured stage, which is what confirmation
        means. */
-    var lvl=a.posture, gov=null;
+    /* OUTLOOK TIER, and its ceiling. a.posture is derived entirely from
+       FORECAST rain - and, at the campus, from a stage MODELLED off forecast
+       rain, which is still a forecast. Under the two-tier rule that governs
+       this project, that evidence may raise a WATCH and no more; WARNING and
+       EMERGENCY assert the event is happening and require a measured stream
+       rise. live.html was the only surface not enforcing it. */
+    var fcLvl=a.posture;                      // uncapped forecast, kept for display
+    var outlookLvl=capOutlook(fcLvl);         // what the forecast may claim
+    var streamLvl=null, gov=null;
     if(b===FIMAN_SERVES && FIMAN_GOV && FIMAN_GOV.level){
-      gov=FIMAN_GOV;
-      if((SEVRANK[gov.level]||0) > (SEVRANK[lvl]||0)) lvl=gov.level;
+      gov=FIMAN_GOV; streamLvl=gov.level;
     }
+    var lvl=outlookLvl;
+    if(streamLvl && (SEVRANK[streamLvl]||0) > (SEVRANK[lvl]||0)) lvl=streamLvl;
     LIVEST[b]={lvl:lvl,modeledLvl:a.posture,gov:gov,
+               fcLvl:fcLvl,outlookLvl:outlookLvl,streamLvl:streamLvl,
+               capped:(SEVRANK[fcLvl]||0)>(SEVRANK[lvl]||0),
                stage:a.stage,storm:a.storm,rp:a.rp,
                wet:w,CN:a.CN,cq:a.calib_q,p5:d.p5,api:d.api,qpf:d.qpf,
                vwc:d.vwc,soilPct:d.soilPct,
@@ -819,7 +898,16 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
     var meas=(_cc&&_cc.gov)
       ? " <span title='confirmed by NCEM FIMAN gage 25380 (measured)' "
         +"style='color:#9db2c4;font-size:9px'>&#9670;</span>" : "";
-    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+meas+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
+    /* OUTLOOK column. The status pill is the operative posture, honest about
+       what measurement confirms. This column carries the uncapped forecast, so
+       capping the pill never costs the reader the severity of what is coming. */
+    var oc="\u2014";
+    if(_cc&&_cc.fcLvl){ oc=(_cc.capped)
+        ? "<span class='sbpill' style='background:"+(SEV[_cc.fcLvl]||"#9AA5B1")
+          +";opacity:.55;border:1px dashed #fff' title='forecast alone reads "+_cc.fcLvl
+          +"; held at "+OUTLOOK_CAP+" until a gauge confirms'>"+_cc.fcLvl+"</span>"
+        : "<span style='color:#8fa0b2'>"+_cc.outlookLvl+"</span>"; }
+    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+meas+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+oc+"</td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
   tb.innerHTML=html; }
 (function(){ var h=document.getElementById("sbhdr"); if(h)h.addEventListener("click",function(){
   var p=document.getElementById("sbtable"); p.classList.toggle("collapsed");

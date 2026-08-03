@@ -377,24 +377,47 @@ def _smooth(e, w=5):
     return np.convolve(e, k, mode="same")
 
 
-def detect_banks(sta, elev, search_ft=100.0, edge_pad=6):
+def detect_banks(sta, elev, search_ft=None, edge_pad=6):
+    """search_ft defaults to width/6. A fixed 100 ft window finds the VALLEY
+    WALL on a 260 ft section: the CC-WCU-2260 validation run on 2026-08-03
+    returned top-of-bank values up to 22.58 ft on a reach whose surveyed
+    channel depth is 4.1 ft."""
+    if search_ft is None:
+        search_ft = max(40.0, (float(sta[-1]) - float(sta[0])) / 3.0)
     i0 = int(np.nanargmin(elev))
     res = {"thalweg_sta": float(sta[i0]), "thalweg_elev": float(elev[i0])}
     k_full = np.gradient(np.gradient(_smooth(elev)))
     for side in ("left", "right"):
-        idx = (np.arange(edge_pad, i0) if side == "left"
+        idx = (np.arange(edge_pad, i0)[::-1] if side == "left"
                else np.arange(i0 + 1, len(sta) - edge_pad))
         idx = idx[np.abs(sta[idx] - sta[i0]) <= search_ft] if len(idx) else idx
         if len(idx) < 3:
             res[f"{side}_bank_sta"] = float("nan")
             res[f"{side}_bank_elev"] = float("nan")
             continue
-        j = idx[int(np.nanargmin(k_full[idx]))]
+        # FIRST significant convex break moving OUTWARD from the thalweg, not
+        # the global curvature minimum. The global minimum picks whichever
+        # break is sharpest anywhere in the window, which on a wide section is
+        # the valley wall or a terrace, not the channel bank. `idx` is ordered
+        # outward on both sides (left is reversed) so the first qualifying
+        # index is the nearest break.
+        kk = k_full[idx]
+        strongest = float(np.nanmin(kk))
+        j = idx[0]
+        if strongest < 0:
+            hits = np.where(kk <= 0.30 * strongest)[0]
+            j = idx[int(hits[0])] if len(hits) else idx[int(np.nanargmin(kk))]
         res[f"{side}_bank_sta"] = float(sta[j])
         res[f"{side}_bank_elev"] = float(elev[j])
     lb, rb = res["left_bank_elev"], res["right_bank_elev"]
     res["bankfull_depth_ft"] = float(np.nanmin([lb, rb]) - res["thalweg_elev"])
     res["topbank_depth_ft"] = float(np.nanmax([lb, rb]) - res["thalweg_elev"])
+    # Bank detection failed if the "bank" is implausibly high for a Blue Ridge
+    # headwater, or if the two banks disagree wildly — both mean one side
+    # locked onto a hillside rather than a channel edge.
+    bf, tb = res["bankfull_depth_ft"], res["topbank_depth_ft"]
+    res["ok"] = bool(np.isfinite(bf) and np.isfinite(tb)
+                     and 0.5 <= bf <= 12.0 and tb <= 15.0 and tb <= 3.5 * bf)
     return res
 
 
@@ -492,9 +515,12 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
 
         sp = spacing if spacing else DEFAULT_SPACING.get(bid, 300.0)
         wd = width if width else DEFAULT_WIDTH.get(bid, 250.0)
-        cuts = []
-        for ln in lines:
-            cuts += cut_lines(ln, sp, wd, lat0, lon0)
+        cuts, run_of = [], {}
+        for ri, ln in enumerate(lines):
+            c = cut_lines(ln, sp, wd, lat0, lon0)
+            for j in range(len(cuts), len(cuts) + len(c)):
+                run_of[j] = ri
+            cuts += c
         print(f"  {len(cuts)} cut lines at {sp:.0f} ft spacing, {wd:.0f} ft wide")
         if not cuts:
             print("  (reach shorter than one spacing interval - lower --spacing)")
@@ -514,7 +540,7 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
             e = np.array([v if not np.isnan(v) else np.nanmean(e) for v in e])
             sta = np.linspace(-wd / 2.0, wd / 2.0, npts)
             b = detect_banks(sta, e)
-            sid = f"{bid}_{k:03d}"
+            sid = f"{bid}_r{run_of[k]}_{k:03d}"
             with open(os.path.join(bdir, sid + ".csv"), "w", newline="") as f:
                 w = csv.writer(f)
                 w.writerow(["station_ft", "elev_ft", "lat", "lon"])
@@ -522,7 +548,8 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                     w.writerow([round(sta[i], 2), round(e[i], 2),
                                 round(pts[i][0], 7), round(pts[i][1], 7)])
             d100 = depth_for_q(sta, e, REG_Q100[bid], NVAL[bid], SLOPE[bid])
-            rec = dict(section_id=sid, basin_id=bid, lat=mid[0], lon=mid[1],
+            rec = dict(section_id=sid, basin_id=bid, run=run_of[k],
+                       ok=int(b["ok"]), lat=mid[0], lon=mid[1],
                        station_along_ft=round(s, 1),
                        thalweg_elev_ft=round(b["thalweg_elev"], 2),
                        bankfull_depth_ft=round(b["bankfull_depth_ft"], 2),
@@ -533,15 +560,47 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
             print(f"    {sid}  thalweg {rec['thalweg_elev_ft']:.1f} ft  "
                   f"bankfull {rec['bankfull_depth_ft']:.2f}  "
                   f"topbank {rec['topbank_depth_ft']:.2f}  "
-                  f"d100 {rec['d100_above_thalweg_ft']:.2f}")
+                  f"d100 {rec['d100_above_thalweg_ft']:.2f}"
+                  f"{'' if b['ok'] else '   <-- bank detection rejected'}")
 
         if good:
-            # controlling section = the one that goes out of bank soonest
-            ctl = min(good, key=lambda r: r["topbank_depth_ft"])
-            thresholds[bid] = (round(ctl["bankfull_depth_ft"], 2),
-                               round(ctl["topbank_depth_ft"], 2),
-                               round(ctl["d100_above_thalweg_ft"], 2),
-                               ctl["section_id"], len(good))
+            # A sub-basin polygon can contain more than one channel: the trunk
+            # and a small tributary. On CC-WCU-2260 the second run sat 25-50 ft
+            # ABOVE the first and, with 19 of 29 sections, dragged the pooled
+            # d100 from 9.11 ft (FRIS truth 9.5) down to 7.71. Pick the TRUNK —
+            # lowest median thalweg — and take thresholds only from it.
+            runs = {}
+            for r in good:
+                runs.setdefault(r["run"], []).append(r)
+            trunk = min(runs, key=lambda k: np.median(
+                [r["thalweg_elev_ft"] for r in runs[k]]))
+            if len(runs) > 1:
+                for k in sorted(runs):
+                    med = np.median([r["thalweg_elev_ft"] for r in runs[k]])
+                    print(f"    run {k}: {len(runs[k])} sections, median thalweg "
+                          f"{med:.1f} ft{'   <-- TRUNK' if k == trunk else ''}")
+            pool = [r for r in runs[trunk] if r["ok"]]
+            if not pool:
+                print("    every section in the trunk run failed bank detection "
+                      "- no threshold emitted", file=sys.stderr)
+                continue
+            # 20th percentile, not the minimum: the minimum selects the section
+            # where detection failed, not the one that floods first. On the
+            # validation run the minimum gave WATCH 2.79 / WARNING 3.06 - a
+            # 0.27 ft ladder.
+            def pct20(key):
+                v = sorted(r[key] for r in pool)
+                return float(v[max(0, int(0.2 * (len(v) - 1)))])
+            w_, g_, e_ = (pct20("bankfull_depth_ft"), pct20("topbank_depth_ft"),
+                          pct20("d100_above_thalweg_ft"))
+            if g_ - w_ < 0.5 or e_ <= g_:
+                print(f"    WARNING: ladder is not monotone with margin "
+                      f"({w_:.2f} / {g_:.2f} / {e_:.2f}) - inspect before use",
+                      file=sys.stderr)
+            ctl = min(pool, key=lambda r: r["topbank_depth_ft"])
+            thresholds[bid] = (round(w_, 2), round(g_, 2), round(e_, 2),
+                               f"run {trunk}, {len(pool)} of {len(good)} sections "
+                               f"passing, 20th pct", len(pool))
 
     if summary:
         with open(os.path.join(out_dir, "summary.csv"), "w", newline="") as f:
@@ -557,17 +616,16 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                     'EMERGENCY=100-yr through the real section.\n"""\n'
                     "SURVEYED_THR = {\n")
             for bid, (a, b_, c, sid, n) in thresholds.items():
-                f.write(f'    "{bid}": ({a}, {b_}, {c}),'
-                        f'  # controlling section {sid}, of {n}\n')
+                f.write(f'    "{bid}": ({a}, {b_}, {c}),  # {sid}\n')
             f.write("}\n")
         print(f"\nwrote {p}")
         print("\nPaste into basins.py:\n")
         for bid, (a, b_, c, sid, n) in thresholds.items():
             print(f'  {bid}:')
             print(f'    thr_ft=({a}, {b_}, {c}),')
-            print(f'    thr_src="SURVEYED: NC QL2 via 3DEP; controlling section '
-                  f'{sid} of {n}; WATCH=bankfull, WARNING=top-of-bank, '
-                  f'EMERGENCY=100-yr reg_q through the real section",')
+            print(f'    thr_src="SURVEYED: NC QL2 via 3DEP, {sid}; '
+                  f'WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q '
+                  f'through the real section",')
     return 0
 
 

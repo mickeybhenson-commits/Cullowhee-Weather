@@ -272,8 +272,10 @@
   // it. Stale and pending step down from here rather than being separate
   // guesses, so the ladder stays proportional if this is retuned.
   var FILL_OPACITY = 0.30;
-  var FILL_STALE   = 0.18;
-  var FILL_PENDING = 0.15;
+  var FILL_STALE   = 0.30;   /* was 0.18 - fill reads 30% in every state now; */
+  var FILL_PENDING = 0.30;   /* was 0.15 - staleness stays marked by hue (SEV */
+                             /* .STALE / .PENDING grey), the age line in the   */
+                             /* popup, and the grid-age banner. */
 
   var SEV = {
     BELOW:        "#1A7A52",
@@ -488,7 +490,9 @@
         if (p.label_lat && p.label_lon){
           L.marker([p.label_lat, p.label_lon], {
             interactive:false,
-            icon: L.divIcon({className:'lbl', html:esc(p.name), iconSize:[92,14], iconAnchor:[46,7]})
+            /* anchor x 46 -> 16 shifts every label 30 px EAST of its point
+               (the icon box is 92 px wide; 46 = centred). */
+            icon: L.divIcon({className:'lbl', html:esc(p.name), iconSize:[92,14], iconAnchor:[16,7]})
           }).addTo(map);
         }
       });

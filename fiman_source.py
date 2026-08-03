@@ -43,6 +43,7 @@ import io
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+import os
 from typing import Optional
 
 import fiman_watch
@@ -76,7 +77,63 @@ CONDITION_LEVEL = {
     "major": "EMERGENCY",
 }
 
-DATUM_VERIFIED = False        # flip only after survey ties gage zero to NAVD88
+# ---------------------------------------------------------------------------
+# GAGE DATUM — a NUMBER the survey produces, not a boolean someone flips.
+#
+# This used to be two separate flags: a hardcoded False here, and
+# CULLOWHEE_DATUM_VERIFIED read from the environment in publish_feed.py. Two
+# problems, both of which would have surfaced on the day the survey came back:
+#
+#   1. Flipping the env var changed publish_feed and left this module still
+#      reporting datum_verified false, so anything consuming latest() would
+#      disagree with the published feed.
+#   2. Worse: publish_feed computed elevations as GAGE_DATUM + stage using the
+#      hardcoded 2125.0 — the CONTESTED value. Setting the boolean would have
+#      published every elevation off by whatever the survey actually found, and
+#      labelled it VERIFIED. Strictly worse than today's suppression.
+#
+# A survey does not return "yes". It returns a number. So the number is the
+# input, and "verified" is derived from having it. Set:
+#
+#     CULLOWHEE_GAGE_DATUM_NAVD88=2125.37     (whatever the crew measures)
+#
+# The site is contested between NCEM FIMAN 25380 (2125.0) and NWS CUCN7
+# (implied 2126.0) — exactly 1.00 ft apart, with FIMAN's NAVD88_ELEVATION field
+# unpopulated (0.0), which points at an NGVD29-vs-NAVD88 vintage mismatch.
+# Until a surveyed number exists, every elevation stays suppressed.
+DATUM_CONTESTED = {"NCEM FIMAN 25380": 2125.0, "NWS CUCN7 (implied)": 2126.0}
+
+
+def gage_datum_navd88():
+    """-> (datum_ft or None, verified: bool, note: str). Single source of truth.
+
+    Raises if someone sets the legacy boolean without supplying the number —
+    that is the one combination that would publish confident wrong elevations,
+    so it fails loudly rather than guessing which contested value to use.
+    """
+    raw = os.getenv("CULLOWHEE_GAGE_DATUM_NAVD88", "").strip()
+    legacy = os.getenv("CULLOWHEE_DATUM_VERIFIED", "0").strip() == "1"
+    if raw:
+        try:
+            return float(raw), True, f"surveyed gage datum {float(raw):.2f} ft NAVD88"
+        except ValueError:
+            raise ValueError(
+                f"CULLOWHEE_GAGE_DATUM_NAVD88={raw!r} is not a number. It must be "
+                "the surveyed gage-zero elevation in ft NAVD88.")
+    if legacy:
+        raise ValueError(
+            "CULLOWHEE_DATUM_VERIFIED=1 but CULLOWHEE_GAGE_DATUM_NAVD88 is unset. "
+            "Refusing to publish elevations: the datum is contested between "
+            + " and ".join(f"{k} {v}" for k, v in DATUM_CONTESTED.items())
+            + ", and picking one would publish a foot-wrong elevation labelled "
+              "VERIFIED. Set the surveyed number instead.")
+    return None, False, (
+        "gage datum unresolved ("
+        + " vs ".join(f"{k} {v}" for k, v in DATUM_CONTESTED.items())
+        + "); elevations suppressed, stage and condition only")
+
+
+GAGE_DATUM_FT, DATUM_VERIFIED, DATUM_NOTE = gage_datum_navd88()
 RAW_LOG_URL = ("https://raw.githubusercontent.com/mickeybhenson-commits/"
                "Cullowhee-Weather/main/feed/fiman_watch.csv")
 
@@ -120,6 +177,12 @@ def latest(now: Optional[datetime] = None) -> Optional[dict]:
         "age_min": age, "fresh": fresh,
         "last_updated_utc": r.get("last_updated_utc"),
         "datum_verified": DATUM_VERIFIED,
+        "gage_datum_ft": GAGE_DATUM_FT,
+        # NAVD88 water-surface elevation, and only once a surveyed datum
+        # exists. None until then - that is the whole point of the gate.
+        "wse_navd88_ft": (None if (GAGE_DATUM_FT is None or r.get("stage_ft") is None)
+                          else round(GAGE_DATUM_FT + r["stage_ft"], 2)),
+        "datum_note": DATUM_NOTE,
         "note": ("" if fresh else
                  f"NOT driving posture: stale/invalid (age {age} min, "
                  f"limit {MAX_AGE_MIN:.0f})"),

@@ -53,10 +53,20 @@ from typing import Optional
 # exactly 1.00 ft on ELEVATION. FIMAN's NAVD88_ELEVATION for the site is 0.0
 # (unpopulated), which points at an NGVD29-vs-NAVD88 vintage mismatch.
 #
-# Until the survey resolves it, DATUM_VERIFIED stays False and this publisher
-# emits STAGE ONLY — every MSL field goes out null. Publishing an elevation
-# that is a foot wrong is worse than publishing no elevation at all.
-DATUM_VERIFIED = os.getenv("CULLOWHEE_DATUM_VERIFIED", "0") == "1"
+# Until the survey resolves it this publisher emits STAGE ONLY — every MSL
+# field goes out null. Publishing an elevation that is a foot wrong is worse
+# than publishing no elevation at all.
+#
+# The gate is a NUMBER, not a boolean, and it lives in fiman_source so this
+# module and that one cannot disagree. Previously DATUM_VERIFIED was read here
+# from CULLOWHEE_DATUM_VERIFIED while fiman_source hardcoded its own False -
+# and, worse, flipping that boolean would have published GAGE_DATUM + stage
+# using the CONTESTED 2125.0 below, labelled VERIFIED. Setting the surveyed
+# number is now the only way to turn elevations on, and the number that gets
+# used is the one the crew measured.
+from fiman_source import gage_datum_navd88
+
+SURVEYED_DATUM, DATUM_VERIFIED, DATUM_NOTE = gage_datum_navd88()
 
 SITES = {
     "CULLOWHEE_CK": {
@@ -156,15 +166,17 @@ def _local_level(stage: Optional[float]) -> str:
 
 def build_feature(key: str, r: Optional[Reading]) -> dict:
     s = SITES[key]
-    datum = s["GAGE_DATUM"]
+    # the surveyed number when it exists; the contested nominal only for
+    # display in GAGE_DATUM, never for arithmetic
+    datum = SURVEYED_DATUM if SURVEYED_DATUM is not None else s["GAGE_DATUM"]
     age = _age_min(r.observed_utc) if r else 1e9
     stage = r.stage_ft if (r and age <= DEAD_MIN) else None
     cond, cond_txt = _condition(stage, age)
 
     def msl(stage_ft: Optional[float]) -> Optional[float]:
-        if not DATUM_VERIFIED or stage_ft is None:
+        if SURVEYED_DATUM is None or stage_ft is None:
             return None
-        return round(datum + stage_ft, 2)
+        return round(SURVEYED_DATUM + stage_ft, 2)
 
     props = {
         # ---- FIMAN-mirrored observation fields ----------------------------
@@ -197,11 +209,9 @@ def build_feature(key: str, r: Optional[Reading]) -> dict:
         "DATA_SOURCE": (r.source if r else "NONE"),
         "DATUM_VERIFIED": DATUM_VERIFIED,
         "DATUM_SOURCE": s["DATUM_SOURCE"],
-        "ELEVATION_NOTE": (
-            None if DATUM_VERIFIED else
-            "MSL fields suppressed: gage datum unresolved (NCEM 2125.0 vs "
-            "NWS 2126.0). Use HYDRO_ALL_STAGE and the FX_*_STAGE thresholds."
-        ),
+        "ELEVATION_NOTE": (None if DATUM_VERIFIED else
+                           "MSL fields suppressed: " + DATUM_NOTE
+                           + ". Use HYDRO_ALL_STAGE and the FX_*_STAGE thresholds."),
         "REFERENCE_GAGE": s["REFERENCE_GAGE"],
         "AHPS_URL": f"https://water.noaa.gov/gauges/{s['AHPS_ID']}",
 

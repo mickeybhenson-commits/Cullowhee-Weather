@@ -429,7 +429,81 @@ def detect_banks(sta, elev, search_ft=None, edge_pad=6):
     bf, tb = res["bankfull_depth_ft"], res["topbank_depth_ft"]
     res["ok"] = bool(np.isfinite(bf) and np.isfinite(tb)
                      and 0.5 <= bf <= 12.0 and tb <= 15.0 and tb <= 3.5 * bf)
+    # WHY it failed, because the remedies are opposite and guessing wrong makes
+    # things worse. A cut that ran to a valley wall wants a NARROWER --width; a
+    # cut that is not centred on the channel wants a hand-drawn --centerline,
+    # and narrowing that one only crops away the channel you missed.
+    if res["ok"]:
+        res["why"] = ""
+    elif not (np.isfinite(bf) and np.isfinite(tb)):
+        res["why"] = "nodata"          # no break found on one/both sides
+    elif tb > 15.0:
+        res["why"] = "wall"            # ran out to a hillside
+    elif bf > 12.0:
+        res["why"] = "deep"            # "thalweg" is not a channel bottom
+    elif tb > 3.5 * bf:
+        res["why"] = "asymmetric"      # one side locked onto a hillside
+    else:
+        res["why"] = "shallow"         # no channel resolved at the low point
+    # Cuts are centred on the NHD flowline, so station 0 IS the flowline. A
+    # thalweg sitting persistently off-centre means the flowline is not on the
+    # water - the one failure narrowing cannot fix.
+    half = max(abs(float(sta[0])), abs(float(sta[-1]))) or 1.0
+    res["thalweg_offset_frac"] = abs(res["thalweg_sta"]) / half
     return res
+
+
+def _diagnose(bid, good):
+    """Name the dominant bank-detection failure, and the remedy it implies.
+
+    Written because CC-UP-503 came back with 36% of 119 sections rejected and
+    the runbook could only say "plot two or three section CSVs and see which
+    it is" — the two failures want OPPOSITE fixes, so a wrong guess makes the
+    reach worse, and asking a human to eyeball CSVs is a step that does not
+    have to exist. The script has the evidence; it should do the reading.
+    """
+    bad = [r for r in good if not r["ok"]]
+    if not bad:
+        return
+    tally = {}
+    for r in bad:
+        tally[r.get("why") or "?"] = tally.get(r.get("why") or "?", 0) + 1
+    order = sorted(tally.items(), key=lambda kv: -kv[1])
+    print(f"    bank detection rejected {len(bad)} of {len(good)}: "
+          + ", ".join(f"{n} {w}" for w, n in order))
+
+    # Cuts are centred on the NHD flowline. If the thalweg sits persistently
+    # off-centre, the flowline is not on the water — and that is the failure a
+    # narrower --width makes WORSE, because it crops away the channel that was
+    # already at the edge of the cut.
+    offs = sorted(r.get("thalweg_offset_frac", 0.0) for r in good)
+    med_off = offs[len(offs) // 2] if offs else 0.0
+    wall = tally.get("wall", 0) + tally.get("asymmetric", 0)
+    thin = tally.get("shallow", 0) + tally.get("nodata", 0)
+
+    if med_off > 0.45:
+        print(f"    DIAGNOSIS: centerline. Median thalweg sits {med_off:.0%} of "
+              f"the half-width off centre — the NHD flowline is not on the\n"
+              f"    channel here (headwater flowlines are derived, not "
+              f"surveyed). Supply --centerline; do NOT narrow --width, which\n"
+              f"    would crop away the channel you are already missing.")
+    elif wall and thin and min(wall, thin) >= 0.75 * max(wall, thin):
+        print(f"    DIAGNOSIS: mixed — {wall} hillside/asymmetric against "
+              f"{thin} with no channel found, thalweg near centre (median\n"
+              f"    {med_off:.0%} off). No single remedy dominates. Re-cut "
+              f"narrower first (it is the cheap one) and read this line\n"
+              f"    again; if the split still holds, the reach needs a "
+              f"hand-drawn --centerline.")
+    elif wall >= thin and wall:
+        print(f"    DIAGNOSIS: width. {wall} section(s) ran out to a hillside "
+              f"or read wildly asymmetric banks, with the thalweg near centre\n"
+              f"    (median {med_off:.0%} off). Re-cut narrower.")
+    elif thin:
+        print(f"    DIAGNOSIS: no channel resolved at the low point in "
+              f"{thin} section(s), thalweg near centre (median {med_off:.0%} "
+              f"off).\n    Either the channel is narrower than the sample "
+              f"spacing, or LiDAR flight-day water is filling it. Try a "
+              f"smaller --spacing\n    and more --npts before touching width.")
 
 
 def conveyance_q(sta, elev, wse, n, slope):
@@ -560,7 +634,9 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                                 round(pts[i][0], 7), round(pts[i][1], 7)])
             d100 = depth_for_q(sta, e, REG_Q100[bid], NVAL[bid], SLOPE[bid])
             rec = dict(section_id=sid, basin_id=bid, run=run_of[k],
-                       ok=int(b["ok"]), lat=mid[0], lon=mid[1],
+                       ok=int(b["ok"]), why=b.get("why", ""),
+                       thalweg_offset_frac=round(b.get("thalweg_offset_frac", 0.0), 3),
+                       lat=mid[0], lon=mid[1],
                        station_along_ft=round(s, 1),
                        thalweg_elev_ft=round(b["thalweg_elev"], 2),
                        bankfull_depth_ft=round(b["bankfull_depth_ft"], 2),
@@ -613,6 +689,8 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                     npass = sum(1 for r in runs[k] if r["ok"])
                     print(f"    run {k}: {len(runs[k])} sections "
                           f"({npass} passing), thalweg {ev[0]:.1f}-{ev[-1]:.1f} ft")
+
+            _diagnose(bid, good)
 
             by_elev = sorted(good, key=lambda r: r["thalweg_elev_ft"])
             k_win = min(max(POOL_MIN, int(round(len(good) * POOL_FRAC))), POOL_MAX)
@@ -727,21 +805,18 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                 print(f'      {bad}')
                 print(f'      {sid}; sections in {out_dir}/{bid}/')
             print("  Out of order means top-of-bank came out too HIGH for the "
-                  "100-yr depth, so read the rejected sections in\n"
-                  "  summary.csv before re-cutting. Two causes, two remedies:\n\n"
-                  "    topbank 9-18 ft on a small branch -> the cut ran to a "
-                  "valley wall. Narrow it:\n")
+                  "100-yr depth. The DIAGNOSIS line printed above each\n"
+                  "  reach names which detection failure dominates and which "
+                  "remedy it implies - they are opposite, so do not\n"
+                  "  guess. If it says width, this is the re-cut:\n")
             for bid in badth:
                 w0 = DEFAULT_WIDTH.get(bid, 250)
                 print(f'      python xs_from_3dep.py --basin {bid} '
                       f'--width {int(w0 * 0.7)} --out-dir xs_narrow')
-            print("\n    bankfull near 0.00 on many sections -> the cut is not "
-                  "centred on the channel. NHD headwater\n"
-                  "    flowlines are derived, not surveyed, and can sit tens "
-                  "of feet off the real thalweg. Narrowing\n"
-                  "    makes that WORSE. Plot two or three section CSVs first; "
-                  "if the channel is off-centre or absent,\n"
-                  "    the fix is a hand-drawn --centerline, not a width.")
+            print("\n  If it says centerline, narrowing makes it WORSE - "
+                  "supply --centerline instead. summary.csv now carries a\n"
+                  "  `why` and `thalweg_offset_frac` column per section if you "
+                  "want to check the call yourself.")
     return 0
 
 

@@ -230,13 +230,21 @@ know anything about the network topology.
 
 **`DO NOT PASTE — out of order`** (EMERGENCY ≤ WARNING). Hard reject. The
 ladder would escalate backwards, which is worse than the placeholder it would
-replace. The reach keeps its existing `thr_ft` and the script prints the
-re-cut command. Read the rejected sections in `summary.csv` first:
+replace. The reach keeps its existing `thr_ft`.
 
-| symptom | cause | remedy |
+**You do not have to plot CSVs to work out why.** The script prints a
+`DIAGNOSIS:` line per reach. The two failures want *opposite* fixes, so a wrong
+guess makes the reach worse — that is the whole reason it does the reading:
+
+| DIAGNOSIS | what it saw | remedy |
 |---|---|---|
-| topbank 9–18 ft on a small branch | cut ran to a valley wall | narrow `--width` |
-| bankfull 0.00–0.36 ft on many sections | cut not centred on the channel | hand-drawn `--centerline`; narrowing makes it **worse** |
+| **width** | sections ran to a hillside, thalweg near the centre of the cut | re-cut narrower (command is printed) |
+| **centerline** | thalweg persistently >45% of the half-width off centre — the NHD flowline is not on the water | hand-drawn `--centerline`. Narrowing makes it **worse**: it crops away the channel you already missed |
+| **no channel resolved** | flat at the low point, thalweg centred | smaller `--spacing` and more `--npts` before touching width |
+| **mixed** | no single failure dominates | re-cut narrower first (cheap), then read the line again |
+
+`summary.csv` carries `why` and `thalweg_offset_frac` per section if you want to
+check the call yourself.
 
 **`CAUTION — tight ladder`** (WARNING < 0.5 ft above WATCH). Not a reject. On a
 small steep incised branch there is no bankfull bench distinct from

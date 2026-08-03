@@ -45,7 +45,7 @@
         "DATA_SOURCE": "NONE",
         "DATUM_VERIFIED": false,
         "DATUM_SOURCE": "NCEM FIMAN site 25380; disputed by NWS CUCN7 by 1.00 ft",
-        "ELEVATION_NOTE": "MSL fields suppressed: gage datum unresolved (NCEM 2125.0 vs NWS 2126.0). Use HYDRO_ALL_STAGE and the FX_*_STAGE thresholds.",
+        "ELEVATION_NOTE": "MSL fields suppressed: gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only. Use HYDRO_ALL_STAGE and the FX_*_STAGE thresholds.",
         "REFERENCE_GAGE": "25380",
         "AHPS_URL": "https://water.noaa.gov/gauges/cucn7",
         "FX_SHADOW_MODE": true,

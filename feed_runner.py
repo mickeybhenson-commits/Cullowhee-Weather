@@ -90,10 +90,38 @@ def publish_external(outdir: Path, now: datetime) -> None:
         (outdir / "external.json").write_text(json.dumps(out, indent=2))
         return
 
-    def _try(name, fn):
+    def _empty(v):
+        """Did this feed come back carrying nothing usable?
+
+        `ok` used to mean only "fn() did not raise". SERFC gridded FFG has been
+        answering 200 with {"ffg1h": null, "ffg3h": null, "ffg6h": null} and
+        being published as ok since at least 2026-07-30 - so anything reading
+        this file saw a healthy flash-flood-guidance feed and had no guidance.
+        A status field that says ok for a feed with no data in it is worse than
+        one that says ERR, because nobody goes looking.
+        """
+        if v is None:
+            return True
+        if isinstance(v, dict):
+            if v.get("error"):
+                return True
+            vals = [x for k, x in v.items()
+                    if k not in ("source", "endpoint", "site_id", "nws_lid",
+                                 "reach", "reach_is_cullowhee", "note", "status")]
+            return bool(vals) and all(x is None or x == [] or x == {} for x in vals)
+        if isinstance(v, (list, tuple, str)):
+            return len(v) == 0
+        return False
+
+    def _try(name, fn, allow_empty=False):
+        """allow_empty: this feed returning nothing is a NORMAL state, not a
+        fault. `alerts` is the case that matters - no active NWS alert is the
+        good day, and flagging it would train people to ignore the status
+        line. Everywhere else, nothing back means no data, and it says so."""
         try:
             out[name] = fn()
-            out["status"][name] = "ok"
+            out["status"][name] = ("ok" if allow_empty or not _empty(out[name])
+                                   else "empty")
         except Exception as e:
             out[name] = None
             out["status"][name] = type(e).__name__
@@ -112,7 +140,7 @@ def publish_external(outdir: Path, now: datetime) -> None:
                 "series": feeds.nwm_forecast(rid)[:36]}
 
     _try("usgs", _usgs)
-    _try("alerts", lambda: feeds.active_alerts()[:5])
+    _try("alerts", lambda: feeds.active_alerts()[:5], allow_empty=True)
     _try("ffg_in", feeds.ffg_at)
     _try("nwm", _nwm)
 

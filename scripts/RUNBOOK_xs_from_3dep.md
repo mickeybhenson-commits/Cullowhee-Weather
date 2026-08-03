@@ -4,6 +4,11 @@ Closes open safety item #1 in `claude/NOAH_SCOPE_no_lost_lives.md`: six of the
 seven in-scope reaches, including **every tributary**, have no surveyed channel
 geometry and are running on `bankfull x (1.0, 1.5, 2.0)` arithmetic thresholds.
 
+**Status 2026-08-03 (commit `f4026bb`): five of the six are closed** —
+Speedwell, Tilley Creek, Mtn. Lower, Cox Branch and Long Branch now carry
+LiDAR-cut thresholds in `basins.py`. **`CC-UP-503` (Upper Cullowhee) is still
+open**, withheld because its ladder came out non-monotone; see step 6.
+
 Run on your workstation. A sandboxed session cannot reach 3DEP or NLDI.
 
 ---
@@ -151,14 +156,32 @@ mainstem; the small tributaries want less.
 python xs_from_3dep.py --basin CC-COX-097 --spacing 500 --width 150 --nav-km 3 --out-dir xs_scout
 ```
 
+## 4b · Validation run — the one reach with surveyed truth
+
+Do this **before** the production run, every time the selection logic changes.
+CC-WCU-2260 is the only reach where FRIS-RAS gives real geometry to check
+against, so it is the method's only calibration:
+
+```
+python xs_from_3dep.py --basin CC-WCU-2260 --out-dir xs_check
+```
+
+Expect `thr_ft=(2.2, 4.63, 9.12)` — top-of-bank 4.63 against FRIS 4.1 (+13%),
+100-yr depth 9.12 against 9.5 (−4%). If this moves, nothing downstream is
+trustworthy and the six unsurveyed reaches are not worth cutting.
+
 ## 5 · Production run — all six reaches
 
 ```
-python xs_from_3dep.py --spacing 300 --width 250 --out-dir xs_out
+python xs_from_3dep.py --out-dir xs_out
 ```
 
 With no `--basin` it targets all six uncovered reaches: Speedwell, Tilley
 Creek, Mtn. Lower, Upper Cullowhee, Cox Branch, Long Branch.
+
+Do **not** pass a global `--width` here. Each reach has its own default sized
+to its channel (Cox Branch 140 ft, the campus mainstem 260 ft); one flag
+overrides all of them and drowns the small branches in floodplain.
 
 **This takes a while.** One 3DEP request per section plus a 0.4 s pause; at
 300 ft spacing across the upstream network expect several hundred sections and
@@ -174,15 +197,83 @@ xs_out\thresholds_lidar.py    SURVEYED_THR dict
 xs_out\<basin>\*.csv          station/elevation per section
 ```
 
-The script prints the exact `thr_ft` / `thr_src` lines to paste. Each reach
-takes its **controlling section** — the one that goes out of bank soonest, not
-the average. Under the project scope the weakest point is the one that matters.
+### How a reach picks its numbers
+
+NLDI hands back several **runs** per polygon — the channel through the
+incremental area plus the tributaries joining it. The script does **not** pick
+one run. It ranks every cut section by thalweg elevation and pools the lowest
+ones **across runs**:
+
+- lowest third of the reach, floor 5 sections, cap 15 (~0.85 mi at 300 ft)
+- widened only if bank detection starved the base window
+- WATCH / WARNING / EMERGENCY are the **median** over that pool
+
+The reason is dimensional. `thr_ft` describes stage at the **pour point**, and
+`REG_Q100` is the pour-point discharge, so the geometry it is routed through
+has to be near the pour point too — a section 1.5 mi upstream drains a fraction
+of the area and over-deepens the answer. Sub-basin polygons are drainage
+divides, so the lowest thalweg *is* the pour point.
+
+The output prints the pool for each reach:
+
+```
+    run 0: 10 sections (9 passing), thalweg 2083.7-2095.2 ft
+    run 1: 19 sections (17 passing), thalweg 2106.1-2134.2 ft
+    pour-point pool: 9 of 29 sections, thalweg 2083.7-2095.2 ft, run(s) 0
+```
+
+That 10.9 ft step between run 0's top and run 1's bottom is the tributary
+junction — which is why pooling by elevation separates them without needing to
+know anything about the network topology.
+
+### Two failure verdicts, and they mean different things
+
+**`DO NOT PASTE — out of order`** (EMERGENCY ≤ WARNING). Hard reject. The
+ladder would escalate backwards, which is worse than the placeholder it would
+replace. The reach keeps its existing `thr_ft` and the script prints the
+re-cut command. Read the rejected sections in `summary.csv` first:
+
+| symptom | cause | remedy |
+|---|---|---|
+| topbank 9–18 ft on a small branch | cut ran to a valley wall | narrow `--width` |
+| bankfull 0.00–0.36 ft on many sections | cut not centred on the channel | hand-drawn `--centerline`; narrowing makes it **worse** |
+
+**`CAUTION — tight ladder`** (WARNING < 0.5 ft above WATCH). Not a reject. On a
+small steep incised branch there is no bankfull bench distinct from
+top-of-bank — Cox Branch reads bankfull == top-of-bank on several sections — so
+a ~1 ft span from bankfull to the 100-yr is the channel telling the truth. It
+is emitted with the caution attached; expect WATCH and WARNING to fire close
+together there.
+
+### Sanity check before you accept anything
+
+Compare each new **top-of-bank** against the Bieger regional bankfull already
+in `basins.py`. LiDAR should read a little *deeper*, since it finds
+top-of-bank rather than bankfull. The 2026-08-03 cut:
+
+| reach | LiDAR topbank | Bieger bankfull |
+|---|---|---|
+| CC-SPD-1830 | 2.75 | 2.71 |
+| CC-TIL-705 | 2.41 | 2.02 |
+| CC-MS-1100 | 2.79 | 2.32 |
+| CC-COX-097 | 2.00 | 1.11 |
+| CC-LB-171 | 2.73 | 1.31 |
+
+If a reach comes out *below* its regional bankfull, something is wrong.
 
 ## 7 · Update `basins.py`
 
-Replace `thr_ft` and `thr_src` for each of the six. Keep
-**`CC-WCU-2260` untouched** — its 7 / 9 / 11 ft is field-validated (11 ft =
-water in the road) and no LiDAR cut beats a real observation.
+**Done for five reaches as of commit `f4026bb`** — Speedwell, Tilley, Mtn.
+Lower, Cox Branch and Long Branch now carry `SURVEYED:` provenance. Re-running
+should reproduce them; if it doesn't, that is a finding, so say so rather than
+overwriting.
+
+Still to do: **`CC-UP-503`**, withheld as out-of-order. See step 6.
+
+Keep **`CC-WCU-2260` untouched** — its 7 / 9 / 11 ft is field-validated (11 ft =
+water in the road) and no LiDAR cut beats a real observation. It is cut anyway,
+as the method's only check against surveyed truth: the run must reproduce
+`(2.20, 4.63, 9.12)`, against FRIS-RAS top-of-bank 4.1 ft and d100 9.5 ft.
 
 ## 8 · Expect the live map NOT to change
 

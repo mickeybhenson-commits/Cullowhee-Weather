@@ -271,11 +271,11 @@
   // but the terrain and stream network underneath still have to read through
   // it. Stale and pending step down from here rather than being separate
   // guesses, so the ladder stays proportional if this is retuned.
-  var FILL_OPACITY = 0.30;
-  var FILL_STALE   = 0.30;   /* was 0.18 - fill reads 30% in every state now; */
-  var FILL_PENDING = 0.30;   /* was 0.15 - staleness stays marked by hue (SEV */
-                             /* .STALE / .PENDING grey), the age line in the   */
-                             /* popup, and the grid-age banner. */
+  var FILL_OPACITY = 0.10;
+  var FILL_STALE   = 0.10;   /* fill reads 10% in every state; staleness stays */
+  var FILL_PENDING = 0.10;   /* marked by hue (SEV.STALE / SEV.PENDING grey),  */
+                             /* the age line in the popup, and the grid-age    */
+                             /* banner - not by opacity. */
 
   var SEV = {
     BELOW:        "#1A7A52",
@@ -445,6 +445,15 @@
     probePalettes(function(list){ fillPalettes(list); drawTiles(); });
   }
 
+  // ---------- sub-basin label placement ----------
+  // Pixels each sub-basin name is pushed EAST of its label point.
+  var LBL_EAST_PX = 60;                        // default for every basin
+  var LBL_EAST_BY_ID = { "CC-MS-1100": 30 };   // Mtn. Lower: held at its current spot
+  function eastPxFor(bid){
+    return (bid && Object.prototype.hasOwnProperty.call(LBL_EAST_BY_ID, bid))
+      ? LBL_EAST_BY_ID[bid] : LBL_EAST_PX;
+  }
+
   // ---------- sub-basin outlines ----------
   if (HAS_L) fetch("cullowhee_subbasins.geojson?v=" + Date.now())
     .then(function(r){ return r.json(); })
@@ -490,9 +499,13 @@
         if (p.label_lat && p.label_lon){
           L.marker([p.label_lat, p.label_lon], {
             interactive:false,
-            /* anchor x 46 -> 16 shifts every label 30 px EAST of its point
-               (the icon box is 92 px wide; 46 = centred). */
-            icon: L.divIcon({className:'lbl', html:esc(p.name), iconSize:[92,14], iconAnchor:[16,7]})
+            /* Label placement. The icon box is 92 px wide, so anchor x=46 is
+               centred on the label point; every px subtracted moves the name
+               EAST. LBL_EAST_PX is the default; LBL_EAST_BY_ID overrides it per
+               basin (CC-MS-1100 / "Mtn. Lower" is held back - it already sits
+               far enough east and would run off its polygon). */
+            icon: L.divIcon({className:'lbl', html:esc(p.name), iconSize:[92,14],
+                             iconAnchor:[46 - eastPxFor(p.basin_id), 7]})
           }).addTo(map);
         }
       });

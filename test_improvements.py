@@ -138,17 +138,29 @@ class TestHeleneBacktest(unittest.TestCase):
     def test_validates(self):
         self.assertTrue(bt.main(), "Helene back-test must validate")
 
-    def test_four_reaches_corrected(self):
+    def test_frequency_never_under_warns(self):
+        # §2's claim is an invariant, not a cast list: above bankfull the
+        # rectangular stage rating collapses, so frequency posture must never
+        # come out BELOW stage posture on a non-campus reach, and under the
+        # 10-in Type II it must still rescue most of them. The old assertion
+        # froze WHICH four were rescued, which encoded the placeholder thr_ft
+        # and broke the moment five reaches got real LiDAR sections
+        # (2026-08-03) — with no physics changing. See GT_STRESS_MIN_CORRECTED.
         rows = bt.run()
-        fixed = []
+        fixed, under = [], []
         rank = {"NORMAL": 0, "WATCH": 1, "WARNING": 2, "EMERGENCY": 3}
         for r in rows:
             if r["bid"] in ("CC-WCU-2260", "CC-MOUTH-2340"):
                 continue
-            if rank[r["eng_posture"]] > rank[r["eng_stage_posture"]]:
+            hi, lo = rank[r["eng_posture"]], rank[r["eng_stage_posture"]]
+            if hi > lo:
                 fixed.append(r["bid"])
-        self.assertEqual(set(fixed),
-                         {"CC-UP-503", "CC-TIL-705", "CC-MS-1100", "CC-SPD-1830"})
+            elif hi < lo:
+                under.append(r["bid"])
+        self.assertEqual(under, [],
+                         f"frequency posture under-warns vs stage on {under}")
+        self.assertGreaterEqual(len(fixed), bt.GT_STRESS_MIN_CORRECTED,
+                                f"only {len(fixed)} reaches rescued: {fixed}")
 
     def test_campus_emergency_design_storm(self):
         # bt.run() is the DESIGN-STORM stress test (10 in Type II), not the

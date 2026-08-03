@@ -52,8 +52,22 @@ REAL_HYETO_CSV = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 # --- ground truth -----------------------------------------------------------
 GT_RUNOFF_RATIO = (0.38, 0.44)          # ~40% (WCU study; shape-independent volume)
-# Scenario A (design-storm stress test): the §2 fix must raise exactly these four.
-GT_STRESS_CORRECTED = {"CC-UP-503", "CC-TIL-705", "CC-MS-1100", "CC-SPD-1830"}
+# Scenario A (design-storm stress test). What §2 claims is an INVARIANT, not a
+# cast list: the rectangular stage rating collapses above bankfull, so
+# frequency posture must never sit BELOW stage posture, and under a 10-in
+# Type II it must still rescue most of the tributaries.
+#
+# This was the frozen set {UP-503, TIL-705, MS-1100, SPD-1830} until
+# 2026-08-03. That set was frozen against PLACEHOLDER thr_ft — bankfull x
+# (1.0, 1.5, 2.0) arithmetic. When five reaches were re-cut from NC QL2 LiDAR
+# the membership moved, with no physics changing:
+#   CC-SPD-1830  EMERGENCY 5.42 -> 4.71 ft, so its STAGE posture now reaches
+#                EMERGENCY too and it drops OUT of the rescued set
+#   CC-COX-097   1.67/2.22 -> 2.00/2.54 and CC-LB-171 1.97/2.62 -> 2.73/3.24,
+#                so their stage posture no longer gets there and they join it
+# Re-freezing membership would only re-encode today's thresholds and break
+# again at the next survey. Assert the invariant instead.
+GT_STRESS_MIN_CORRECTED = 4        # of the 6 non-campus, non-mouth reaches
 # Scenario B (observed): surveyed NCGS marks, +/-0.05 ft, NAVD88. WSE-per-AEP
 # interpolated to each mark from the FRIS effective profile; the observed model
 # peak flow pushed through that rating must land within tolerance of the survey.
@@ -162,6 +176,7 @@ def _sectionA(rows):
            f"{'NEW (freq)':<12}{'confidence':<16}verdict")
     print(hdr); print("-" * len(hdr))
     fixed = []
+    underwarn = []          # frequency posture BELOW stage posture — must be empty
     for r in rows:
         bid = r["bid"]
         a_post = r["eng_posture"]; old = r["eng_stage_posture"]
@@ -178,14 +193,17 @@ def _sectionA(rows):
             elif a_post == old:
                 verdict = "agree"
             else:
-                verdict = "changed"
+                verdict = "*** UNDER-WARNS vs STAGE ***"; underwarn.append(bid)
         print(f"{bid:14s}{r['eng_calib_q']:9d}{str(rp):>7}  {old:<12}{a_post:<12}{conf:<16}{verdict}")
     print("-" * len(hdr))
     print(f"Under-warning corrected on {len(fixed)} reaches: {', '.join(fixed)}")
+    if underwarn:
+        print(f"INVARIANT VIOLATED - frequency posture sits BELOW stage posture "
+              f"on: {', '.join(underwarn)}")
     print("The stage rating collapses above bankfull (~4-5 ft where the FIS 100-yr is ~10.8 ft")
     print("above bed); discharge-frequency classification fixes it. This is the §2 demonstration,")
     print("independent of Helene's actual magnitude.")
-    return fixed
+    return fixed, underwarn
 
 
 def _sectionB(rows_obs):
@@ -222,15 +240,16 @@ def main():
           f"  (GT {GT_RUNOFF_RATIO[0]:.0%}-{GT_RUNOFF_RATIO[1]:.0%})  "
           f"{'PASS' if c_runoff else '**FAIL**'}\n")
 
-    fixed = _sectionA(stress)
+    fixed, underwarn = _sectionA(stress)
     ok_marks = _sectionB(obs)
 
-    c_stress = set(fixed) == GT_STRESS_CORRECTED
+    c_stress = not underwarn and len(fixed) >= GT_STRESS_MIN_CORRECTED
     print("\n" + "=" * 92)
     passed = c_runoff and c_stress and ok_marks
     print(f"RESULT: {'VALIDATED' if passed else 'REVIEW'}  -  "
           f"runoff {'ok' if c_runoff else 'FAIL'}; "
-          f"§2 stress test corrected {len(fixed)}/4 reaches {'ok' if c_stress else 'FAIL'}; "
+          f"§2 stress test corrected {len(fixed)}/6 reaches, "
+          f"{len(underwarn)} under-warning {'ok' if c_stress else 'FAIL'}; "
           f"observed marks {'matched' if ok_marks else 'FAIL'}.")
     print("Observed Helene peak ~5-10 yr (rain ~200-yr, ~40% runoff); campus posture unresolved.")
     print("=" * 92)

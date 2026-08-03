@@ -10,7 +10,8 @@ PROVENANCE OF EVERY NUMBER
   tva_*   : TVA (1983) FPM-83/51, Tables 2/3 + profiles              [GOV_ESTIMATE]
   section : Bieger (2015) regional bankfull curves + slope + n       [MODELED]
   calib   : maps this model's TR-55/UH peak onto regression          [derived]
-  thr_ft  : campus = receptor-validated; others = PLACEHOLDER        [see thr_src]
+  thr_ft  : campus = receptor-validated; 5 reaches = NC QL2 LiDAR    [see thr_src]
+            cut from 3DEP; CC-UP-503 still PLACEHOLDER
   learned / stage_sensor : empty until events / sensors arrive       [MEASURED, future]
   tc_min / lead_req_min  : time-of-concentration + operational lead   [see tc_src]
 
@@ -27,11 +28,18 @@ NESTING - these are cumulative points down ONE mainstem, NOT independent areas:
   OVERLAP and must never be summed. (Confirm exact confluence order vs flood_network.)
 
 WHAT IS STILL OPEN (flagged per record)
-  - thr_ft for the 7 non-campus reaches are placeholders; they need a surveyed
-    top-of-bank or an observed receptor (the campus has the road datum, they don't).
-    NOTE: as of the 2026-07 improvement set, posture for these 7 reaches is taken
-    from discharge return-period (see flood_rating.classify), which sidesteps the
-    invalid out-of-bank stage rating. thr_ft is retained as a cross-check only.
+  - thr_ft: 2026-08-03, five of the six unsurveyed reaches were cut from NC QL2
+    LiDAR via the USGS 3DEP ImageServer (scripts/xs_from_3dep.py) and now carry
+    real channel geometry instead of bankfull x (1.0, 1.5, 2.0) arithmetic.
+    The method was validated on CC-WCU-2260, the one reach with surveyed truth:
+    top-of-bank 4.63 ft against FRIS-RAS 4.1, 100-yr depth 9.12 against 9.5.
+    STILL OPEN: CC-UP-503. Its ladder came out non-monotone (EMERGENCY 3.94 <=
+    WARNING 4.49) because bank detection fails on 36% of its sections - the
+    steepest basin (S=0.089), where NHD headwater flowlines sit off the real
+    thalweg. It keeps its placeholder until re-cut.
+    NOTE: posture for these 7 reaches is still taken from discharge return-period
+    (see flood_rating.classify), which sidesteps the invalid out-of-bank stage
+    rating. thr_ft is a cross-check until that decision is revisited.
   - `role` (warning point vs contributor) PENDING for the tributaries; set from map.
   - Long Branch discharge is soft: TVA (~445) and StreamStats (294) disagree 1.5x
     at the 10-yr (both within the StreamStats prediction interval).
@@ -90,7 +98,7 @@ BASINS = {
     bankfull_curve="Blue Ridge P (DA 11 > 5.46 floor)",
     out_of_bank_10yr=1.09, tva_wse=None, bed_ft=None, 
     learned=[dict(HELENE_2024, note="upstream NCGS marks 4827-4829 (2128.02-2132.75 NAVD88) bracket this reach outlet")],
-    thr_ft=(2.32, 3.48, 4.64), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    thr_ft=(1.65, 2.79, 4.82), thr_src="SURVEYED: NC QL2 LiDAR via USGS 3DEP, pour-point pool, 13 of 122 sections, thalweg 2149-2181 ft, median; WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q through the real section (conveyance-weighted Manning). Method validated on CC-WCU-2260 against FRIS-RAS: top-of-bank 4.63 vs 4.1 ft, d100 9.12 vs 9.5 ft",
     tc_min=86, tc_src="Kirpich 86 vs NRCS-wet 142 (ambiguous); calibration absorbs the spread",
     stage_sensor=None,
     note="Tc ambiguous (Kirpich 86 vs NRCS-wet 142 min); calibration absorbs the spread."),
@@ -106,7 +114,7 @@ BASINS = {
     section=dict(w=38.4, d=2.02, n=0.050, s=0.0547),                 # Bieger Blue Ridge P (in range)
     bankfull_curve="Blue Ridge P (DA 7.05 > 5.46 floor)",
     out_of_bank_10yr=1.15, tva_wse=None, bed_ft=None, learned=None,
-    thr_ft=(2.02, 3.03, 4.04), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    thr_ft=(1.77, 2.41, 4.58), thr_src="SURVEYED: NC QL2 LiDAR via USGS 3DEP, pour-point pool, 12 of 97 sections, thalweg 2153-2199 ft, median; WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q through the real section (conveyance-weighted Manning). Method validated on CC-WCU-2260 against FRIS-RAS: top-of-bank 4.63 vs 4.1 ft, d100 9.12 vs 9.5 ft",
     tc_min=62, tc_src="Kirpich (buildsheet)",
     stage_sensor=None, note=""),
 
@@ -122,7 +130,7 @@ BASINS = {
     bankfull_curve="Blue Ridge P (DA 18.3 > 5.46 floor)",
     out_of_bank_10yr=1.07, tva_wse=None, bed_ft=None, 
     learned=[dict(HELENE_2024, marks={4827: 2131.707, 4828: 2132.754, 4829: 2128.020}, note="NCGS marks just downstream of pour (Speedwell reach), NAVD88, +/-0.05 ft")],
-    thr_ft=(2.71, 4.07, 5.42), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    thr_ft=(1.47, 2.75, 4.71), thr_src="SURVEYED: NC QL2 LiDAR via USGS 3DEP, pour-point pool, 6 of 18 sections, thalweg 2139-2141 ft, median; WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q through the real section (conveyance-weighted Manning). Method validated on CC-WCU-2260 against FRIS-RAS: top-of-bank 4.63 vs 4.1 ft, d100 9.12 vs 9.5 ft",
     tc_min=91, tc_src="Kirpich (buildsheet); NRCS-wet 146",
     stage_sensor=None, note=""),
 
@@ -137,7 +145,7 @@ BASINS = {
     section=dict(w=15.0, d=1.11, n=0.045, s=0.1000),                 # Bieger App-Highlands-D
     bankfull_curve="Appalachian Highlands D (Blue Ridge eq EXCLUDED: DA 0.97 < 5.46 floor)",
     out_of_bank_10yr=1.09, tva_wse=None, bed_ft=None, learned=None,
-    thr_ft=(1.11, 1.67, 2.22), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    thr_ft=(1.67, 2.0, 2.54), thr_src="SURVEYED: NC QL2 LiDAR via USGS 3DEP, pour-point pool, 8 of 29 sections, thalweg 2101-2174 ft, median; TIGHT LADDER - WARNING is only 0.33 ft above WATCH, which is real for an incised steep branch (bankfull == top-of-bank on several sections), not a detection failure; WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q through the real section (conveyance-weighted Manning). Method validated on CC-WCU-2260 against FRIS-RAS: top-of-bank 4.63 vs 4.1 ft, d100 9.12 vs 9.5 ft",
     tc_min=29, tc_src="Kirpich (buildsheet); NRCS-wet 52. Flashiest reach.",
     stage_sensor=None, note="Lead-limited (Tc<120). Below Bieger Blue Ridge floor."),
 
@@ -155,7 +163,7 @@ BASINS = {
     out_of_bank_10yr=1.18,
     tva_wse={10:(380,2128.2), 100:(830,2130.3), 500:(1275,2131.9)},  # Table 3 XS3 mile 0.44 (open ch)
     bed_ft=None, learned=None,
-    thr_ft=(1.31, 1.97, 2.62), thr_src="PLACEHOLDER: bankfull x(1.0,1.5,2.0); needs surveyed receptor",
+    thr_ft=(1.65, 2.73, 3.24), thr_src="SURVEYED: NC QL2 LiDAR via USGS 3DEP, pour-point pool, 8 of 36 sections, thalweg 2099-2155 ft, median; WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q through the real section (conveyance-weighted Manning). Method validated on CC-WCU-2260 against FRIS-RAS: top-of-bank 4.63 vs 4.1 ft, d100 9.12 vs 9.5 ft",
     tc_min=36, tc_src="Kirpich (buildsheet); NRCS-wet 62",
     stage_sensor=None,
     note="Contributor to campus, not standalone. Discharge soft: TVA 445 vs reg 294 at 10-yr."),

@@ -127,6 +127,17 @@ DEFAULT_WIDTH = {
 }
 DEFAULT_SPACING = {"CC-SPD-1830": 60.0}
 
+# Pour-point pool. The threshold describes stage at the reach's POUR POINT, and
+# REG_Q100 below is the discharge AT that pour point — so the geometry it is
+# routed through has to be the geometry near it. A section 1.5 mi upstream
+# drains a fraction of the area; pushing the outlet discharge through it
+# over-deepens the answer. Sub-basin polygons are drainage divides, so the
+# lowest thalweg IS the pour point: rank every cut section by thalweg and keep
+# the lowest third of the reach, capped at ~0.85 mi of channel at 300 ft.
+POOL_FRAC = 1.0 / 3.0   # lowest third of the reach by thalweg rank
+POOL_MIN = 5            # never fewer than this many passing sections
+POOL_MAX = 15           # ~0.85 mi upstream of the pour point at 300 ft spacing
+
 # Reaches with NO surveyed channel geometry on their own watercourse.
 # Corrected 2026-08-03: an earlier pass measured distance to the nearest
 # section and wrongly counted Cox Branch and Long Branch as covered.
@@ -564,26 +575,68 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                   f"{'' if b['ok'] else '   <-- bank detection rejected'}")
 
         if good:
-            # A sub-basin polygon can contain more than one channel: the trunk
-            # and a small tributary. On CC-WCU-2260 the second run sat 25-50 ft
-            # ABOVE the first and, with 19 of 29 sections, dragged the pooled
-            # d100 from 9.11 ft (FRIS truth 9.5) down to 7.71. Pick the TRUNK —
-            # lowest median thalweg — and take thresholds only from it.
+            # A sub-basin polygon holds more than one flowline run: the channel
+            # through the incremental area plus the tributaries joining it.
+            #
+            # The previous rule — "trunk = the run with the lowest MEDIAN
+            # thalweg, take thresholds only from it" — worked on CC-WCU-2260
+            # and was wrong on four of the six unsurveyed reaches. A run
+            # clipped by the polygon boundary to one or two sections sits at
+            # the outlet elevation, so its median is lower than that of the
+            # real channel descending through the whole basin, and it wins:
+            #
+            #   CC-COX-097   run 0 = 28 sections, 2591.6 -> 2100.9   discarded
+            #                run 1 =  1 section  at        2101.0    PICKED
+            #   CC-LB-171    run 1 = 35 sections                     discarded
+            #                run 0 =  1 section, detection failed    PICKED
+            #   CC-UP-503    run 1 = 25 sections, 3800 -> 2710       discarded
+            #                run 2 =  6 sections                     PICKED
+            #
+            # So do not select a run at all. Rank sections by thalweg and pool
+            # the lowest ones ACROSS runs — that is what "stage at the pour
+            # point" means, and it is also the only geometry dimensionally
+            # consistent with REG_Q100, which is the pour-point discharge.
+            #
+            # On CC-WCU-2260 this reproduces the FRIS-validated answer exactly:
+            # 29 sections cut, so the window is the 10 lowest, which are
+            # r0_000..r0_009 at 2083.7-2095.2 ft (run 1 bottoms out at 2106.1,
+            # 10.9 ft higher — that step IS the tributary junction). Nine pass
+            # detection, and their medians are 2.20 / 4.63 / 9.12 — the same
+            # ladder the trunk rule produced, against FRIS 4.1 ft top-of-bank
+            # and 9.5 ft d100.
             runs = {}
             for r in good:
                 runs.setdefault(r["run"], []).append(r)
-            trunk = min(runs, key=lambda k: np.median(
-                [r["thalweg_elev_ft"] for r in runs[k]]))
             if len(runs) > 1:
                 for k in sorted(runs):
-                    med = np.median([r["thalweg_elev_ft"] for r in runs[k]])
-                    print(f"    run {k}: {len(runs[k])} sections, median thalweg "
-                          f"{med:.1f} ft{'   <-- TRUNK' if k == trunk else ''}")
-            pool = [r for r in runs[trunk] if r["ok"]]
+                    ev = sorted(r["thalweg_elev_ft"] for r in runs[k])
+                    npass = sum(1 for r in runs[k] if r["ok"])
+                    print(f"    run {k}: {len(runs[k])} sections "
+                          f"({npass} passing), thalweg {ev[0]:.1f}-{ev[-1]:.1f} ft")
+
+            by_elev = sorted(good, key=lambda r: r["thalweg_elev_ft"])
+            k_win = min(max(POOL_MIN, int(round(len(good) * POOL_FRAC))), POOL_MAX)
+            pool = [r for r in by_elev[:k_win] if r["ok"]]
+            # If bank detection starved the base window, walk further upstream
+            # until there are enough passing sections to take a median of.
+            i = k_win
+            while len(pool) < POOL_MIN and i < len(by_elev):
+                if by_elev[i]["ok"]:
+                    pool.append(by_elev[i])
+                i += 1
             if not pool:
-                print("    every section in the trunk run failed bank detection "
-                      "- no threshold emitted", file=sys.stderr)
+                print(f"    no section passed bank detection ({len(good)} cut) "
+                      f"- no threshold emitted", file=sys.stderr)
                 continue
+            pev = sorted(r["thalweg_elev_ft"] for r in pool)
+            pruns = sorted({r["run"] for r in pool})
+            print(f"    pour-point pool: {len(pool)} of {len(good)} sections, "
+                  f"thalweg {pev[0]:.1f}-{pev[-1]:.1f} ft, "
+                  f"run(s) {','.join(str(x) for x in pruns)}"
+                  f"{'  (window widened for passing sections)' if i > k_win else ''}")
+            if len(pool) < POOL_MIN:
+                print(f"    NOTE: only {len(pool)} passing section(s) in {bid} "
+                      f"- threshold is weakly supported", file=sys.stderr)
             # MEDIAN, calibrated against surveyed truth. On CC-WCU-2260,
             # where FRIS gives channel_depth 4.1 ft and d100 9.5 ft:
             #     20th pct  topbank 2.74 (-33%)   d100 8.55 (-10%)
@@ -603,16 +656,35 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
             w_, g_, e_ = (med("bankfull_depth_ft"), med("topbank_depth_ft"),
                           med("d100_above_thalweg_ft"))
             tbv = sorted(r["topbank_depth_ft"] for r in pool)
-            print(f"    top-of-bank across {len(pool)} trunk sections: "
+            print(f"    top-of-bank across the {len(pool)} pooled sections: "
                   f"min {tbv[0]:.2f}  median {g_:.2f}  max {tbv[-1]:.2f}")
-            if g_ - w_ < 0.5 or e_ <= g_:
-                print(f"    WARNING: ladder is not monotone with margin "
-                      f"({w_:.2f} / {g_:.2f} / {e_:.2f}) - inspect before use",
-                      file=sys.stderr)
-            ctl = min(pool, key=lambda r: r["topbank_depth_ft"])
+            # Two different failures, and they do NOT deserve the same answer.
+            #
+            # Out of ORDER is a hard reject. EMERGENCY at or below WARNING
+            # means the ladder would escalate backwards; it is worse than the
+            # placeholder it replaces and must not reach basins.py.
+            #
+            # TIGHT but ordered is only a caution. On a small steep incised
+            # branch there is no bankfull bench distinct from top-of-bank —
+            # Cox Branch reads bankfull == top-of-bank on several sections —
+            # so the whole span from bankfull to the 100-yr is genuinely about
+            # a foot. That is the channel telling the truth, not a detection
+            # failure, and rejecting it just leaves a less-grounded arithmetic
+            # placeholder in its place. Emit it, flag it.
+            bad = ""
+            note = ""
+            if e_ <= g_:
+                bad = (f"EMERGENCY {e_:.2f} <= WARNING {g_:.2f} — the 100-yr "
+                       f"discharge does not reach top-of-bank")
+                print(f"    REJECTED: {bad}", file=sys.stderr)
+            elif g_ - w_ < 0.5:
+                note = (f"tight ladder: WARNING is only {g_ - w_:.2f} ft above "
+                        f"WATCH — expect the two to fire close together")
+                print(f"    CAUTION: {note}", file=sys.stderr)
             thresholds[bid] = (round(w_, 2), round(g_, 2), round(e_, 2),
-                               f"run {trunk}, {len(pool)} of {len(good)} sections "
-                               f"passing, median", len(pool))
+                               f"pour-point pool, {len(pool)} of {len(good)} "
+                               f"sections, thalweg {pev[0]:.0f}-{pev[-1]:.0f} ft, "
+                               f"median", len(pool), bad, note)
 
     if summary:
         with open(os.path.join(out_dir, "summary.csv"), "w", newline="") as f:
@@ -627,17 +699,49 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                     'datum-free.\nWATCH=bankfull  WARNING=top-of-bank  '
                     'EMERGENCY=100-yr through the real section.\n"""\n'
                     "SURVEYED_THR = {\n")
-            for bid, (a, b_, c, sid, n) in thresholds.items():
-                f.write(f'    "{bid}": ({a}, {b_}, {c}),  # {sid}\n')
+            for bid, (a, b_, c, sid, n, bad, note) in thresholds.items():
+                mark = ("  # REJECTED: " + bad if bad
+                        else "  # CAUTION: " + note if note else "")
+                f.write(f'    "{bid}": ({a}, {b_}, {c}),  # {sid}{mark}\n')
             f.write("}\n")
         print(f"\nwrote {p}")
-        print("\nPaste into basins.py:\n")
-        for bid, (a, b_, c, sid, n) in thresholds.items():
-            print(f'  {bid}:')
-            print(f'    thr_ft=({a}, {b_}, {c}),')
-            print(f'    thr_src="SURVEYED: NC QL2 via 3DEP, {sid}; '
-                  f'WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q '
-                  f'through the real section",')
+
+        okth = {k: v for k, v in thresholds.items() if not v[5]}
+        badth = {k: v for k, v in thresholds.items() if v[5]}
+        if okth:
+            print("\nPaste into basins.py:\n")
+            for bid, (a, b_, c, sid, n, _, note) in okth.items():
+                print(f'  {bid}:{"    <-- " + note if note else ""}')
+                print(f'    thr_ft=({a}, {b_}, {c}),')
+                print(f'    thr_src="SURVEYED: NC QL2 via 3DEP, {sid}; '
+                      f'WATCH=bankfull, WARNING=top-of-bank, EMERGENCY=100-yr reg_q '
+                      f'through the real section",')
+        if badth:
+            # An out-of-order ladder is worse than the placeholder it would
+            # replace — it escalates backwards. Show the numbers, withhold the
+            # paste line, keep the reach on its existing thresholds.
+            print("\nDO NOT PASTE — these ladders are out of order. The reach "
+                  "keeps its existing thr_ft:\n")
+            for bid, (a, b_, c, sid, n, bad, _) in badth.items():
+                print(f'  {bid}:  ({a}, {b_}, {c})')
+                print(f'      {bad}')
+                print(f'      {sid}; sections in {out_dir}/{bid}/')
+            print("  Out of order means top-of-bank came out too HIGH for the "
+                  "100-yr depth, so read the rejected sections in\n"
+                  "  summary.csv before re-cutting. Two causes, two remedies:\n\n"
+                  "    topbank 9-18 ft on a small branch -> the cut ran to a "
+                  "valley wall. Narrow it:\n")
+            for bid in badth:
+                w0 = DEFAULT_WIDTH.get(bid, 250)
+                print(f'      python xs_from_3dep.py --basin {bid} '
+                      f'--width {int(w0 * 0.7)} --out-dir xs_narrow')
+            print("\n    bankfull near 0.00 on many sections -> the cut is not "
+                  "centred on the channel. NHD headwater\n"
+                  "    flowlines are derived, not surveyed, and can sit tens "
+                  "of feet off the real thalweg. Narrowing\n"
+                  "    makes that WORSE. Plot two or three section CSVs first; "
+                  "if the channel is off-centre or absent,\n"
+                  "    the fix is a hand-drawn --centerline, not a width.")
     return 0
 
 

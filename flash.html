@@ -447,6 +447,35 @@
   if (HAS_L) fetch("cullowhee_subbasins.geojson?v=" + Date.now())
     .then(function(r){ return r.json(); })
     .then(function(gj){
+      // The sub-basins are CUMULATIVE, not adjacent tiles: CC-MOUTH-2340
+      // (23.4 mi2) geometrically contains every other polygon, CC-WCU-2260
+      // contains six of them, CC-SPD-1830 contains three, and so on. Leaflet
+      // paints in insertion order, so whichever feature is added LAST sits on
+      // top -- it takes every click and its fill covers everything beneath it.
+      // The mouth shipped last in cullowhee_subbasins.geojson, so every click
+      // anywhere in the watershed opened the Mouth popup and the whole map
+      // carried the mouth's colour.
+      // Sorting largest-first puts the SMALLEST basin containing a point on
+      // top, which is the one the user is actually pointing at. Containment
+      // guarantees a contained polygon has the smaller area, so area order and
+      // nesting order are the same thing here.
+      function ringArea(r){
+        var s = 0, n = r.length;
+        for (var i = 0; i < n; i++){ var j = (i + 1) % n;
+          s += r[i][0] * r[j][1] - r[j][0] * r[i][1]; }
+        return Math.abs(s) / 2;
+      }
+      function featArea(f){
+        var g = f.geometry; if (!g) return 0;
+        var c = g.coordinates;
+        if (g.type === "Polygon") return ringArea(c[0]);
+        if (g.type === "MultiPolygon"){
+          var t = 0; for (var i = 0; i < c.length; i++) t += ringArea(c[i][0]); return t;
+        }
+        return 0;
+      }
+      gj.features.sort(function(a, b){ return featArea(b) - featArea(a); });
+
       basins = L.geoJSON(gj, {
         style: basinStyle,
         onEachFeature: function(f, lyr){

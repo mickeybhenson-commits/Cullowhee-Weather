@@ -40,7 +40,16 @@ WHAT IS STILL OPEN (flagged per record)
     NOTE: posture for these 7 reaches is still taken from discharge return-period
     (see flood_rating.classify), which sidesteps the invalid out-of-bank stage
     rating. thr_ft is a cross-check until that decision is revisited.
-  - `role` (warning point vs contributor) PENDING for the tributaries; set from map.
+  - `role`: RESOLVED 2026-08-03. Every reach is a warning_point. Five carried
+    "PENDING-set-from-map", Long Branch "contributor-to-campus" and the mouth
+    "out_of_scope"; under the project scope (claude/NOAH_SCOPE_no_lost_lives.md
+    - "every bit of Cullowhee Creek and tributaries need to be protected") none
+    of those is right. Eight pour points are eight samples of a continuous
+    creek and people live between the samples; Long Branch has people on it.
+    The mouth is out of scope for GAUGING under the no-mainstem-Tuckasegee
+    rule, which is not the same as out of scope for protection, so its name no
+    longer says "OUT OF SCOPE" either. No logic reads this field - it is what a
+    reader sees, which is exactly why it had to stop saying otherwise.
   - Long Branch discharge is soft: TVA (~445) and StreamStats (294) disagree 1.5x
     at the 10-yr (both within the StreamStats prediction interval).
 """
@@ -70,7 +79,7 @@ HELENE_2024 = dict(event="Helene", date="2024-09-27", rp_band=(5, 12),
 BASINS = {
 
  "CC-UP-503": dict(
-    name="Upper Cullowhee (headwaters)", lead="limited", role="PENDING-set-from-map",
+    name="Upper Cullowhee (headwaters)", lead="limited", role="warning_point",
     da_sqmi=5.03, da_src="StreamStats; geom-independent 5.035 (supersedes old 5.35)",
     pour=(35.23320, -83.18689), downstream="CC-MS-1100",
     reg_q={0.50:269, 0.20:504, 0.10:705, 0.04:987, 0.02:1250, 0.01:1500, 0.005:1780, 0.002:2160},
@@ -87,7 +96,7 @@ BASINS = {
     note="n=0.045 post-Helene woody-debris (buildsheet, supersedes test_model 0.060)."),
 
  "CC-MS-1100": dict(
-    name="Mainstem above Speedwell (Mtn. Lower)", lead="limited", role="PENDING-set-from-map",
+    name="Mainstem above Speedwell (Mtn. Lower)", lead="limited", role="warning_point",
     da_sqmi=11.0, da_src="StreamStats (matches 11.03)",
     pour=(35.28203, -83.18599), downstream="CC-SPD-1830",
     reg_q={0.50:532, 0.20:965, 0.10:1330, 0.04:1830, 0.02:2290, 0.01:2740, 0.005:3220, 0.002:3870},
@@ -104,7 +113,7 @@ BASINS = {
     note="Tc ambiguous (Kirpich 86 vs NRCS-wet 142 min); calibration absorbs the spread."),
 
  "CC-TIL-705": dict(
-    name="Tilley Creek", lead="limited", role="PENDING-set-from-map",
+    name="Tilley Creek", lead="limited", role="warning_point",
     da_sqmi=7.05, da_src="StreamStats",
     pour=(35.28273, -83.18702), downstream="CC-SPD-1830",   # joins mainstem above Speedwell
     reg_q={0.50:361, 0.20:667, 0.10:927, 0.04:1290, 0.02:1620, 0.01:1950, 0.005:2300, 0.002:2780},
@@ -119,7 +128,7 @@ BASINS = {
     stage_sensor=None, note=""),
 
  "CC-SPD-1830": dict(
-    name="Speedwell", lead="limited", role="PENDING-set-from-map",
+    name="Speedwell", lead="limited", role="warning_point",
     da_sqmi=18.3, da_src="StreamStats",
     pour=(35.28534, -83.18393), downstream="CC-WCU-2260",
     reg_q={0.50:829, 0.20:1470, 0.10:2010, 0.04:2740, 0.02:3410, 0.01:4050, 0.005:4740, 0.002:5660},
@@ -135,7 +144,7 @@ BASINS = {
     stage_sensor=None, note=""),
 
  "CC-COX-097": dict(
-    name="Cox Branch (flashiest)", lead="limited", role="PENDING-set-from-map",
+    name="Cox Branch (flashiest)", lead="limited", role="warning_point",
     da_sqmi=0.97, da_src="StreamStats",
     pour=(35.30180, -83.18324), downstream="CC-WCU-2260",
     reg_q={0.50:64.3, 0.20:129, 0.10:186, 0.04:269, 0.02:347, 0.01:426, 0.005:513, 0.002:631},
@@ -150,7 +159,7 @@ BASINS = {
     stage_sensor=None, note="Lead-limited (Tc<120). Below Bieger Blue Ridge floor."),
 
  "CC-LB-171": dict(
-    name="Long Branch", lead="limited", role="contributor-to-campus",
+    name="Long Branch", lead="limited", role="warning_point",
     da_sqmi=1.71, da_src="StreamStats",
     pour=(35.30819, -83.18770), downstream="CC-WCU-2260",   # enters Cullowhee Ck at TVA mile 1.24
     reg_q={0.50:105, 0.20:206, 0.10:294, 0.04:421, 0.02:539, 0.01:658, 0.005:788, 0.002:964},
@@ -191,18 +200,23 @@ BASINS = {
          "WATCH/WARNING split depends on warning-point mile (0.60 -> WARNING, 0.89 -> WATCH); CONFIRM."),
 
  "CC-MOUTH-2340": dict(
-    name="Cullowhee Creek mouth (OUT OF SCOPE)", lead="adequate", role="out_of_scope",
+    name="Cullowhee Creek mouth (no gauging - Tuckasegee mainstem)",
+    lead="adequate", role="warning_point",
     da_sqmi=23.4, da_src="StreamStats",
     pour=(35.31709, -83.18037), downstream=None,   # enters Tuckasegee (do not route mainstem in)
     reg_q={0.50:1030, 0.20:1800, 0.10:2450, 0.04:3320, 0.02:4120, 0.01:4880, 0.005:5710, 0.002:6800},
     reg_pi={0.10:(1370,4370), 0.01:(2540,9360)}, reg_src=REG_SRC,
     tva_q={10:2450, 100:4880},   # TVA mile 0 sections are Tuckasegee-BACKWATER controlled
     calib=(4.610, 0.742), calib_anchors=[(4724,2450),(11960,4880)],
-    rating="none",   # out of scope; TVA mouth sections backwater-controlled, no clean rating
+    rating="none",   # no CREEK rating: backwater-controlled by the Tuckasegee,
+                     # which the creek's own rating cannot represent. Not "no
+                     # posture" - flood_rating.assess returns the creek half by
+                     # discharge frequency and hands backwater to
+                     # confluence_status.
     section=dict(w=61.3, d=2.93, n=0.045, s=0.0050),
     bankfull_curve="Blue Ridge P (ref)",
     out_of_bank_10yr=3.02, tva_wse=None, bed_ft=None, learned=None,
-    thr_ft=None, thr_src="N/A - out of scope, downstream bookend only",
+    thr_ft=None, thr_src="N/A - backwater-controlled; stage here is set by the Tuckasegee, not by Cullowhee Creek discharge, so no creek stage ladder applies",
     tc_min=147, tc_src="Kirpich (buildsheet). Out of scope.",
     stage_sensor=None,
     note="Held for completeness. Needs a non-backwater section to ever go live; not a warning point."),

@@ -13,14 +13,23 @@ WHY THIS EXISTS
   in the lower watershed. Measured 2026-08-03, distance from each pour point to
   its nearest section:
 
-      Cox Branch           68 ft     usable
-      Long Branch         179 ft     near
-      WCU Campus          600 ft     near
-      Mouth               327 ft     near
-      Speedwell         2 940 ft     NONE
-      Tilley Creek      4 142 ft     NONE
-      Mtn. Lower        4 271 ft     NONE
-      Upper Cullowhee  20 754 ft     NONE
+      Distance to the nearest section was a misleading measure. What matters
+      is whether surveyed CHANNEL GEOMETRY exists on the basin's OWN
+      watercourse. Only 35 of the 91 rows carry invert / top-of-bank /
+      channel-depth, and all 35 are FRIS-RAS sections on the Cullowhee Creek
+      MAINSTEM. The other 56 are TVA-1983 water-surface elevations with no
+      geometry at all.
+
+      WCU Campus       yes  mainstem geometry 600 ft off, plus the field-
+                            validated 11 ft = water in road
+      Cox Branch       NO   the 68 ft section is the MAINSTEM at the
+                            confluence: an 8.3 ft mainstem channel, not the
+                            0.97 mi2 branch
+      Long Branch      NO   13 sections exist, all TVA-1983 WSE-only
+      Speedwell        NO   nearest geometry 2 940 ft downstream, mainstem
+      Tilley Creek     NO   zero sections of any kind
+      Mtn. Lower       NO   nearest geometry 4 271 ft downstream, mainstem
+      Upper Cullowhee  NO   nearest anything is the Tuckasegee, 3.9 mi off
 
   18.3 of the 22.6 mi2 draining to campus — 81% — sits above the nearest
   surveyed section, on thr_ft values that are bankfull x (1.0, 1.5, 2.0)
@@ -97,8 +106,11 @@ POUR = {
     "CC-MOUTH-2340": (35.31709, -83.18037),
 }
 
-# The four with no surveyed section anywhere near the pour point.
-UNSURVEYED = ["CC-SPD-1830", "CC-TIL-705", "CC-MS-1100", "CC-UP-503"]
+# Reaches with NO surveyed channel geometry on their own watercourse.
+# Corrected 2026-08-03: an earlier pass measured distance to the nearest
+# section and wrongly counted Cox Branch and Long Branch as covered.
+UNSURVEYED = ["CC-SPD-1830", "CC-TIL-705", "CC-MS-1100", "CC-UP-503",
+              "CC-COX-097", "CC-LB-171"]
 
 # 100-yr regression discharge (cfs) and channel slope, from basins.py.
 REG_Q100 = {"CC-UP-503": 1500, "CC-MS-1100": 2740, "CC-TIL-705": 1950,

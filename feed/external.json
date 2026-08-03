@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-03T15:12:15.906876+00:00",
+  "fetched_utc": "2026-08-03T15:18:27.557316+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "ok",
-    "nwm": "ReadTimeout",
+    "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": 254.6,
     "stage_series_up": [
-      [
-        1785748500,
-        4.06
-      ],
       [
         1785749400,
         4.06
@@ -128,10 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1785748500,
-        3.37
-      ],
       [
         1785749400,
         3.37
@@ -221,7 +213,84 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": null,
+  "nwm": {
+    "reach": 19730552,
+    "reach_is_cullowhee": false,
+    "series": [
+      [
+        1785762000,
+        89.3
+      ],
+      [
+        1785765600,
+        103.8
+      ],
+      [
+        1785769200,
+        121.5
+      ],
+      [
+        1785772800,
+        141.6
+      ],
+      [
+        1785776400,
+        161.7
+      ],
+      [
+        1785780000,
+        179.4
+      ],
+      [
+        1785783600,
+        193.9
+      ],
+      [
+        1785787200,
+        204.8
+      ],
+      [
+        1785790800,
+        212.6
+      ],
+      [
+        1785794400,
+        217.5
+      ],
+      [
+        1785798000,
+        221.1
+      ],
+      [
+        1785801600,
+        223.2
+      ],
+      [
+        1785805200,
+        224.6
+      ],
+      [
+        1785808800,
+        225.3
+      ],
+      [
+        1785812400,
+        225.7
+      ],
+      [
+        1785816000,
+        226.0
+      ],
+      [
+        1785819600,
+        226.0
+      ],
+      [
+        1785823200,
+        226.4
+      ]
+    ]
+  },
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
@@ -232,11 +301,11 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 69.6,
-    "fresh": true,
+    "age_min": 75.5,
+    "fresh": false,
     "last_updated_utc": "2026-08-03T14:03:00+00:00",
     "datum_verified": false,
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 75.5 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -396,7 +465,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 22.6,
+    "age_min": 28.5,
     "valid_utc": "2026-08-03T14:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

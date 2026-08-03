@@ -584,15 +584,27 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                 print("    every section in the trunk run failed bank detection "
                       "- no threshold emitted", file=sys.stderr)
                 continue
-            # 20th percentile, not the minimum: the minimum selects the section
-            # where detection failed, not the one that floods first. On the
-            # validation run the minimum gave WATCH 2.79 / WARNING 3.06 - a
-            # 0.27 ft ladder.
-            def pct20(key):
+            # MEDIAN, calibrated against surveyed truth. On CC-WCU-2260,
+            # where FRIS gives channel_depth 4.1 ft and d100 9.5 ft:
+            #     20th pct  topbank 2.74 (-33%)   d100 8.55 (-10%)
+            #     25th pct  topbank 3.38 (-18%)   d100 8.97  (-6%)
+            #     median    topbank 4.63 (+13%)   d100 9.12  (-4%)
+            # FRIS channel_depth_ft IS top-of-bank above invert, so it is the
+            # topbank column it compares against, and the median is the
+            # statistic that reproduces it. Low percentiles are dragged by
+            # inner benches that the detector reads as banks - section _002
+            # returned 1.70 ft on that reach.
+            # Individual weak sections remain visible in summary.csv; this
+            # picks the value that matches survey, not the extreme.
+            def med(key):
                 v = sorted(r[key] for r in pool)
-                return float(v[max(0, int(0.2 * (len(v) - 1)))])
-            w_, g_, e_ = (pct20("bankfull_depth_ft"), pct20("topbank_depth_ft"),
-                          pct20("d100_above_thalweg_ft"))
+                n = len(v)
+                return float(v[n // 2] if n % 2 else 0.5 * (v[n // 2 - 1] + v[n // 2]))
+            w_, g_, e_ = (med("bankfull_depth_ft"), med("topbank_depth_ft"),
+                          med("d100_above_thalweg_ft"))
+            tbv = sorted(r["topbank_depth_ft"] for r in pool)
+            print(f"    top-of-bank across {len(pool)} trunk sections: "
+                  f"min {tbv[0]:.2f}  median {g_:.2f}  max {tbv[-1]:.2f}")
             if g_ - w_ < 0.5 or e_ <= g_:
                 print(f"    WARNING: ladder is not monotone with margin "
                       f"({w_:.2f} / {g_:.2f} / {e_:.2f}) - inspect before use",
@@ -600,7 +612,7 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
             ctl = min(pool, key=lambda r: r["topbank_depth_ft"])
             thresholds[bid] = (round(w_, 2), round(g_, 2), round(e_, 2),
                                f"run {trunk}, {len(pool)} of {len(good)} sections "
-                               f"passing, 20th pct", len(pool))
+                               f"passing, median", len(pool))
 
     if summary:
         with open(os.path.join(out_dir, "summary.csv"), "w", newline="") as f:

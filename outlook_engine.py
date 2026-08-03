@@ -26,8 +26,13 @@ HOOK (in flood_network.tiered_posture, Outlook tier):
         ... existing priming_index path ...
 """
 
-import test_model as tm
-from flood_rating import posture as _posture   # noqa: F401  (kept for callers)
+# Sourced from wetness.py + flood_rating, NOT test_model. test_model moved to
+# the private Cullowhee-Engine repo in 9c720eb, which left this module raising
+# ModuleNotFoundError on import; and flood_rating has never exported a bare
+# `posture` - the name is `posture_stage`. Both were latent: nothing on main
+# imports outlook_engine yet, so the breakage only showed on a direct import.
+from wetness import assess_wet, resolve_wetness
+from flood_rating import posture_stage as _posture   # noqa: F401 (kept for callers)
 
 # Gateway/sensor site -> CC-* basin whose calibration + rating to apply.
 SITE_TO_BASIN = {
@@ -51,12 +56,18 @@ def forecast_basin(bid, qpf_24h_in, p5_in):
     Returns calibrated peak, forecast stage (engine rating), the raw forecast
     posture, and the WATCH-capped level for Outlook use.
     """
-    _, res = tm.run_case(qpf_24h_in, p5_in)
-    r = res[bid]
-    stage = None if r["stage"] is None else round(r["stage"], 1)
+    # wetness.assess_wet is the continuous-CN successor to test_model.run_case's
+    # per-basin body: same NRCS chain, but a decayed 30-day API instead of the
+    # 5-day ARC staircase, and a baseflow-inclusive total stage. p5_in is
+    # carried on the legacy 5-day scale, so convert it through the same source
+    # ladder live.html and wetness.py use rather than re-deriving it here.
+    w, _src = resolve_wetness(p5_in=p5_in)
+    r = assess_wet(bid, qpf_24h_in, w)
+    stage = None if r["stage_ft"] is None else round(r["stage_ft"], 1)
     return {"basin": bid,
             "model_q": round(r["qp"]),
             "calib_q": round(r["calib_q"]),
+            "wetness": round(w, 3),
             "forecast_stage_ft": stage,
             "forecast_posture": r["posture"],     # uncapped (context only)
             "outlook_level": _cap(r["posture"])}  # capped at WATCH for the tier

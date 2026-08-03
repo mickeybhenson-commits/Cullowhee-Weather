@@ -33,7 +33,15 @@ import math
 import datetime
 import urllib.request
 import urllib.parse
-import test_model as tm
+# wetness + flood_rating, NOT test_model. test_model moved to the private
+# Cullowhee-Engine repo in 9c720eb and this module has been unimportable since.
+# wetness.assess_wet is the continuous-CN successor to test_model.run_case's
+# per-basin body (decayed 30-day API instead of the 5-day ARC staircase, plus a
+# baseflow-inclusive total stage), and posture_stage is the stage call that
+# test_model.posture was.
+from wetness import assess_wet, resolve_wetness, cn_from_wetness  # noqa: F401
+from flood_rating import posture_stage
+import cwm_model as cwm
 import sources as src
 
 # Measured government gauges on the approach arc. Optional: keep live_rainfall
@@ -134,7 +142,9 @@ def soil_moisture_pct(precip, et0, end_idx, et0_unit="mm",
     return round(s / cap * 100)
 
 
-def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
+def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,   # PRF kept for
+                          # call compatibility; 484 is baked into
+                          # cwm_model.unit_hydrograph, which assess_wet uses.
                           forecast_days=FORECAST_DAYS, now=None,
                           storm_correction=None):
     """Map the API response to per-basin posture. Pure: no network calls.
@@ -177,20 +187,21 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,
         soil = src.resolve(src.Q_SOIL, bid, m_sm, now=now)
 
         # engine runs on whatever rainfall won (measured gauge or model)
-        arc, res = tm.run_case(rain.value, ant.value, PRF=PRF)
-        r = res[bid]
-        m_stage = round(r["stage"], 2)
+        w, wet_src = resolve_wetness(p5_in=ant.value)
+        r = assess_wet(bid, rain.value, w)
+        m_stage = round(r["stage_ft"], 2)
 
         # stage sensor (NOAH) is the most direct truth: if MEASURED it governs
         stage = src.resolve(src.Q_STAGE, bid, m_stage, now=now)
-        b = tm.BASINS[bid]
-        posture = (tm.posture(stage.value, b, bid)
+        posture = (posture_stage(stage.value, bid)
                    if stage.tier == src.MEASURED else r["posture"])
 
         out[bid] = dict(
             antecedent_5day=ant.value, storm=rain.value, forecast_total=fcst_total,
-            soil_moisture_pct=soil.value, arc=arc, CN=round(r["CN"]),
-            runoff=round(r["Q"], 2), peak=round(r["qp"]),
+            soil_moisture_pct=soil.value, CN=round(r["CN"]),
+            # `arc` (NRCS I/II/III staircase) retired with test_model: the
+            # continuous-CN path has a wetness index in [0,1] and a source tag.
+            wetness=round(w, 3), wetness_src=wet_src, peak=round(r["qp"]),
             stage=stage.value, posture=posture,
             # provenance for UI badges + the monitoring/forecasting split
             src_rain=rain.tier, src_rain_name=rain.source, src_rain_note=rain.note,
@@ -462,10 +473,10 @@ if __name__ == "__main__":
         print(f"Fetch failed (need network access to api.open-meteo.com): {e}")
         raise SystemExit(1)
     print(f"{'basin':14s} {'ante_5d':>7} {'soil%':>6} {'storm':>6} {'fcst3d':>6} "
-          f"{'arc':>4} {'depth':>6}  posture")
+          f"{'wet':>5} {'depth':>6}  posture")
     for bid, r in results.items():
         print(f"{bid:14s} {r['antecedent_5day']:7.2f} {r['soil_moisture_pct']:5d}% "
-              f"{r['storm']:6.2f} {r['forecast_total']:6.2f} {r['arc']:>4} "
+              f"{r['storm']:6.2f} {r['forecast_total']:6.2f} {r['wetness']:5.2f} "
               f"{r['stage']:6.2f}  {r['posture']}")
 
     print("\nSteering flow (storm-motion proxy, 700 mb wind — MODELED):")

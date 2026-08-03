@@ -185,7 +185,11 @@ def corridor_svg():
     def node(nid, name_dy, val_dy, anchor, tx_off):
         ns = node_state(nid)
         cx, cy = _NODE_XY[nid]
-        s.append(f'<circle cx="{cx}" cy="{cy}" r="7" fill="{SEV[ns['level']]}" '
+        # ns["level"], not ns['level'] - reusing the f-string's own quote inside
+        # the expression is a SyntaxError before Python 3.12 (PEP 701 relaxed
+        # it), so this module would not import at all on 3.11. Every other line
+        # in this function already does it the portable way.
+        s.append(f'<circle cx="{cx}" cy="{cy}" r="7" fill="{SEV[ns["level"]]}" '
                  f'stroke="#fff" stroke-width="2"/>')
         tx = cx + tx_off
         s.append(f'<text x="{tx}" y="{cy+name_dy}" font-size="13" font-weight="700" '

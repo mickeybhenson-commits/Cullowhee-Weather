@@ -63,19 +63,44 @@ The centerline comes from USGS NLDI. Check it answers before spending a run on
 it:
 
 ```
-python xs_from_3dep.py --probe-nldi --nav-km 4
+python xs_from_3dep.py --probe-nldi
 ```
 
-Expect a line per pour point:
+It makes ONE network fetch from the outlet and splits it by sub-basin polygon:
 
 ```
-  NLDI https://api.water.usgs.gov/nldi/linked-data  comid 9752106
-  CC-SPD-1830       37 flowlines,  1204 vertices
+  NLDI https://api.water.usgs.gov/nldi/linked-data  comid 19730122
+  61 flowlines, 2140 vertices total
+
+  basin            runs  vertices  channel mi  sections @300ft
+  CC-MOUTH-2340       1        44        1.62               28
+  CC-WCU-2260         3       210        4.10               72
+  ...
 ```
 
-The script tries `api.water.usgs.gov` first, then the two legacy
-`labs.waterdata.usgs.gov` hosts. If all three fail it prints every attempt.
-The old host now 404s — that is why this probe exists.
+**Read the `channel mi` and `sections @300ft` columns** — that is what sets how
+long step 6 takes, at roughly 1 second per section.
+
+Any basin reporting **NO vertices inside this polygon** has no NHD flowline of
+its own at this scale; give it a lower `--spacing` or supply a hand-drawn
+`--centerline` CSV.
+
+### Why one fetch and not eight
+
+A pour point is a **confluence**, so NLDI's point-in-catchment lookup there
+lands on the **mainstem**, not on the tributary. Measured 2026-08-03: Cox
+Branch and Long Branch both resolved to comid 19730148 — the mainstem — so both
+would have been cut from the same channel and neither from its own branch. And
+CC-SPD-1830 returned *less* upstream network than CC-UP-503, which it contains,
+which is impossible for a real basin.
+
+So the script now pulls the network once from the outlet and assigns each
+vertex to the **smallest containing sub-basin polygon** — the polygons are
+cumulative, so smallest-containing is exactly "this reach's own drainage."
+Same rule that fixed the always-Mouth click bug in `flash.html`.
+
+The host list is tried in order: `api.water.usgs.gov` first, then the two
+legacy `labs.waterdata.usgs.gov` hosts, which now 404.
 
 ## 3 · Scouting run — one basin, coarse, ~1 minute
 

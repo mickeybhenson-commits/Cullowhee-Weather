@@ -202,6 +202,83 @@ def nldi_upstream(lat, lon, km=25, verbose=True):
     return out
 
 
+# --------------------------------------------------------------------------
+# sub-basin assignment
+#
+# A pour point is a CONFLUENCE, so NLDI's point-in-catchment lookup there lands
+# on the MAINSTEM catchment, not on the tributary. Measured 2026-08-03: Cox
+# Branch and Long Branch both resolved to comid 19730148 (the mainstem), and
+# CC-SPD-1830 returned LESS upstream network than CC-UP-503, which it contains.
+# Navigating per pour point is therefore the wrong shape entirely.
+#
+# Instead: pull the whole network ONCE from the outlet, then assign each
+# flowline vertex to the SMALLEST sub-basin polygon containing it. The polygons
+# are cumulative — the mouth contains all seven others — so smallest-containing
+# is exactly "this reach's own drainage", the same rule that fixed the
+# always-Mouth click bug in flash.html.
+# --------------------------------------------------------------------------
+def _ring_area(r):
+    a = 0.0
+    for i in range(len(r)):
+        j = (i + 1) % len(r)
+        a += r[i][0] * r[j][1] - r[j][0] * r[i][1]
+    return abs(a) / 2.0
+
+
+def _pip(x, y, ring):
+    inside = False
+    for i in range(len(ring)):
+        j = (i - 1) % len(ring)
+        xi, yi = ring[i][0], ring[i][1]
+        xj, yj = ring[j][0], ring[j][1]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+    return inside
+
+
+def load_subbasins(path=None):
+    """[(basin_id, outer_ring, area)] sorted SMALLEST FIRST."""
+    if path is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "cullowhee_subbasins.geojson")
+    with open(path) as f:
+        gj = json.load(f)
+    out = []
+    for feat in gj["features"]:
+        g = feat["geometry"]
+        ring = (g["coordinates"][0] if g["type"] == "Polygon"
+                else max(g["coordinates"], key=lambda p: _ring_area(p[0]))[0])
+        out.append((feat["properties"]["basin_id"], ring, _ring_area(ring)))
+    out.sort(key=lambda t: t[2])
+    return out
+
+
+def basin_for(lat, lon, polys):
+    for bid, ring, _ in polys:          # smallest containing polygon wins
+        if _pip(lon, lat, ring):
+            return bid
+    return None
+
+
+def split_by_basin(lines, polys):
+    """Cut each flowline where it crosses a sub-basin boundary, so every
+    resulting run of vertices belongs to exactly one reach."""
+    out = {}
+    for ln in lines:
+        cur, run = None, []
+        for (la, lo) in ln:
+            b = basin_for(la, lo, polys)
+            if b != cur:
+                if cur and len(run) >= 2:
+                    out.setdefault(cur, []).append(run)
+                cur, run = b, [(la, lo)]
+            else:
+                run.append((la, lo))
+        if cur and len(run) >= 2:
+            out.setdefault(cur, []).append(run)
+    return out
+
+
 def read_centerline_csv(path):
     with open(path) as f:
         rows = list(csv.DictReader(f))
@@ -370,21 +447,41 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
     lat0, lon0 = 35.27, -83.19
     summary, thresholds = [], {}
 
+    # ONE network fetch, from the outlet, then assign by polygon. Fetching per
+    # pour point is wrong: a pour point is a confluence, so the catchment
+    # lookup lands on the mainstem and tributaries collide (Cox Branch and
+    # Long Branch both resolved to comid 19730148 on 2026-08-03).
+    polys = load_subbasins()
+    if centerline_csv:
+        by_basin = {basins[0]: read_centerline_csv(centerline_csv)}
+        print(f"centerline from {centerline_csv}")
+    else:
+        try:
+            net = nldi_upstream(*POUR["CC-MOUTH-2340"], km=nav_km)
+        except Exception as e:
+            print(f"network unavailable: {e}", file=sys.stderr)
+            return 1
+        by_basin = split_by_basin(net, polys)
+        print(f"\nnetwork: {len(net)} flowlines from the outlet, "
+              f"split into {len(by_basin)} reaches")
+        for bid in sorted(by_basin, key=lambda b: -len(by_basin[b])):
+            v = sum(len(r) for r in by_basin[bid])
+            print(f"   {bid:<15} {len(by_basin[bid]):>3} run(s), {v:>4} vertices")
+
     for bid in basins:
         print(f"\n=== {bid} ===")
-        try:
-            lines = (read_centerline_csv(centerline_csv) if centerline_csv
-                     else nldi_upstream(*POUR[bid], km=nav_km))
-        except Exception as e:
-            print(f"  centerline unavailable: {e}", file=sys.stderr)
+        lines = by_basin.get(bid) or []
+        if not lines:
+            print("  no flowline vertices fall inside this sub-basin polygon "
+                  "- skipped", file=sys.stderr)
             continue
-        print(f"  {len(lines)} flowline(s) from NLDI")
 
         cuts = []
         for ln in lines:
             cuts += cut_lines(ln, spacing, width, lat0, lon0)
         print(f"  {len(cuts)} cut lines at {spacing} ft spacing, {width} ft wide")
         if not cuts:
+            print("  (reach shorter than one spacing interval - lower --spacing)")
             continue
 
         bdir = os.path.join(out_dir, bid)
@@ -469,24 +566,38 @@ def main():
     ap.add_argument("--spacing", type=float, default=300.0)
     ap.add_argument("--width", type=float, default=250.0)
     ap.add_argument("--npts", type=int, default=201)
-    ap.add_argument("--nav-km", type=float, default=25.0)
+    ap.add_argument("--nav-km", type=float, default=60.0,
+                    help="NLDI upstream navigation limit, km, from the OUTLET")
     ap.add_argument("--centerline")
     ap.add_argument("--out-dir", default="xs_out")
     a = ap.parse_args()
     if a.selfcheck:
         return selfcheck()
     if a.probe_nldi:
-        print("NLDI probe — which host answers, and how much network is upstream?\n")
-        bad = 0
-        for bid, (la, lo) in POUR.items():
-            try:
-                lines = nldi_upstream(la, lo, km=a.nav_km)
-                n = sum(len(x) for x in lines)
-                print(f"  {bid:<15} {len(lines):>4} flowlines, {n:>5} vertices")
-            except Exception as e:
-                bad += 1
-                print(f"  {bid:<15} FAILED: {e}")
-        return 1 if bad else 0
+        print("NLDI probe — one fetch from the outlet, split by sub-basin polygon\n")
+        try:
+            net = nldi_upstream(*POUR["CC-MOUTH-2340"], km=a.nav_km)
+        except Exception as e:
+            print(f"  FAILED: {e}")
+            return 1
+        polys = load_subbasins()
+        by = split_by_basin(net, polys)
+        tot = sum(len(x) for x in net)
+        print(f"  {len(net)} flowlines, {tot} vertices total\n")
+        print(f"  {'basin':<15}{'runs':>6}{'vertices':>10}{'channel mi':>12}"
+              f"{'sections @300ft':>17}")
+        for bid in [b for b in POUR if b in by] + [b for b in POUR if b not in by]:
+            runs = by.get(bid) or []
+            if not runs:
+                print(f"  {bid:<15}{'-':>6}{'-':>10}{'-':>12}{'-':>17}"
+                      "   NO vertices inside this polygon")
+                continue
+            v = sum(len(r) for r in runs)
+            mi_ = sum(haversine_ft(r[i], r[i + 1]) for r in runs
+                      for i in range(len(r) - 1)) / 5280.0
+            print(f"  {bid:<15}{len(runs):>6}{v:>10}{mi_:>12.2f}"
+                  f"{int(mi_ * 5280 / 300):>17}")
+        return 0
     basins = a.basin or (list(POUR) if a.all else UNSURVEYED)
     return run(basins, a.spacing, a.width, a.npts, a.out_dir,
                a.centerline, a.nav_km)

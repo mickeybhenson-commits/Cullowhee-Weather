@@ -89,7 +89,14 @@ except ImportError:
 # --------------------------------------------------------------------------
 THREEDEP = ("https://elevation.nationalmap.gov/arcgis/rest/services/"
             "3DEPElevation/ImageServer/getSamples")
-NLDI = "https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid"
+# NLDI base URLs, tried in order. api.water.usgs.gov is current (it is what
+# feeds.py resolve_reach already uses); labs.waterdata.usgs.gov is the old host
+# and now 404s. Listed rather than hard-coded so a future move is one line.
+NLDI_BASES = [
+    "https://api.water.usgs.gov/nldi/linked-data",            # current
+    "https://labs.waterdata.usgs.gov/api/nldi/linked-data",   # legacy
+    "https://labs-beta.waterdata.usgs.gov/api/nldi/linked-data",
+]
 CHUNK = 250          # points per 3DEP request
 PAUSE = 0.4          # seconds between requests, be polite
 FT_PER_M = 3.280839895
@@ -151,16 +158,39 @@ def haversine_ft(a, b):
 # --------------------------------------------------------------------------
 # centerline
 # --------------------------------------------------------------------------
-def nldi_upstream(lat, lon, km=25):
-    """NHD flowlines upstream of a point, as [[(lat,lon),...], ...]."""
-    q = urllib.parse.urlencode({"coords": f"POINT({lon} {lat})", "f": "json"})
-    with urllib.request.urlopen(f"{NLDI}/position?{q}", timeout=60) as r:
-        j = json.load(r)
-    comid = j["features"][0]["properties"]["comid"]
+def _try_json(url, timeout=90):
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return json.load(r)
+
+
+def nldi_upstream(lat, lon, km=25, verbose=True):
+    """NHD flowlines upstream of a point, as [[(lat,lon),...], ...].
+
+    Walks NLDI_BASES until one answers. Raises with every attempt listed if
+    none do, so a host move shows up as a clear message and not a bare 404.
+    """
+    q = urllib.parse.urlencode({"coords": f"POINT({lon} {lat})"})
+    comid, base, tried = None, None, []
+    for b in NLDI_BASES:
+        try:
+            j = _try_json(f"{b}/comid/position?{q}", timeout=60)
+            feats = j.get("features") or []
+            if not feats:
+                tried.append(f"{b}  -> 200 but no feature at this point")
+                continue
+            comid = int(feats[0]["properties"]["comid"])
+            base = b
+            if verbose:
+                print(f"  NLDI {b}  comid {comid}")
+            break
+        except Exception as e:
+            tried.append(f"{b}  -> {e}")
+    if comid is None:
+        raise RuntimeError("no NLDI host answered:\n    " + "\n    ".join(tried))
+
     q2 = urllib.parse.urlencode({"distance": km})
-    url = f"{NLDI}/{comid}/navigation/UT/flowlines?{q2}"
-    with urllib.request.urlopen(url, timeout=120) as r:
-        fc = json.load(r)
+    url = f"{base}/comid/{comid}/navigation/UT/flowlines?{q2}"
+    fc = _try_json(url, timeout=180)
     out = []
     for f in fc.get("features", []):
         g = f.get("geometry") or {}
@@ -432,6 +462,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--selfcheck", action="store_true")
+    ap.add_argument("--probe-nldi", action="store_true",
+                    help="test NLDI reachability at every pour point, then exit")
     ap.add_argument("--basin", action="append")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--spacing", type=float, default=300.0)
@@ -443,6 +475,18 @@ def main():
     a = ap.parse_args()
     if a.selfcheck:
         return selfcheck()
+    if a.probe_nldi:
+        print("NLDI probe — which host answers, and how much network is upstream?\n")
+        bad = 0
+        for bid, (la, lo) in POUR.items():
+            try:
+                lines = nldi_upstream(la, lo, km=a.nav_km)
+                n = sum(len(x) for x in lines)
+                print(f"  {bid:<15} {len(lines):>4} flowlines, {n:>5} vertices")
+            except Exception as e:
+                bad += 1
+                print(f"  {bid:<15} FAILED: {e}")
+        return 1 if bad else 0
     basins = a.basin or (list(POUR) if a.all else UNSURVEYED)
     return run(basins, a.spacing, a.width, a.npts, a.out_dir,
                a.centerline, a.nav_km)

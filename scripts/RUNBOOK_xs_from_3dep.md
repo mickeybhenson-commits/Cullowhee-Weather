@@ -57,6 +57,26 @@ Expect:
 If this fails, stop — the geometry maths is broken and nothing downstream is
 trustworthy.
 
+## 2b · Probe NLDI — 10 seconds
+
+The centerline comes from USGS NLDI. Check it answers before spending a run on
+it:
+
+```
+python xs_from_3dep.py --probe-nldi --nav-km 4
+```
+
+Expect a line per pour point:
+
+```
+  NLDI https://api.water.usgs.gov/nldi/linked-data  comid 9752106
+  CC-SPD-1830       37 flowlines,  1204 vertices
+```
+
+The script tries `api.water.usgs.gov` first, then the two legacy
+`labs.waterdata.usgs.gov` hosts. If all three fail it prints every attempt.
+The old host now 404s — that is why this probe exists.
+
 ## 3 · Scouting run — one basin, coarse, ~1 minute
 
 Do **not** start with the full run. Check the sections look like valleys first.

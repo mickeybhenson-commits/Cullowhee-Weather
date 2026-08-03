@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-03T15:18:27.557316+00:00",
+  "fetched_utc": "2026-08-03T15:21:28.238026+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "ok",
-    "nwm": "ok",
+    "nwm": "ReadTimeout",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -213,84 +213,7 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": {
-    "reach": 19730552,
-    "reach_is_cullowhee": false,
-    "series": [
-      [
-        1785762000,
-        89.3
-      ],
-      [
-        1785765600,
-        103.8
-      ],
-      [
-        1785769200,
-        121.5
-      ],
-      [
-        1785772800,
-        141.6
-      ],
-      [
-        1785776400,
-        161.7
-      ],
-      [
-        1785780000,
-        179.4
-      ],
-      [
-        1785783600,
-        193.9
-      ],
-      [
-        1785787200,
-        204.8
-      ],
-      [
-        1785790800,
-        212.6
-      ],
-      [
-        1785794400,
-        217.5
-      ],
-      [
-        1785798000,
-        221.1
-      ],
-      [
-        1785801600,
-        223.2
-      ],
-      [
-        1785805200,
-        224.6
-      ],
-      [
-        1785808800,
-        225.3
-      ],
-      [
-        1785812400,
-        225.7
-      ],
-      [
-        1785816000,
-        226.0
-      ],
-      [
-        1785819600,
-        226.0
-      ],
-      [
-        1785823200,
-        226.4
-      ]
-    ]
-  },
+  "nwm": null,
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
@@ -301,11 +224,11 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 75.5,
+    "age_min": 78.8,
     "fresh": false,
     "last_updated_utc": "2026-08-03T14:03:00+00:00",
     "datum_verified": false,
-    "note": "NOT driving posture: stale/invalid (age 75.5 min, limit 75)"
+    "note": "NOT driving posture: stale/invalid (age 78.8 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -465,7 +388,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 28.5,
+    "age_min": 31.8,
     "valid_utc": "2026-08-03T14:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

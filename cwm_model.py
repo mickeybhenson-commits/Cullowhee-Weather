@@ -88,6 +88,99 @@ def peak_discharge(hyeto, CN, DA, TcHr):
         for j,u in enumerate(uh): h[i+j]+=r*u
     return max(h)
 
+# ---------------------------------------------------------------------------
+# REAL-HYETOGRAPH PATH — for operations and verification.
+# storm_hyetograph() above re-shapes a 24-h depth onto the SCS Type II design
+# curve. That is correct for a tabletop design storm and wrong for a forecast:
+# on a long-duration tropical event it overpredicts the peak 2.5-3x (Helene at
+# CC-WCU-2260: real shape 2548 cfs / 13 yr vs Type II 6305 cfs / 414 yr, against
+# a surveyed 10-25 yr band). live.html's assessBasinEvent() is the JS twin of
+# what follows; keep the two in step.
+# ---------------------------------------------------------------------------
+def real_hyetograph(hourly_in, dt=DT):
+    """Observed/forecast HOURLY rain (in/h) -> dt-step hyetograph."""
+    per = max(1, int(round(1.0 / dt)))
+    out = []
+    for v in hourly_in:
+        out += [float(v or 0.0) / per] * per
+    return out
+
+
+def peak_discharge_at(hyeto, CN, DA, TcHr, dt=DT):
+    """peak_discharge() plus the time of the peak, in hours from series start."""
+    incr, _, _ = incremental_runoff(hyeto, CN)   # returns (inc, totQ, totP)
+    uh = unit_hydrograph(DA, TcHr, dt=dt)
+    h = [0.0] * (len(incr) + len(uh))
+    for i, r in enumerate(incr):
+        if r <= 0:
+            continue
+        for j, u in enumerate(uh):
+            h[i + j] += r * u
+    pk = max(h)
+    return pk, h.index(pk) * dt
+
+
+# Classification as the deployed page does it (live.html STAGE_BASED): only the
+# campus reach uses its field-validated stage ladder; every other reach is
+# classified by DISCHARGE return period on the StreamStats curve, because the
+# rectangular stage rating is invalid out of bank and their thr_ft are still
+# PLACEHOLDER bankfull multiples.
+STAGE_BASED = {"CC-WCU-2260"}
+
+
+def rp_numeric(q, bid):
+    """Return period as a NUMBER, mirroring live.html rpFromQ exactly.
+    reg_return_period() above returns display strings ("<2", ">500") which
+    cannot be compared numerically; this is the classifier's version."""
+    aep_rp = [(0.50, 2), (0.20, 5), (0.10, 10), (0.04, 25),
+              (0.02, 50), (0.01, 100), (0.005, 200), (0.002, 500)]
+    rq = BASINS[bid].get("reg_q")
+    if not rq:
+        return None
+    pts = sorted(((rq[a], rp) for a, rp in aep_rp), key=lambda t: t[0])
+    if q <= pts[0][0]:
+        return pts[0][1] * q / pts[0][0]        # linear below the 2-yr, as the JS does
+    if q >= pts[-1][0]:
+        return float(pts[-1][1])
+    for i in range(len(pts) - 1):
+        (q0, r0), (q1, r1) = pts[i], pts[i + 1]
+        if q0 <= q <= q1:
+            f = (math.log(q) - math.log(q0)) / (math.log(q1) - math.log(q0))
+            return r0 + f * (r1 - r0)
+    return None
+
+
+def _cat_from_rp(T):
+    if T is None:
+        return "N/A"
+    return ("EMERGENCY" if T >= 100 else "WARNING" if T >= 10
+            else "WATCH" if T >= 2 else "NORMAL")
+
+
+def _posture_as_deployed(cq, stage, bid):
+    if bid in STAGE_BASED:
+        return posture(stage, bid)
+    return _cat_from_rp(rp_numeric(cq, bid))
+
+
+def assess_event(bid, hourly_in, wetness):
+    """Per-basin chain forced by a REAL hyetograph. Twin of live.html's
+    assessBasinEvent(). Returns the same fields plus peak_hr and total_in."""
+    b = BASINS[bid]
+    CN = cn_from_wetness(b["CN2"], wetness)
+    qp, t_pk = peak_discharge_at(real_hyetograph(hourly_in), CN,
+                                 b["DA"], b["Tc"] / 60.0)
+    cq = calibrate_peak(qp, bid)
+    storm = depth_from_q(cq, bid)
+    stage = stage_total(cq, bid)
+    return dict(wetness=wetness, CN=CN, qp=qp, calib_q=cq,
+                storm_ft=storm, stage_ft=stage,
+                rp_yr=(round(rp_numeric(cq, bid), 1)
+                       if rp_numeric(cq, bid) is not None else None),
+                posture=_posture_as_deployed(cq, stage, bid),
+                peak_hr=round(t_pk, 2),
+                total_in=round(sum(float(v or 0.0) for v in hourly_in), 3))
+
 def calibrate_peak(q, bid):
     a,b = BASINS[bid]["calib"]; return a*q**b if q>0 else 0.0
 

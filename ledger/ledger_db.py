@@ -59,6 +59,30 @@ def insert_observations(conn, rows):
     conn.commit()
 
 
+def insert_stage_obs(conn, rows):
+    """rows: (basin_id, valid_utc, stage_ft, condition, level, trend,
+              age_min, fresh, site_id, source).
+    stage_ft is feet above the GAGE DATUM (2125.0 ft NAVD88 for site 25380) -
+    a different reference from stage_model.stage_ft. See schema_ledger.sql."""
+    conn.executemany(
+        "INSERT OR REPLACE INTO stage_obs (basin_id, valid_utc, stage_ft, "
+        "condition, level, trend, age_min, fresh, site_id, source) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    conn.commit()
+
+
+def insert_stage_model(conn, rows):
+    """rows: (basin_id, issued_utc, valid_utc, stage_ft, q_cfs, rp_yr, level,
+              wetness, cn, source).
+    stage_ft is feet above the CHANNEL BED. See the datum warning in
+    schema_ledger.sql before differencing it against stage_obs."""
+    conn.executemany(
+        "INSERT OR REPLACE INTO stage_model (basin_id, issued_utc, valid_utc, "
+        "stage_ft, q_cfs, rp_yr, level, wetness, cn, source) "
+        "VALUES (?,?,?,?,?,?,?,?,?,?)", rows)
+    conn.commit()
+
+
 def have_observation(conn, valid_utc, source="mrms-p2"):
     """True if ALL basins already have an observation for this hour."""
     n = conn.execute(

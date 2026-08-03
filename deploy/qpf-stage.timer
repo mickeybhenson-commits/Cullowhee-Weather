@@ -1,0 +1,11 @@
+[Unit]
+Description=NOAH — stage verification every 30 min, offset off the gage's own cadence
+
+[Timer]
+# FIMAN 25380 serves on a 30-min interval; :10 and :40 sample after it lands
+# rather than racing it.
+OnCalendar=*-*-* *:10,40:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

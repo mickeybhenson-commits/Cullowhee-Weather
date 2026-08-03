@@ -1,0 +1,12 @@
+[Unit]
+Description=NOAH — stage verification ledger (FIMAN 25380 measured vs modeled)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
+WorkingDirectory=/opt/noah/cullowhee-weather/ledger
+ExecStart=/usr/bin/python3 /opt/noah/cullowhee-weather/ledger/fetch_stage.py
+User=noah
+Group=noah

@@ -1,9 +1,9 @@
 {
-  "fetched_utc": "2026-08-03T16:41:23.666864+00:00",
+  "fetched_utc": "2026-08-03T16:49:20.940626+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
-    "ffg_in": "ok",
+    "ffg_in": "empty",
     "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": 256.4,
     "stage_series_up": [
-      [
-        1785753900,
-        4.06
-      ],
       [
         1785754800,
         4.06
@@ -136,10 +132,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1785753900,
-        3.35
-      ],
       [
         1785754800,
         3.35
@@ -325,11 +317,11 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 68.5,
-    "fresh": true,
+    "age_min": 76.4,
+    "fresh": false,
     "last_updated_utc": "2026-08-03T15:33:00+00:00",
     "datum_verified": false,
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 76.4 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -490,7 +482,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-03T16:41:27.369345+00:00",
+    "valid_utc": "2026-08-03T16:49:25.078674+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

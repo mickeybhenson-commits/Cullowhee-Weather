@@ -12,6 +12,37 @@
   padding:9px 16px;text-align:center;letter-spacing:.01em}
 #devbanner.embedded{display:none}
 .leaflet-top{top:var(--bannerH,38px)}
+/* --- orientation overlay (ported from the Jackson County EM build) --- */
+#introwrap{position:fixed;inset:0;z-index:5000;background:rgba(12,20,28,.55);
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+#introcard{background:#fff;max-width:560px;width:calc(100% - 40px);max-height:calc(100vh - 60px);
+  overflow-y:auto;border-radius:14px;box-shadow:0 12px 44px rgba(0,0,0,.4);padding:22px 24px 20px;
+  font-family:Inter,system-ui,Segoe UI,sans-serif;}
+#introcard h2{margin:0 0 2px;font-size:1.12rem;font-weight:800;color:#13212E;}
+#introcard .isub{margin:0 0 12px;font-size:.8rem;color:#5b6b78;font-weight:600;}
+#introcard p{margin:9px 0;font-size:.86rem;line-height:1.5;color:#22323f;}
+#introcard .warnbox{background:#FEF3F2;border:1px solid #FDA29B;border-radius:9px;
+  padding:10px 13px;margin:12px 0;font-size:.83rem;line-height:1.45;color:#7A271A;}
+#introcard .warnbox b{color:#B42318;}
+#introcard .legrow{display:flex;gap:8px;align-items:center;margin:5px 0;font-size:.82rem;}
+#introcard .chip{display:inline-block;min-width:74px;text-align:center;padding:2px 8px;border-radius:5px;
+  color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.02em;}
+#introcard .how{font-size:.82rem;color:#22323f;line-height:1.5;margin:9px 0;}
+#introcard .how b{color:#13212E;}
+#introcard .howsteps{margin:6px 0 6px 4px;padding-left:20px;font-size:.82rem;line-height:1.5;color:#22323f;}
+#introcard .howsteps li{margin:4px 0;}
+#introcard .howsteps b{color:#234F86;}
+#introbtns{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+#introok{background:#234F86;color:#fff;border:none;border-radius:8px;padding:9px 20px;
+  font-weight:700;font-size:.86rem;cursor:pointer;}
+#introcard .contact{font-size:.78rem;color:#5b6b78;margin-top:12px;border-top:1px solid #ececec;padding-top:10px;}
+#aboutbtn{background:#fff;border:1px solid #234F86;color:#234F86;border-radius:50%;
+  width:28px;height:28px;font-weight:800;font-size:.86rem;cursor:pointer;line-height:1;flex:none;}
+/* NCEM FIMAN measured-stage marker */
+.fimanmk{background:none;border:none;}
+.fimanlbl{font-weight:800;font-size:10px;color:#13212E;background:none;border:none;box-shadow:none;
+  text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;}
+.fimanlbl:before{display:none;}
 </style>
 <div id="devbanner"><strong style="color:#f2882d">DECISION-SUPPORT TOOL &mdash; NOT AN OFFICIAL FLOOD WARNING.</strong> Posture is modeled, not measured; in-stream gauges pending. Do not use as the sole basis for issuing public alerts. Official warnings: <a href="https://www.weather.gov/gsp/" target="_blank" rel="noopener" style="color:#ffd9bd;text-decoration:underline">NWS Greenville-Spartanburg</a>.</div>
 <script>(function(){var b=document.getElementById("devbanner");
@@ -23,6 +54,69 @@
 })();</script>
 <!-- ===== end status banner ===== -->
 
+<div id="introwrap">
+  <div id="introcard">
+    <h2>Cullowhee Creek &mdash; watershed status</h2>
+    <p class="isub">Jackson County situational-awareness map &middot; modeled from live rainfall &amp; radar</p>
+
+    <p>This map shows the <b>modeled flood posture</b> of the eight Cullowhee Creek sub-basins,
+    from the live rainfall forecast and the NEXRAD radar loop, over a topographic basemap.</p>
+
+    <div class="warnbox">
+      <b>This is a decision-support tool, not an official flood warning.</b> The posture is
+      <b>modeled</b> &mdash; an estimate, not a measurement &mdash; and runs on public data feeds.
+      Use it for situational awareness alongside &mdash; never in place of &mdash; NWS products
+      and your own judgment. Do not use it as the sole basis for issuing public alerts.
+    </div>
+
+    <p class="how"><b>One measured input is already on the map.</b> The state-operated NCEM FIMAN
+    stream gauge on Cullowhee Creek at Speedwell (site 25380) appears as a diamond marker showing
+    its current <b>measured</b> stage &mdash; an NCEM observation displayed alongside the modeled
+    posture for comparison. It does not drive the basin colors and is not a NOAH product.</p>
+
+    <p class="how"><b>Getting more accurate over time.</b> A full environmental sensor network is
+    being deployed across the watershed over the coming year &mdash; in&#8209;stream water&#8209;level
+    and ADCP discharge sensors, soil&#8209;moisture probes, and weather stations logging rainfall,
+    wind speed and direction, temperature, humidity, and barometric pressure, plus the additional
+    instrumentation the buildout will bring online. As that live data comes in it will validate and
+    progressively replace today's modeled estimates with measured ground truth.</p>
+
+    <p class="how"><b>Two modes.</b> <b>Live</b> (the view you start in) reads the current rain
+    forecast and shows present posture. <b>What-if</b> is a practice sandbox &mdash; it lets you
+    put a hypothetical storm on the watershed and watch how the basins would respond:</p>
+
+    <ol class="howsteps">
+      <li>Click <b>What&#8209;if</b> at the top of the screen.</li>
+      <li>Set the storm's rainfall with the <b>design storm</b> slider.</li>
+      <li><b>Click anywhere on the map</b> to place the storm center (or drag the blue marker).
+          The <b>R</b> slider sets the storm's radius in miles.</li>
+      <li>Press <b>&#9658; Play storm</b> to sweep it across the watershed along the selected
+          <b>path</b> &mdash; basins change color as the storm passes over them. Use the scrub bar
+          to step through manually and the speed menu (&frac12;&times;&ndash;4&times;) to slow down
+          or speed up.</li>
+    </ol>
+
+    <p class="how" style="margin-top:6px">Click <b>Live</b> anytime to return to real current
+    conditions &mdash; What&#8209;if never affects the live view.</p>
+
+    <div class="legrow"><span class="chip" style="background:#1A7A52">NORMAL</span> baseline</div>
+    <div class="legrow"><span class="chip" style="background:#C08A00">WATCH</span> elevated &mdash; monitor</div>
+    <div class="legrow"><span class="chip" style="background:#C2410C">WARNING</span> flooding likely</div>
+    <div class="legrow"><span class="chip" style="background:#B42318">EMERGENCY</span> major flooding modeled</div>
+
+    <p class="how" style="margin-top:12px"><b>Reading a basin:</b> hover it for detail. The table
+    (bottom-right) lists rainfall, modeled magnitude (return period, or stage in feet for the WCU
+    campus reach), and lead time &mdash; minutes of warning before the modeled crest.</p>
+
+    <p class="how"><b>Needs internet.</b> The map, rain forecast, and radar load from the web,
+    so open it on a connected device.</p>
+
+    <div class="contact">Cullowhee Creek pilot &middot; Jackson County NC Emergency Management.
+    Questions or issues: contact the EM department.</div>
+
+    <div id="introbtns"><button id="introok">Got it &mdash; open the map</button></div>
+  </div>
+</div>
 <div id="map"></div>
 <div id="sbtable">
   <h4 id="sbhdr">Sub-basin status <span id="sbtog">&#9662;</span></h4>
@@ -31,7 +125,7 @@
   <div class="sbleg">
     <div><b>Status</b> &mdash; severity posture: Normal &#9656; Watch &#9656; Warning &#9656; Emergency</div>
     <div><b>Rain</b> &mdash; rainfall driving the status, in inches. Live: peak 24-hr precipitation forecast (QPF) at that sub-basin. What-if: design-storm depth falling over that sub-basin.</div>
-    <div><b>~RP / stage</b> &mdash; modeled flood magnitude. Tributaries: return period in years (e.g. ~100&nbsp;yr). WCU campus: river stage in feet.</div>
+    <div><b>~RP / stage</b> &mdash; modeled flood magnitude. Tributaries: return period in years (e.g. ~100&nbsp;yr). WCU campus: creek stage in feet.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
     <div class="sbleg-f">rows sorted worst-first &middot; updates live</div>
   </div>
@@ -85,6 +179,7 @@
     <input type="range" id="stormrad" min="1.5" max="9" step="0.5" value="5" title="storm radius (mi)" style="width:66px">
     <span class="read" id="stormread"></span>
   </div>
+  <button id="aboutbtn" title="About this map">i</button>
 </div>
 <div id="radarctl" class="panel">
   <button id="rplay">❙❙ Pause</button>
@@ -356,6 +451,139 @@ ORDER.forEach(b=>{ if(!POUR[b]) return;
     .bindTooltip(COMM[b]||META[b].short,{permanent:true,direction:CDIR[b]||"top",className:"lbl"});
   markerByBid[b]=mk; mk.addTo(labels);});
 labels.addTo(map);
+
+/* ---------------------------------------------------------------------------
+   NCEM FIMAN gage 25380 (Cullowhee Creek at Speedwell) - measured-stage marker.
+   Ported from the Jackson County EM build; ArcGIS rendering swapped for Leaflet,
+   logic unchanged.
+   Display overlay ONLY: does not touch basin posture, model state, or alerts.
+   Primary source : spartagis.ncem.org ArcGIS GAGES_ALL live query (freshest).
+   Fallback source: feed/fiman_watch.csv committed by the repo Action (cached).
+   The browser-first order matters: the repo feed is only as fresh as the last
+   Actions run, and those get delayed. Querying NCEM directly keeps the one
+   measured number on this map current even when the publish job is behind.
+   Colors follow the NCEM condition ladder for this site (ft above gage datum
+   2125.0 ft NAVD88): Monitor 4 / Minor 5 / Moderate 9 / Major 15.
+   Staleness is safety information: >35 min = amber ring, >90 min = grey STALE.
+   Attribution: NCEM observation, not NOAH.
+--------------------------------------------------------------------------- */
+var fimanLayer = L.layerGroup().addTo(map);
+!function(){
+"use strict";
+var SITE="25380",
+    QURL="https://spartagis.ncem.org/arcgis/rest/services/FIMAN/GAGES_ALL/MapServer/0/query"
+        +"?where=SITE_ID%3D%27"+SITE+"%27"
+        +"&outFields=SITE_ID,NAME,LAST_UPDATED,IN_SERVICE,CONDITION_TXT,HYDRO_ALL_STAGE,"
+        +"CURRENT_ELEVATION_MSL,RAIN_1HR,RAIN_24HR,TREND,NUM_SENSORS"
+        +"&returnGeometry=true&outSR=4326&f=json",
+    CSV="feed/fiman_watch.csv",
+    FB_LAT=35.2856, FB_LON=-83.1867,          /* approx pin; used only if no geometry */
+    GAGE_DATUM=2125.0,
+    LADDER=[[15,"Major flooding","#7C3AED"],[9,"Moderate flooding","#DC2626"],
+            [5,"Minor flooding","#EA580C"],[4,"Monitor","#D97706"]],
+    NORMAL=["Normal","#16A34A"],
+    REFRESH_MS=3e5;
+
+function cls(stage){
+  if(typeof stage!=="number"||isNaN(stage))return["No data","#6B7280"];
+  for(var i=0;i<LADDER.length;i++)if(stage>=LADDER[i][0])return[LADDER[i][1],LADDER[i][2]];
+  return NORMAL.slice();
+}
+function nyOffsetMin(d){ /* America/New_York UTC offset in minutes at instant d */
+  try{
+    var s=new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",timeZoneName:"shortOffset"})
+          .formatToParts(d).filter(function(p){return p.type==="timeZoneName";})[0].value;
+    var m=/GMT([+-])(\d{1,2})(?::(\d{2}))?/.exec(s);
+    if(m)return (m[1]==="-"?-1:1)*(60*parseInt(m[2],10)+parseInt(m[3]||"0",10));
+  }catch(e){}
+  return -240; /* assume EDT if Intl unavailable */
+}
+function parseFimanLocal(raw){ /* "Aug 3 2026  2:03AM" (naive Eastern) -> ms epoch */
+  if(!raw)return null;
+  var m=/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})\s+(\d{1,2}):(\d{2})(AM|PM)$/.exec(String(raw).replace(/\s+/g," ").trim());
+  if(!m)return null;
+  var mon={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11}[m[1]];
+  if(mon==null)return null;
+  var h=parseInt(m[4],10)%12+(m[6]==="PM"?12:0);
+  var guess=Date.UTC(+m[3],mon,+m[2],h,+m[5]);      /* pretend UTC, then remove NY offset */
+  return guess-nyOffsetMin(new Date(guess))*6e4;
+}
+function ageMin(ms){return ms==null?null:Math.round((Date.now()-ms)/6e4);}
+function fmtObs(ms){
+  if(ms==null)return"unknown";
+  try{return new Intl.DateTimeFormat("en-US",{timeZone:"America/New_York",month:"short",
+        day:"numeric",hour:"numeric",minute:"2-digit"}).format(new Date(ms))+" ET";}
+  catch(e){return new Date(ms).toISOString().slice(0,16)+"Z";}
+}
+function fesc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];});}
+function diamond(fill,ring){
+  return L.divIcon({className:"fimanmk",iconSize:[20,20],iconAnchor:[10,10],
+    html:"<svg width='20' height='20' viewBox='0 0 20 20'><polygon points='10,1 19,10 10,19 1,10' "
+        +"fill='"+fill+"' stroke='"+ring+"' stroke-width='2.2'/></svg>"});
+}
+function render(d){
+  fimanLayer.clearLayers();
+  var stale=(d.age!=null&&d.age>90), aging=(d.age!=null&&d.age>35&&!stale),
+      c=stale?["STALE","#6B7280"]:cls(d.stage),
+      lbl=(typeof d.stage==="number"?d.stage.toFixed(1)+" ft":"n/a")
+         +(stale?" · STALE "+Math.round(d.age/60*10)/10+"h"
+                :(aging?" · "+d.age+"m old":"")),
+      rows=[["Measured stage",(typeof d.stage==="number"?d.stage.toFixed(2)+" ft ("
+             +(GAGE_DATUM+d.stage).toFixed(1)+" ft NAVD88)":"n/a")],
+            ["NCEM condition",fesc(d.cond||c[0])],["Trend",fesc(d.trend||"—")],
+            ["Rain 1 h / 24 h",(d.r1==null||d.r1===""?"—":d.r1)+" / "+(d.r24==null||d.r24===""?"—":d.r24)+" in"],
+            ["Last observation",fmtObs(d.obsMs)+(d.age!=null?" ("+d.age+" min ago)":"")],
+            ["Source",fesc(d.src)]],
+      html="<div style='font-size:.8rem;line-height:1.4'>"
+          +rows.map(function(r){return "<div><span style='color:#5b6b78'>"+r[0]
+              +":</span> <b style='font-variant-numeric:tabular-nums'>"+r[1]+"</b></div>";}).join("")
+          +"<div style='border-top:1px solid #e2dccd;margin:6px 0 4px'></div>"
+          +"<div style='color:#5b6b78'>NCEM ladder (ft): Monitor 4 · Minor 5 · "
+          +"Moderate 9 · Major 15 · datum 2125.0 ft NAVD88</div>"
+          +"<div style='margin-top:4px'><a href='https://fiman.nc.gov/' target='_blank' "
+          +"rel='noopener'>fiman.nc.gov</a></div>"
+          +"<div style='margin-top:5px;font-weight:700;color:#7A271A'>NCEM FIMAN observation "
+          +"— measured, not modeled. Not a NOAH product; does not set basin posture.</div></div>";
+  L.marker([d.lat,d.lon],{icon:diamond(c[1],aging?"#F59E0B":"#ffffff"),zIndexOffset:900})
+    .bindPopup(html,{maxWidth:320})
+    .bindTooltip(lbl,{permanent:true,direction:"bottom",offset:[0,8],className:"fimanlbl"})
+    .addTo(fimanLayer);
+}
+function fromArcgis(js){
+  var f=js&&js.features&&js.features[0]; if(!f)throw new Error("no feature");
+  var a=f.attributes||{}, g=f.geometry||{};
+  var obsMs=parseFimanLocal(a.LAST_UPDATED);
+  return {lat:(typeof g.y==="number"?g.y:FB_LAT),lon:(typeof g.x==="number"?g.x:FB_LON),
+    stage:(a.HYDRO_ALL_STAGE==null?null:+a.HYDRO_ALL_STAGE),cond:a.CONDITION_TXT,
+    trend:a.TREND,r1:a.RAIN_1HR,r24:a.RAIN_24HR,name:a.NAME,obsMs:obsMs,age:ageMin(obsMs),
+    src:"NCEM live (spartagis)"};
+}
+function fromCsv(txt){
+  var rows=txt.split(/\r?\n/).filter(function(l){
+      var p=l.split(",");return p[1]===SITE&&p.length>=16;});
+  if(!rows.length)throw new Error("no "+SITE+" rows in feed");
+  var p=rows[rows.length-1].split(","),
+      obsMs=p[4]?Date.parse(p[4]):null;
+  return {lat:FB_LAT,lon:FB_LON,stage:(p[9]===""?null:+p[9]),cond:p[8],trend:p[15],
+    r1:(p[10]===""?null:p[10]),r24:(p[11]===""?null:p[11]),name:"Cullowhee Creek",
+    obsMs:isNaN(obsMs)?null:obsMs,age:ageMin(isNaN(obsMs)?null:obsMs),
+    src:"repo feed (cached; approx pin)"};
+}
+function refresh(){
+  fetch(QURL,{cache:"no-store"}).then(function(r){
+      if(!r.ok)throw new Error("http "+r.status);return r.json();})
+    .then(function(js){render(fromArcgis(js));})
+    .catch(function(){
+      fetch(CSV+"?t="+Date.now(),{cache:"no-store"}).then(function(r){
+          if(!r.ok)throw new Error("http "+r.status);return r.text();})
+        .then(function(t){render(fromCsv(t));})
+        .catch(function(e2){console.warn("FIMAN marker unavailable:",e2&&e2.message);});
+    });
+}
+refresh(); setInterval(refresh, REFRESH_MS);
+}();
+
 function worst(){ const rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}; let w="NORMAL",wb=null;
   ORDER.forEach(b=>{const lv=lvlOf(b); if((rank[lv]||0)>(rank[w]||0)){w=lv;wb=b;}}); return [w,wb]; }
 function repaint(){
@@ -749,7 +977,8 @@ setInterval(rebuild,RREFRESH_MS);
 document.getElementById("rplay").addEventListener("click",()=>{ if(fellBack)return; rtimer?rplayStop():rplayStart(); });
 document.getElementById("rref").addEventListener("click",rebuild);
 L.control.layers({"Carto Voyager":base,"Topographic":terrain},
-  {"Sub-basins":basins,"Labels":labels},{position:"topright",collapsed:true}).addTo(map);
+  {"Sub-basins":basins,"Labels":labels,"FIMAN gage (measured)":fimanLayer},
+  {position:"topright",collapsed:true}).addTo(map);
 </script>
 <script>
 /* ===== MEASURED & OFFICIAL — feed/external.json (published every 30 min by
@@ -813,7 +1042,16 @@ L.control.layers({"Carto Voyager":base,"Topographic":terrain},
         (age<1?"just now":age+" min ago")+(age>75?" <b style='color:#f2882d'>(stale)</b>":"");
     }
   }
-  fetch("feed/external.json?t="+Date.now()).then(function(r){
+  /* orientation overlay: shown on every load, reopenable from the "i" button */
+(function(){
+  var w=document.getElementById("introwrap"), ok=document.getElementById("introok"),
+      ab=document.getElementById("aboutbtn");
+  function hide(){ if(w) w.style.display="none"; }
+  if(ok) ok.addEventListener("click",hide);
+  if(ab) ab.addEventListener("click",function(){ if(w) w.style.display="flex"; });
+  if(w) w.addEventListener("click",function(e){ if(e.target===w) hide(); });
+})();
+fetch("feed/external.json?t="+Date.now()).then(function(r){
     if(!r.ok) throw new Error("HTTP "+r.status); return r.json();}).then(render)
   .catch(function(){var b=document.getElementById("extbody");
     if(b) b.innerHTML="<span style='color:#7f93a5;font-size:10px;'>gov feed not published yet "+

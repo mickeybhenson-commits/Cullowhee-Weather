@@ -41,7 +41,13 @@ import math
 from datetime import date
 
 from basins import BASINS
-from flood_rating import depth_from_q, posture
+# posture_stage, NOT posture. flood_rating has never exported a bare `posture`;
+# this module was unimportable on main until 2026-08-03. Note what it is:
+# posture_stage is the LEGACY stage-vs-threshold call, authoritative only for
+# the campus (validated 7/9/11 ft). For the seven other reaches the operative
+# posture is discharge-frequency (flood_rating.classify, the 2026-07-15 §2
+# decision) and everything in this module is a CROSS-CHECK, not the call.
+from flood_rating import depth_from_q, posture_stage
 
 # ----------------------------------------------------------------------------
 # 1. CONTINUOUS CURVE NUMBER
@@ -191,28 +197,38 @@ def stage_total_from_q(calib_q_cfs, bid):
 
 
 def posture_total(calib_q_cfs, bid):
-    return posture(stage_total_from_q(calib_q_cfs, bid), bid)
+    return posture_stage(stage_total_from_q(calib_q_cfs, bid), bid)
 
 
 # ----------------------------------------------------------------------------
 # 5. FULL CASE  (forecast rain + wetness -> posture, continuous-CN path)
 # ----------------------------------------------------------------------------
 
-def assess_wet(bid, qpf_in, wetness, PRF=484.0, dt_hr=0.25):
+def assess_wet(bid, qpf_in, wetness, dt_hr=0.25):
     """Upgraded per-basin chain: continuous CN + baseflow-inclusive posture.
-    Mirrors test_model.run_case per-basin body; that legacy stepped path is
-    left untouched for the tabletop harness."""
-    import test_model as tm
-    b = tm.BASINS[bid]
+
+    Sourced from cwm_model, NOT test_model. test_model.py moved to the private
+    Cullowhee-Engine repo in 9c720eb, which left this function raising
+    ModuleNotFoundError on main; cwm_model is the in-repo engine and carries
+    the same NRCS chain (Type II hyetograph -> continuous CN -> unit
+    hydrograph, PRF 484 baked into unit_hydrograph). Basin parameters come
+    from basins.py directly rather than a second copy of the table.
+
+    Returns the STAGE cross-check posture. The operative call for the seven
+    non-campus reaches is discharge-frequency; see the import note at the top.
+    """
+    import cwm_model as cwm
     from flood_rating import calibrate_peak
-    CN = cn_from_wetness(b["CN2"], wetness)
-    qp = tm.peak_discharge_cfs(tm.storm_hyetograph(qpf_in, dt_hr=dt_hr),
-                               CN, b["DA"], b["Tc"] / 60.0, PRF=PRF, dt_hr=dt_hr)
+    b = cwm.BASINS[bid]                 # cwm's table, so this matches the
+    CN = cn_from_wetness(b["CN2"], wetness)   # operative engine exactly
+    qp = cwm.peak_discharge(cwm.storm_hyetograph(qpf_in, dt=dt_hr),
+                            CN, b["DA"], b["Tc"] / 60.0)
     cq = calibrate_peak(qp, bid)
     storm = depth_from_q(cq, bid)
     stage = stage_total_from_q(cq, bid)
     return dict(wetness=wetness, CN=CN, qp=qp, calib_q=cq,
-                storm_ft=storm, stage_ft=stage, posture=posture(stage, bid))
+                storm_ft=storm, stage_ft=stage,
+                posture=posture_stage(stage, bid))
 
 
 # ----------------------------------------------------------------------------
@@ -249,7 +265,7 @@ if __name__ == "__main__":
     print("\nbaseflow (zero-storm total stage and posture):")
     for bid in QB_CFS:
         st = stage_total_from_q(0.0, bid)
-        p = posture(st, bid)
+        p = posture_stage(st, bid)
         print(f"  {bid:14s} Qb={str(QB_CFS[bid]):>5} cfs  "
               f"stage={('%.2f' % st) if st is not None else '  --'} ft  -> {p}")
         if st is not None:

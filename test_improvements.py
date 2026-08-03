@@ -92,9 +92,22 @@ class TestAssess(unittest.TestCase):
             self.assertEqual(a["basis"], "discharge frequency (USGS regression)")
             self.assertIsNotNone(a["rp_band"])
 
-    def test_mouth_out_of_scope(self):
+    def test_mouth_gives_creek_only_status(self):
+        # The mouth used to return "N/A" and this test asserted that. The
+        # engine deliberately stopped doing so (flood_rating.assess, rating ==
+        # "none"): it now computes the CREEK half of the confluence posture by
+        # §2 discharge frequency and says plainly that Tuckasegee backwater is
+        # not in it. That is the more protective behaviour and it matches the
+        # project scope — out of scope for MEASUREMENT under the no-mainstem
+        # rule is not out of scope for PROTECTION. The test was simply never
+        # updated, so it had been failing on main. Assert the real contract.
         a = fr.assess(5000, "CC-MOUTH-2340")
-        self.assertEqual(a["posture"], "N/A")
+        self.assertIn(a["posture"], ("NORMAL", "WATCH", "WARNING", "EMERGENCY"))
+        self.assertIsNotNone(a["rp_best"])
+        self.assertIn("backwater", a["basis"])
+        self.assertIn("backwater not included", a["confidence"])
+        # and it must NOT masquerade as a full confluence assessment
+        self.assertIsNone(a["rp_band"])
 
 
 class TestLeadTime(unittest.TestCase):

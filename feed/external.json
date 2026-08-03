@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-03T15:21:28.238026+00:00",
+  "fetched_utc": "2026-08-03T15:57:55.213117+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1785766500,
+        1785770100,
         73.4
       ],
       "00065": [
-        1785766500,
+        1785770100,
         4.06
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1785766500,
-        328.0
+        1785770100,
+        332.0
       ],
       "00065": [
-        1785766500,
-        3.33
+        1785770100,
+        3.34
       ]
     },
-    "local_inflow_cfs": 254.6,
+    "local_inflow_cfs": 258.6,
     "stage_series_up": [
-      [
-        1785749400,
-        4.06
-      ],
-      [
-        1785750300,
-        4.06
-      ],
       [
         1785751200,
         4.06
@@ -121,17 +113,25 @@
       [
         1785766500,
         4.06
+      ],
+      [
+        1785767400,
+        4.06
+      ],
+      [
+        1785768300,
+        4.06
+      ],
+      [
+        1785769200,
+        4.06
+      ],
+      [
+        1785770100,
+        4.06
       ]
     ],
     "stage_series_down": [
-      [
-        1785749400,
-        3.37
-      ],
-      [
-        1785750300,
-        3.37
-      ],
       [
         1785751200,
         3.37
@@ -203,6 +203,22 @@
       [
         1785766500,
         3.33
+      ],
+      [
+        1785767400,
+        3.34
+      ],
+      [
+        1785768300,
+        3.34
+      ],
+      [
+        1785769200,
+        3.34
+      ],
+      [
+        1785770100,
+        3.34
       ]
     ],
     "provenance": "MEASURED"
@@ -218,17 +234,17 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.41,
+    "stage_ft": 2.38,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Constant",
+    "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 78.8,
-    "fresh": false,
-    "last_updated_utc": "2026-08-03T14:03:00+00:00",
+    "age_min": 55.3,
+    "fresh": true,
+    "last_updated_utc": "2026-08-03T15:03:00+00:00",
     "datum_verified": false,
-    "note": "NOT driving posture: stale/invalid (age 78.8 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -388,7 +404,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 31.8,
+    "age_min": 68.3,
     "valid_utc": "2026-08-03T14:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

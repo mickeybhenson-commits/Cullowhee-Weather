@@ -113,6 +113,20 @@ POUR = {
     "CC-MOUTH-2340": (35.31709, -83.18037),
 }
 
+# Per-reach cut width and spacing. Width must suit the channel: 250 ft over a
+# 0.97 mi2 branch drowns the banks in floodplain and the detector locks onto a
+# valley wall. Spacing is 300 ft except where the reach is too short to yield
+# enough sections to choose a controlling one — CC-SPD-1830's incremental area
+# is only 0.25 mi2 (it is a junction node just below the Mtn. Lower / Tilley
+# confluence), giving 0.22 mi of channel and just 3 sections at 300 ft.
+# Override either with --width / --spacing.
+DEFAULT_WIDTH = {
+    "CC-COX-097": 140, "CC-LB-171": 160, "CC-UP-503": 200,
+    "CC-TIL-705": 220, "CC-MS-1100": 240, "CC-SPD-1830": 250,
+    "CC-WCU-2260": 260, "CC-MOUTH-2340": 300,
+}
+DEFAULT_SPACING = {"CC-SPD-1830": 60.0}
+
 # Reaches with NO surveyed channel geometry on their own watercourse.
 # Corrected 2026-08-03: an earlier pass measured distance to the nearest
 # section and wrongly counted Cox Branch and Long Branch as covered.
@@ -476,10 +490,12 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                   "- skipped", file=sys.stderr)
             continue
 
+        sp = spacing if spacing else DEFAULT_SPACING.get(bid, 300.0)
+        wd = width if width else DEFAULT_WIDTH.get(bid, 250.0)
         cuts = []
         for ln in lines:
-            cuts += cut_lines(ln, spacing, width, lat0, lon0)
-        print(f"  {len(cuts)} cut lines at {spacing} ft spacing, {width} ft wide")
+            cuts += cut_lines(ln, sp, wd, lat0, lon0)
+        print(f"  {len(cuts)} cut lines at {sp:.0f} ft spacing, {wd:.0f} ft wide")
         if not cuts:
             print("  (reach shorter than one spacing interval - lower --spacing)")
             continue
@@ -496,7 +512,7 @@ def run(basins, spacing, width, npts, out_dir, centerline_csv, nav_km):
                 continue
             e = np.array([np.nan if v is None else v for v in elev], float)
             e = np.array([v if not np.isnan(v) else np.nanmean(e) for v in e])
-            sta = np.linspace(-width / 2.0, width / 2.0, npts)
+            sta = np.linspace(-wd / 2.0, wd / 2.0, npts)
             b = detect_banks(sta, e)
             sid = f"{bid}_{k:03d}"
             with open(os.path.join(bdir, sid + ".csv"), "w", newline="") as f:
@@ -563,8 +579,10 @@ def main():
                     help="test NLDI reachability at every pour point, then exit")
     ap.add_argument("--basin", action="append")
     ap.add_argument("--all", action="store_true")
-    ap.add_argument("--spacing", type=float, default=300.0)
-    ap.add_argument("--width", type=float, default=250.0)
+    ap.add_argument("--spacing", type=float, default=None,
+                    help="ft between sections; per-reach default if omitted")
+    ap.add_argument("--width", type=float, default=None,
+                    help="section width ft; per-reach default if omitted")
     ap.add_argument("--npts", type=int, default=201)
     ap.add_argument("--nav-km", type=float, default=60.0,
                     help="NLDI upstream navigation limit, km, from the OUTLET")

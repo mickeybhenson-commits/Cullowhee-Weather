@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-04T18:12:09.350028+00:00",
+  "fetched_utc": "2026-08-04T20:09:09.897945+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1785863700,
-        90.6
+        1785870900,
+        78.6
       ],
       "00065": [
-        1785863700,
-        4.15
+        1785870900,
+        4.09
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,48 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1785863700,
-        986.0
+        1785870900,
+        828.0
       ],
       "00065": [
-        1785863700,
-        4.4
+        1785870900,
+        4.19
       ]
     },
-    "local_inflow_cfs": 895.4,
+    "local_inflow_cfs": 749.4,
     "stage_series_up": [
-      [
-        1785845700,
-        5.99
-      ],
-      [
-        1785846600,
-        5.81
-      ],
-      [
-        1785847500,
-        5.52
-      ],
-      [
-        1785848400,
-        5.23
-      ],
-      [
-        1785849300,
-        4.99
-      ],
-      [
-        1785850200,
-        4.8
-      ],
-      [
-        1785851100,
-        4.66
-      ],
-      [
-        1785852000,
-        4.56
-      ],
       [
         1785852900,
         4.49
@@ -125,41 +93,41 @@
       [
         1785863700,
         4.15
+      ],
+      [
+        1785864600,
+        4.14
+      ],
+      [
+        1785865500,
+        4.13
+      ],
+      [
+        1785866400,
+        4.12
+      ],
+      [
+        1785867300,
+        4.11
+      ],
+      [
+        1785868200,
+        4.11
+      ],
+      [
+        1785869100,
+        4.1
+      ],
+      [
+        1785870000,
+        4.1
+      ],
+      [
+        1785870900,
+        4.09
       ]
     ],
     "stage_series_down": [
-      [
-        1785845700,
-        3.45
-      ],
-      [
-        1785846600,
-        3.44
-      ],
-      [
-        1785847500,
-        3.44
-      ],
-      [
-        1785848400,
-        3.43
-      ],
-      [
-        1785849300,
-        3.42
-      ],
-      [
-        1785850200,
-        3.55
-      ],
-      [
-        1785851100,
-        4.19
-      ],
-      [
-        1785852000,
-        4.37
-      ],
       [
         1785852900,
         4.39
@@ -211,11 +179,52 @@
       [
         1785863700,
         4.4
+      ],
+      [
+        1785864600,
+        4.39
+      ],
+      [
+        1785865500,
+        4.39
+      ],
+      [
+        1785866400,
+        4.38
+      ],
+      [
+        1785867300,
+        4.36
+      ],
+      [
+        1785868200,
+        4.32
+      ],
+      [
+        1785869100,
+        4.28
+      ],
+      [
+        1785870000,
+        4.24
+      ],
+      [
+        1785870900,
+        4.19
       ]
     ],
     "provenance": "MEASURED"
   },
-  "alerts": [],
+  "alerts": [
+    {
+      "event": "Special Weather Statement",
+      "severity": "Moderate",
+      "onset": "2026-08-04T15:42:00-04:00",
+      "ends": null,
+      "headline": "Special Weather Statement issued August 4 at 3:42PM EDT by NWS Greenville-Spartanburg SC",
+      "id": "urn:oid:2.49.0.1.840.0.d029838425698b69559476fc2517055691518f07.001.1"
+    }
+  ],
   "ffg_in": {
     "ffg1h": null,
     "ffg3h": null,
@@ -232,9 +241,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 39.5,
+    "age_min": 66.5,
     "fresh": true,
-    "last_updated_utc": "2026-08-04T17:33:00+00:00",
+    "last_updated_utc": "2026-08-04T19:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -296,8 +305,8 @@
         "name": "Mountain",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.2,
-        "soil_sat_pct": 27.0,
+        "streamflow_m3s": null,
+        "soil_sat_pct": null,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -399,8 +408,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-04T18:12:31.545684+00:00",
+    "age_min": 79.5,
+    "valid_utc": "2026-08-04T18:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

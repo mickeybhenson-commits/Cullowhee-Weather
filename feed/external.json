@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-07T23:06:15.415247+00:00",
+  "fetched_utc": "2026-08-07T23:58:37.247657+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786140900,
-        135.0
+        1786144500,
+        743.0
       ],
       "00065": [
-        1786140900,
-        4.34
+        1786144500,
+        6.0
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,28 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786140900,
-        565.0
+        1786144500,
+        559.0
       ],
       "00065": [
-        1786140900,
-        3.79
+        1786144500,
+        3.78
       ]
     },
-    "local_inflow_cfs": 430.0,
+    "local_inflow_cfs": -184.0,
     "stage_series_up": [
-      [
-        1786122900,
-        4.22
-      ],
-      [
-        1786123800,
-        4.22
-      ],
-      [
-        1786124700,
-        4.22
-      ],
       [
         1786125600,
         4.22
@@ -125,21 +113,25 @@
       [
         1786140900,
         4.34
+      ],
+      [
+        1786141800,
+        4.48
+      ],
+      [
+        1786142700,
+        5.13
+      ],
+      [
+        1786143600,
+        5.81
+      ],
+      [
+        1786144500,
+        6.0
       ]
     ],
     "stage_series_down": [
-      [
-        1786122900,
-        4.09
-      ],
-      [
-        1786123800,
-        4.08
-      ],
-      [
-        1786124700,
-        4.08
-      ],
       [
         1786125600,
         4.08
@@ -211,6 +203,22 @@
       [
         1786140900,
         3.79
+      ],
+      [
+        1786141800,
+        3.79
+      ],
+      [
+        1786142700,
+        3.78
+      ],
+      [
+        1786143600,
+        3.78
+      ],
+      [
+        1786144500,
+        3.78
       ]
     ],
     "provenance": "MEASURED"
@@ -303,15 +311,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.49,
+    "stage_ft": 2.5,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Constant",
+    "trend": "Rising",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 63.3,
+    "age_min": 55.7,
     "fresh": true,
-    "last_updated_utc": "2026-08-07T22:03:00+00:00",
+    "last_updated_utc": "2026-08-07T23:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -476,7 +484,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 76.3,
+    "age_min": 128.7,
     "valid_utc": "2026-08-07T21:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

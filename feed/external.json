@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-08T15:28:07.148896+00:00",
+  "fetched_utc": "2026-08-08T15:57:46.956537+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786198500,
-        177.0
+        1786202100,
+        135.0
       ],
       "00065": [
-        1786198500,
-        4.5
+        1786202100,
+        4.34
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786198500,
+        1786202100,
         1060.0
       ],
       "00065": [
-        1786198500,
+        1786202100,
         4.49
       ]
     },
-    "local_inflow_cfs": 883.0,
+    "local_inflow_cfs": 925.0,
     "stage_series_up": [
-      [
-        1786181400,
-        6.14
-      ],
-      [
-        1786182300,
-        6.14
-      ],
       [
         1786183200,
         6.14
@@ -121,17 +113,25 @@
       [
         1786198500,
         4.5
+      ],
+      [
+        1786199400,
+        4.44
+      ],
+      [
+        1786200300,
+        4.4
+      ],
+      [
+        1786201200,
+        4.36
+      ],
+      [
+        1786202100,
+        4.34
       ]
     ],
     "stage_series_down": [
-      [
-        1786181400,
-        3.98
-      ],
-      [
-        1786182300,
-        3.96
-      ],
       [
         1786183200,
         3.93
@@ -203,6 +203,22 @@
       [
         1786198500,
         4.49
+      ],
+      [
+        1786199400,
+        4.49
+      ],
+      [
+        1786200300,
+        4.49
+      ],
+      [
+        1786201200,
+        4.49
+      ],
+      [
+        1786202100,
+        4.49
       ]
     ],
     "provenance": "MEASURED"
@@ -221,12 +237,12 @@
     "stage_ft": 2.5,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Falling",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 55.5,
+    "age_min": 55.1,
     "fresh": true,
-    "last_updated_utc": "2026-08-08T14:33:00+00:00",
+    "last_updated_utc": "2026-08-08T15:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -391,8 +407,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-08T15:28:30.612935+00:00",
+    "age_min": 8.2,
+    "valid_utc": "2026-08-08T15:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

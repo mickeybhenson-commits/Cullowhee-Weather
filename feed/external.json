@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-09T21:30:37.928756+00:00",
+  "fetched_utc": "2026-08-09T22:29:32.530188+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786306500,
-        135.0
+        1786310100,
+        130.0
       ],
       "00065": [
-        1786306500,
-        4.34
+        1786310100,
+        4.32
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,28 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786306500,
-        786.0
+        1786310100,
+        879.0
       ],
       "00065": [
-        1786306500,
-        4.13
+        1786313700,
+        4.08
       ]
     },
-    "local_inflow_cfs": 651.0,
+    "local_inflow_cfs": 749.0,
     "stage_series_up": [
-      [
-        1786290300,
-        4.37
-      ],
-      [
-        1786291200,
-        4.37
-      ],
-      [
-        1786292100,
-        4.37
-      ],
       [
         1786293000,
         4.36
@@ -117,21 +105,25 @@
       [
         1786306500,
         4.34
+      ],
+      [
+        1786307400,
+        4.33
+      ],
+      [
+        1786308300,
+        4.32
+      ],
+      [
+        1786309200,
+        4.32
+      ],
+      [
+        1786310100,
+        4.32
       ]
     ],
     "stage_series_down": [
-      [
-        1786290300,
-        4.15
-      ],
-      [
-        1786291200,
-        4.15
-      ],
-      [
-        1786292100,
-        4.15
-      ],
       [
         1786293000,
         4.14
@@ -195,6 +187,38 @@
       [
         1786306500,
         4.13
+      ],
+      [
+        1786307400,
+        4.2
+      ],
+      [
+        1786308300,
+        4.24
+      ],
+      [
+        1786309200,
+        4.23
+      ],
+      [
+        1786310100,
+        4.26
+      ],
+      [
+        1786311000,
+        4.24
+      ],
+      [
+        1786311900,
+        4.17
+      ],
+      [
+        1786312800,
+        4.1
+      ],
+      [
+        1786313700,
+        4.08
       ]
     ],
     "provenance": "MEASURED"
@@ -210,15 +234,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.84,
+    "stage_ft": 2.64,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Rising",
+    "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 58.0,
+    "age_min": 56.9,
     "fresh": true,
-    "last_updated_utc": "2026-08-09T20:33:00+00:00",
+    "last_updated_utc": "2026-08-09T21:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -264,7 +288,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260809_2100.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260809_2200.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -309,7 +333,7 @@
         "streamflow_m3s": 0.1,
         "soil_sat_pct": 42.0,
         "ffg_ratio_1h": 0.0,
-        "ffg_ratio_3h": 15.0,
+        "ffg_ratio_3h": 10.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -319,10 +343,10 @@
         "name": "Speedwell",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.3,
+        "streamflow_m3s": 0.2,
         "soil_sat_pct": 60.0,
-        "ffg_ratio_1h": 5.0,
-        "ffg_ratio_3h": 25.0,
+        "ffg_ratio_1h": 0.0,
+        "ffg_ratio_3h": 15.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -334,8 +358,8 @@
         "unit_streamflow_units": "",
         "streamflow_m3s": 1.2,
         "soil_sat_pct": 58.0,
-        "ffg_ratio_1h": 5.0,
-        "ffg_ratio_3h": 25.0,
+        "ffg_ratio_1h": 0.0,
+        "ffg_ratio_3h": 10.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -347,8 +371,8 @@
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.1,
         "soil_sat_pct": 50.0,
-        "ffg_ratio_1h": 5.0,
-        "ffg_ratio_3h": 10.0,
+        "ffg_ratio_1h": 0.0,
+        "ffg_ratio_3h": 5.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -360,8 +384,8 @@
         "unit_streamflow_units": "",
         "streamflow_m3s": 54.0,
         "soil_sat_pct": 57.0,
-        "ffg_ratio_1h": 5.0,
-        "ffg_ratio_3h": 30.0,
+        "ffg_ratio_1h": 0.0,
+        "ffg_ratio_3h": 10.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -372,9 +396,9 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 62.0,
-        "ffg_ratio_1h": 5.0,
-        "ffg_ratio_3h": 20.0,
+        "soil_sat_pct": 61.0,
+        "ffg_ratio_1h": 0.0,
+        "ffg_ratio_3h": 10.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -384,7 +408,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-09T21:31:01.309477+00:00",
+    "valid_utc": "2026-08-09T22:29:54.586884+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

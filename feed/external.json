@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-09T13:48:42.567688+00:00",
+  "fetched_utc": "2026-08-09T14:32:53.342492+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,18 +42,6 @@
     },
     "local_inflow_cfs": 556.0,
     "stage_series_up": [
-      [
-        1786262400,
-        5.44
-      ],
-      [
-        1786263300,
-        5.43
-      ],
-      [
-        1786264200,
-        5.43
-      ],
       [
         1786265100,
         5.42
@@ -132,18 +120,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1786262400,
-        4.12
-      ],
-      [
-        1786263300,
-        4.13
-      ],
-      [
-        1786264200,
-        4.13
-      ],
       [
         1786265100,
         4.12
@@ -234,15 +210,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.51,
+    "stage_ft": 2.5,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 46.1,
+    "age_min": 60.3,
     "fresh": true,
-    "last_updated_utc": "2026-08-09T13:03:00+00:00",
+    "last_updated_utc": "2026-08-09T13:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -288,7 +264,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260809_1300.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260809_1400.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -382,7 +358,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 30.2,
+        "streamflow_m3s": 28.9,
         "soil_sat_pct": 50.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -408,7 +384,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-09T13:49:04.773635+00:00",
+    "valid_utc": "2026-08-09T14:33:15.536334+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

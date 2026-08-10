@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-10T17:01:40.464246+00:00",
+  "fetched_utc": "2026-08-10T17:33:56.649470+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 344.8,
     "stage_series_up": [
-      [
-        1786360500,
-        4.28
-      ],
-      [
-        1786361400,
-        4.28
-      ],
       [
         1786362300,
         4.27
@@ -128,14 +120,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1786360500,
-        3.61
-      ],
-      [
-        1786361400,
-        3.61
-      ],
       [
         1786362300,
         3.61
@@ -303,15 +287,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.49,
+    "stage_ft": 2.48,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Constant",
+    "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 58.7,
+    "age_min": 61.1,
     "fresh": true,
-    "last_updated_utc": "2026-08-10T16:03:00+00:00",
+    "last_updated_utc": "2026-08-10T16:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -357,7 +341,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260810_1600.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260810_1700.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -413,7 +397,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.0,
-        "soil_sat_pct": 59.0,
+        "soil_sat_pct": 58.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -451,7 +435,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 16.0,
+        "streamflow_m3s": 15.2,
         "soil_sat_pct": 56.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -476,8 +460,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 11.7,
-    "valid_utc": "2026-08-10T16:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-10T17:34:08.791633+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

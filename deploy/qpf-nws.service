@@ -1,0 +1,15 @@
+# qpf-nws.service — archive NWS gridded QPF (api.weather.gov) for the bias ledger
+# Adjust WorkingDirectory/User to match the existing NOAH deployment layout.
+[Unit]
+Description=NOAH QPF ledger: archive NWS gridded forecast QPF
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=noah
+WorkingDirectory=/opt/noah/ledger
+Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
+ExecStart=/opt/noah/venv/bin/python3 fetch_nws_qpf.py
+SuccessExitStatus=0
+Nice=10

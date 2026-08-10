@@ -1,0 +1,13 @@
+# qpf-nws.timer — NWS grids update continuously; a 6-hourly archive matched
+# to the other ledger sources keeps lead-bucket comparisons apples-to-apples.
+# Offset :40 spreads load away from the :20 Open-Meteo fetch.
+[Unit]
+Description=NOAH QPF ledger: 6-hourly NWS gridded QPF archive
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:40:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

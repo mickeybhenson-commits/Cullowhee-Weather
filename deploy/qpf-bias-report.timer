@@ -1,0 +1,12 @@
+# qpf-bias-report.timer — daily is plenty; the report only moves when a storm
+# adds paired wet windows to the ledger.
+[Unit]
+Description=NOAH QPF ledger: daily bias report
+
+[Timer]
+OnCalendar=*-*-* 10:15:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

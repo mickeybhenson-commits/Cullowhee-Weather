@@ -1,0 +1,18 @@
+# qpf-bias-report.service — regenerate the published QPF verification report
+# Adjust WorkingDirectory/User/paths to the NOAH deployment layout. To publish,
+# point --out at a repo checkout's feed/ dir and commit, or rsync the JSON to
+# wherever bias.html is served from. bias.html shows an honest empty state
+# until the file exists.
+[Unit]
+Description=NOAH QPF ledger: daily bias verification report
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=noah
+WorkingDirectory=/opt/noah/ledger
+Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
+ExecStart=/opt/noah/venv/bin/python3 bias_report.py --out /var/lib/noah/bias_report.json
+SuccessExitStatus=0
+Nice=10

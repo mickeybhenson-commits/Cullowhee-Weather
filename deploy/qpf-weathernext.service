@@ -1,0 +1,21 @@
+# qpf-weathernext.service — archive WeatherNext 2 ensemble QPF for the bias ledger
+# Adjust WorkingDirectory/User to match the existing NOAH deployment layout.
+# Runs clean (exit 0, "skipped") until WN_BQ_TABLE / credentials are configured,
+# so it can be enabled from day one and start paying into the bias ledger the
+# moment Google's data-request approval lands.
+[Unit]
+Description=NOAH QPF ledger: archive WeatherNext 2 ensemble summary
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=noah
+WorkingDirectory=/opt/noah/ledger
+Environment=QPF_LEDGER_DB=/var/lib/noah/qpf_ledger.db
+# Set after access approval ([CONFIRM] in weathernext_source.py):
+#Environment=WN_BQ_TABLE=gcp-public-data-weathernext.<dataset>.<table>
+#Environment=GOOGLE_APPLICATION_CREDENTIALS=/etc/noah/wn-sa.json
+ExecStart=/opt/noah/venv/bin/python3 fetch_weathernext.py
+SuccessExitStatus=0
+Nice=10

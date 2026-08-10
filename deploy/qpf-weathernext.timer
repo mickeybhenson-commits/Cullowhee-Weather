@@ -1,0 +1,13 @@
+# qpf-weathernext.timer — WeatherNext inits 00/06/12/18Z and disseminates
+# 6-8 h later; firing ~8h30 after each init catches each cycle once without
+# hammering BigQuery for data that is not there yet.
+[Unit]
+Description=NOAH QPF ledger: 6-hourly WeatherNext ensemble archive
+
+[Timer]
+OnCalendar=*-*-* 02,08,14,20:30:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

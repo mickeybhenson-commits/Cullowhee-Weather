@@ -211,6 +211,15 @@
 <div id="storms">
   <h2>Active systems (ATL)</h2>
   <div id="stormList"><div id="quiet">Loading NHC feed&hellip;</div></div>
+  <div id="wnstrip" style="display:none;border-top:1px solid var(--line);margin-top:8px;padding-top:8px">
+    <h2 style="margin:0 0 6px">Rain outlook &mdash; campus <span id="wnsMeta" style="text-transform:none;letter-spacing:0;font-weight:400"></span></h2>
+    <div id="wnsBars" style="display:flex;gap:4px;align-items:flex-end;height:56px"></div>
+    <div id="wnsDays" style="display:flex;gap:4px;font-size:9px;color:var(--dim);margin-top:3px"></div>
+    <div style="font-size:10px;color:var(--dim);margin-top:5px;line-height:1.35">
+      P(WATCH-level rain) per day, WeatherNext&#8209;2 ensemble on projected soil state.
+      <b>Forecast tier &mdash; capped at WATCH; not a warning.</b>
+    </div>
+  </div>
 </div>
 
 <div id="statline">initializing&hellip;</div>
@@ -683,6 +692,37 @@ $("simStorm").addEventListener("change",()=>{
 function tickClock(){ $("clock").textContent = fmtZ(new Date()); }
 tickClock(); setInterval(tickClock,1000);
 refresh(); setInterval(refresh,REFRESH_MS);
+
+/* ===== WEATHERNEXT-2 DAILY OUTLOOK STRIP (feed/outlook.json) =====
+   Render-only, same contract as the live.html chips: the Python engine
+   computes campus_daily server-side (each ensemble member's daily rain on
+   its OWN projected soil state); this just draws bars. Feed absent or WN
+   unavailable -> the strip stays hidden and the page is exactly as before. */
+(function(){
+  function bar(p){
+    var h = Math.max(3, Math.round(p*52));
+    var col = p>=0.6 ? "#e05252" : p>=0.25 ? "#e8a33d" : "#4f8f5f";
+    return "<div title='"+Math.round(p*100)+"%' style='flex:1;display:flex;"+
+      "flex-direction:column;justify-content:flex-end;height:56px'>"+
+      "<div style='font-size:9px;text-align:center;color:var(--dim)'>"+
+      Math.round(p*100)+"</div>"+
+      "<div style='height:"+h+"px;background:"+col+";border-radius:2px 2px 0 0'></div></div>";
+  }
+  fetch("feed/outlook.json?t="+Date.now(),{cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+    .then(function(j){
+      var days = j && j.status==="ok" && j.campus_daily;
+      if(!days || !days.length) return;
+      $("wnsBars").innerHTML = days.map(function(d){ return bar(d.p_watch||0); }).join("");
+      $("wnsDays").innerHTML = days.map(function(d){
+        var dt = (d.date_utc||"").slice(5).replace("-","/");
+        return "<div style='flex:1;text-align:center'>"+dt+"</div>"; }).join("");
+      $("wnsMeta").textContent = "· "+(j.n_members||"?")+" members · issued "+
+        ((j.issued_utc||"").slice(5,13).replace("T"," ")+"Z");
+      $("wnstrip").style.display = "block";
+    })
+    .catch(function(){ /* outlook not published — strip stays hidden */ });
+})();
 </script>
 </body>
 </html>

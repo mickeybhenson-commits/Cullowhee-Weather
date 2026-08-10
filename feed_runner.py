@@ -190,6 +190,21 @@ def publish_outlook(outdir: Path, now: datetime) -> None:
         out["source"] = data.get("source")
         out["issued_utc"] = data.get("issued_utc")
         out["n_members"] = data.get("n_members", 0)
+
+        # NWS gridded QPF cross-check (GOV_ESTIMATE; independent of both
+        # WeatherNext and Open-Meteo). Runs BEFORE the WN availability gate:
+        # it carries value today, while WeatherNext access is still pending.
+        # Best effort — the outlook is not gated on it, and its absence is
+        # stated rather than silent.
+        try:
+            import nws_qpf
+            atoms, _ = nws_qpf.fetch_atoms()
+            out["nws_qpf24_in"] = nws_qpf.qpf24_by_basin(atoms, now=now)
+            out["nws_note"] = "api.weather.gov gridded forecast, next 24 h"
+        except Exception as e:                       # noqa: BLE001
+            out["nws_qpf24_in"] = None
+            out["nws_note"] = f"unavailable ({type(e).__name__})"
+
         if data["status"] != "ok":
             path.write_text(json.dumps(out, indent=2))
             print(f"outlook feed: {data['status']}")
@@ -238,6 +253,35 @@ def publish_outlook(outdir: Path, now: datetime) -> None:
             daily = wn.daily_series(campus, days=7)
             out["campus_wetness_projection"] = wet.project_wetness_members(
                 api0, daily, month=now.month)
+
+            # per-day P(WATCH) strip (storm_watch.html): each member's day-d
+            # rain lands on that member's OWN projected antecedent state
+            # (API chained through its days 1..d-1) — a coherent scenario
+            # per member, not a mixed marginal. Day 1 uses today's wetness.
+            mult = wn.bias_mult("CC-WCU-2260")
+            w0, _ = wet.resolve_wetness(soil_pct=a.get("soil_pct"),
+                                        p5_in=a.get("p5"))
+            ndays = min(len(m) for m in daily) if daily else 0
+            strip = []
+            for d in range(ndays):
+                hits = wq = 0
+                qs = []
+                for m in daily:
+                    w_d = (w0 if d == 0 else wet.wetness_from_api(
+                        wet.project_api(api0, m[:d])[-1], now.month))
+                    q = m[d] * mult
+                    qs.append(q)
+                    r = wet.assess_wet("CC-WCU-2260", q, w_d)
+                    if r["posture"] in ("WATCH", "WARNING", "EMERGENCY"):
+                        hits += 1
+                strip.append({
+                    "day": d + 1,
+                    "date_utc": data["valid_utc"][min(4 * d + 3,
+                                                      len(data["valid_utc"]) - 1)][:10],
+                    "p_watch": round(hits / len(daily), 3),
+                    "qpf_in": wn.quantiles(qs)})
+            out["campus_daily"] = strip
+
     except Exception as e:                           # noqa: BLE001 — belt and braces
         out["status"] = f"error: {type(e).__name__}: {e}"
     path.write_text(json.dumps(out, indent=2))

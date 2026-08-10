@@ -1,0 +1,9 @@
+{
+  "fetched_utc": "2026-08-10T13:49:20.568408+00:00",
+  "status": "unavailable: no source configured (set WN_FIXTURE or WN_BQ_TABLE)",
+  "tier": "outlook",
+  "cap": "WATCH",
+  "source": null,
+  "issued_utc": null,
+  "n_members": 0
+}

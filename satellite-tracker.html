@@ -164,6 +164,43 @@
   td:first-child { color: var(--text-primary); font-weight: 600; }
   td .dot { margin-right: 7px; }
 
+
+  /* ── legend / how-to (added 2026-08-10) ─────────────────────────────
+     Lives inside .panel so it inherits the existing responsive layout —
+     no new fixed positioning, nothing to collide with #detail. Swatch
+     colours are taken from GROUPS[] and the ring materials, not eyeballed. */
+  .legend { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 11px; }
+  .legend > summary {
+    cursor: pointer; list-style: none; font-size: 11.5px; font-weight: 700;
+    color: var(--text-secondary); padding: 2px 0; display: flex; align-items: center; gap: 6px;
+  }
+  .legend > summary::-webkit-details-marker { display: none; }
+  .legend > summary::before {
+    content: "\25B8"; color: var(--text-muted); font-size: 10px;
+    transition: transform .15s ease; display: inline-block;
+  }
+  .legend[open] > summary::before { transform: rotate(90deg); }
+  .legend > summary:hover { color: var(--text-primary); }
+  .lg-group { margin-top: 9px; }
+  .lg-head {
+    color: var(--text-muted); font-size: 9.5px; text-transform: uppercase;
+    letter-spacing: 0.07em; margin-bottom: 4px;
+  }
+  .lg-item {
+    display: flex; align-items: flex-start; gap: 7px; padding: 2.5px 0;
+    color: var(--text-secondary); line-height: 1.42;
+  }
+  .lg-item b { color: var(--text-primary); font-weight: 600; }
+  /* swatches sit on the optical centre of the FIRST line, not the middle of a
+     wrapped block — first line is ~15.6px tall at 11px/1.42. */
+  .lg-item .dot { margin-top: 3px; }
+  .lg-swatch { width: 15px; flex: none; margin-top: 7px; height: 0; border-top: 2px solid var(--text-muted); }
+  .lg-arc   { border-top-color: #9085e9; }
+  .lg-los   { border-top-color: #199e70; }
+  .lg-ring  { border-top: 2px dashed #3987e5; }
+  .lg-belt  { border-top-color: #d55181; opacity: 0.6; }
+  .lg-trail { border-top: 2px dotted #3987e5; }
+
   @media (max-width: 720px) {
     .panel { width: calc(100% - 28px); top: auto; bottom: 14px; max-height: 46vh; overflow: auto; }
     #detail { right: 14px; left: 14px; width: auto; }
@@ -182,6 +219,40 @@
 
   <div class="panel">
     <div id="sat-list"></div>
+    <details class="legend" open>
+      <summary>Legend &amp; how to use</summary>
+
+      <div class="lg-group">
+        <div class="lg-head">Satellites</div>
+        <div class="lg-item"><span class="dot" style="background:#199e70"></span><span>Hubble Network &middot; Transporter-10, Mar 2024</span></div>
+        <div class="lg-item"><span class="dot" style="background:#d95926"></span><span>Hubble Network &middot; Transporter-11, Aug 2024</span></div>
+        <div class="lg-item"><span class="dot" style="background:#9085e9"></span><span>Hubble Network &middot; Transporter-14, Jun 2025</span></div>
+        <div class="lg-item"><span class="dot" style="background:#d55181"></span><span>Skylo partner GEOs &mdash; geostationary</span></div>
+        <div class="lg-item"><span class="dot" style="background:#3987e5"></span><span>Starlink</span></div>
+      </div>
+
+      <div class="lg-group">
+        <div class="lg-head">On the globe</div>
+        <div class="lg-item"><span class="lg-swatch lg-arc"></span><span>thin coloured arc &mdash; that satellite&rsquo;s orbit track</span></div>
+        <div class="lg-item"><span class="lg-swatch lg-los"></span><span>line down to Cullowhee &mdash; it is <b>&ge;10&deg; above the horizon</b> there right now</span></div>
+        <div class="lg-item"><span class="lg-swatch lg-ring"></span><span>dashed blue ring &mdash; Cullowhee&rsquo;s reach footprint: a ~480 km satellite is &ge;10&deg; up anywhere inside it</span></div>
+        <div class="lg-item"><span class="lg-swatch lg-belt"></span><span>faint pink ring &mdash; the geostationary belt, 6.6 Earth radii out</span></div>
+        <div class="lg-item"><span class="lg-swatch lg-trail"></span><span>short trailing dots &mdash; direction of travel</span></div>
+      </div>
+
+      <div class="lg-group">
+        <div class="lg-head">Controls</div>
+        <div class="lg-item"><span><b>Drag</b> to rotate, <b>scroll</b> to zoom.</span></div>
+        <div class="lg-item"><span><b>Click a satellite</b> or its label for its details.</span></div>
+        <div class="lg-item"><span><b>Click a row</b> in this panel to fly the camera to it.</span></div>
+        <div class="lg-item"><span><b>&#9673;</b> hides or shows one satellite &mdash; or the whole group, from its heading.</span></div>
+        <div class="lg-item"><span><b>Live &middot; 60&times; &middot; 600&times;</b> set clock speed. At 60&times;, a minute of watching is an hour of orbital motion.</span></div>
+        <div class="lg-item"><span><b>Now</b> jumps the clock back to the present.</span></div>
+        <div class="lg-item"><span><b>Skylo GEOs</b> pulls back to show all three geostationary partners to scale.</span></div>
+        <div class="lg-item"><span><b>Table</b> lists every tracked satellite and its current state.</span></div>
+      </div>
+    </details>
+
     <div class="controls-row">
       <button data-speed="1">Live</button>
       <button data-speed="60" class="is-on">60×</button>
@@ -191,22 +262,16 @@
       <button id="btn-table">Table</button>
     </div>
     <div class="footnote">
-      Running at <b>60×</b> so the orbits are visible — 1 minute of watching = 1 hour of
-      orbital motion; press Live for real time, 600× to race, Now to jump the clock back to
-      the present. Starlink dots carry short motion trails showing direction of travel.
-      TLE epoch 2026-08-05 · drag to rotate, scroll to zoom · <b>click any satellite (or its
-      label) for its details</b>; click a panel row to fly to it · lines to Cullowhee appear
-      when a satellite is above 10° elevation there.
-      Skylo flies no satellites of its own — shown are its partner GEOs covering North
-      America (Ligado SkyTerra 1, TerreStar 1, Viasat Inmarsat 4-F3). They orbit 6.6 Earth
-      radii out on the pink geostationary belt; press <b>Skylo GEOs</b> to pull back and see
-      all three to scale, or click one to fly to it. The Starlink layer shows ONLY satellites currently ≥10° above Cullowhee's horizon
-      — modeled from SpaceX's public shell architecture (~7,970 satellites, FCC filings), with
-      the dashed blue ring marking the ground footprint they're drawn from. Dots are
-      statistically true in density/coverage but not cataloged objects; the 10 named Starlink
-      satellites are real tracked TLEs and appear only while overhead.
-      Hubble 2 (Lemur 2 Rocinante) deorbited 2026-01-26 and is not shown.
-      Orbital data: Satcat / N2YO · basemap: Natural Earth.
+      Orbits are SGP4-propagated in your browser from <b>TLEs at epoch 2026-08-05</b>;
+      accuracy degrades over weeks, so positions drift the further this is opened from that date.
+      Skylo flies no satellites of its own &mdash; shown are its partner GEOs covering North
+      America (Ligado SkyTerra 1, TerreStar 1, Viasat Inmarsat 4-F3).
+      The Starlink layer shows <b>only</b> satellites currently &ge;10&deg; above Cullowhee&rsquo;s
+      horizon, modeled from SpaceX&rsquo;s public shell architecture (~7,970 satellites, FCC
+      filings): the dots are statistically true in density and coverage but are <b>not cataloged
+      objects</b>. The 10 named Starlink satellites are real tracked TLEs and appear only while
+      overhead. Hubble 2 (Lemur 2 Rocinante) deorbited 2026-01-26 and is not shown.
+      Orbital data: Satcat / N2YO &middot; basemap: Natural Earth.
     </div>
   </div>
 
@@ -2363,5 +2428,13 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
 })();
 
 </script>
+  <script>
+    /* legend is open by default on desktop; collapsed on phones so it does not
+       push the satellite list out of the bottom sheet. */
+    (function () {
+      var l = document.querySelector('.legend');
+      if (l && window.matchMedia('(max-width: 720px)').matches) l.removeAttribute('open');
+    })();
+  </script>
 </body>
 </html>

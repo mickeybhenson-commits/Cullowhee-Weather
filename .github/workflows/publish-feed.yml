@@ -47,6 +47,14 @@ jobs:
         continue-on-error: true
         run: python fiman_watch.py
 
+      - name: Push posture notifications
+        continue-on-error: true
+        env:
+          # ntfy.sh topic — set the repo secret to enable phone pushes;
+          # unset = notifier idles with a log line (see notify_posture.py)
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python notify_posture.py
+
       - name: Sanity check the feed
         run: |
           python - <<'PY'

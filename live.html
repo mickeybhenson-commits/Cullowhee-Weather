@@ -168,6 +168,8 @@
     <label>design storm (24&nbsp;hr)</label>
     <input type="range" id="sld" min="0" max="4" step="1" value="4">
     <span class="read" id="read"></span>
+    <span class="read" id="ensread" style="color:#7a6a4a;font-size:.72rem"
+          title="WeatherNext-2 ensemble: where the real forecast members land on this design-storm scale (worst 24 h in the next 72 h, bias-corrected). Forecast tier only."></span>
   </div>
   <div class="ctl" id="stormctl" style="display:none">
     <label style="font-size:11px;color:#5b6b7a">path</label>
@@ -493,6 +495,7 @@ function tip(b){
        needs the grid-cell provenance MORE than a member of the public, not
        less - this is the number they would otherwise treat as independent. */
     const cn=cellNote(b); if(cn) h+=`<br><span class="k">forcing${cn}</span>`;
+    h+=wnTip(b);
     h+=`<div class="hr"></div>`+tierBlock(b,c);
   }else{ h+=` &middot; <span class="v">${m.da} mi&sup2;</span>`; }
   return h+`</div>`;
@@ -907,7 +910,7 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
           +";opacity:.55;border:1px dashed #fff' title='forecast alone reads "+_cc.fcLvl
           +"; held at "+OUTLOOK_CAP+" until a gauge confirms'>"+_cc.fcLvl+"</span>"
         : "<span style='color:#8fa0b2'>"+_cc.outlookLvl+"</span>"; }
-    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+meas+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+oc+"</td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
+    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+meas+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+oc+wnChip(r.bid)+"</td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
   tb.innerHTML=html; }
 (function(){ var h=document.getElementById("sbhdr"); if(h)h.addEventListener("click",function(){
   var p=document.getElementById("sbtable"); p.classList.toggle("collapsed");
@@ -1243,6 +1246,47 @@ fetch("feed/external.json?t="+Date.now()).then(function(r){
   .catch(function(){var b=document.getElementById("extbody");
     if(b) b.innerHTML="<span style='color:#7f93a5;font-size:10px;'>gov feed not published yet "+
       "(appears after the next 30-min Action run)</span>";});
+})();
+
+/* ===== WEATHERNEXT-2 ENSEMBLE OUTLOOK (feed/outlook.json) =====
+   FORECAST TIER ONLY. Published server-side by feed_runner.publish_outlook
+   (the authoritative Python engine runs the 64 members; nothing here computes
+   — this block only RENDERS, so the JS/Python port contract gains no new
+   surface). Every number is P(the forecast implies X), WATCH-capped, and
+   rendered NEXT TO the operative posture, never instead of it. If the feed
+   is absent (access not approved / Action hasn't run) the chips are simply
+   absent — same graceful-degradation contract as the gov feed above. */
+var WNOUT=null;
+function wnB(b){ return (WNOUT&&WNOUT.status==="ok"&&WNOUT.basins&&WNOUT.basins[b]
+                         &&!WNOUT.basins[b].error)?WNOUT.basins[b]:null; }
+function wnChip(b){ var o=wnB(b); if(!o||!o.p_exceed) return "";
+  var p=Math.round((o.p_exceed.WATCH||0)*100);
+  var col=p>=60?"#C08A00":(p>=25?"#7a6a4a":"#8fa0b2");
+  return " <span style='color:"+col+";font-size:9.5px;font-weight:700' "
+    +"title='WeatherNext-2 ensemble ("+(WNOUT.n_members||"?")+" members, issued "
+    +(WNOUT.issued_utc||"?")+"): "+p+"% of members reach WATCH-level rain within 72 h; "
+    +"worst 24 h around "+(o.worst24_start_utc||"?")
+    +". Forecast evidence only — capped at WATCH.'>"+p+"%</span>"; }
+function wnTip(b){ var o=wnB(b); if(!o) return "";
+  var pe=o.p_exceed||{}, q=o.qpf24_in||{}, s=o.stage_ft||{};
+  return "<div class='hr'></div><span class='k'>WN2 ens ("+(WNOUT.n_members||"?")+"m):</span> "
+    +"P(WATCH) <span class='v'>"+Math.round((pe.WATCH||0)*100)+"%</span>"
+    +" · 24h QPF p50/p90 <span class='v'>"
+    +(q.p50!=null?(+q.p50).toFixed(1):"—")+"/"
+    +(q.p90!=null?(+q.p90).toFixed(1):"—")+"″</span>"
+    +(s&&s.p90!=null?" · stage p90 <span class='v'>"+(+s.p90).toFixed(1)+" ft</span>":"")
+    +"<br><span class='k'>forecast tier · capped at WATCH · bias ×"
+    +(o.bias_mult!=null?o.bias_mult:1)+"</span>"; }
+(function(){
+  fetch("feed/outlook.json?t="+Date.now(),{cache:"no-store"})
+    .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(j){ WNOUT=j;
+      var er=document.getElementById("ensread");
+      if(er&&j.status==="ok"){ var c=wnB("CC-WCU-2260"), q=c&&c.qpf24_in;
+        if(q&&q.p50!=null) er.innerHTML="WN2 ensemble 24h: p50 "
+          +(+q.p50).toFixed(1)+"″ · p90 "+(+q.p90).toFixed(1)+"″"; }
+    })
+    .catch(function(){ /* outlook not published yet — chips simply absent */ });
 })();
 </script>
 </body></html>

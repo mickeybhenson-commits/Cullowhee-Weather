@@ -162,6 +162,90 @@ def publish_external(outdir: Path, now: datetime) -> None:
     print("external feed:", out["status"])
 
 
+def publish_outlook(outdir: Path, now: datetime) -> None:
+    """feed/outlook.json — WeatherNext 2 ensemble outlook, per basin.
+
+    OUTLOOK TIER ONLY. Everything in this file is forecast evidence: the
+    published level is WATCH-capped (flood_network two-tier rule) and every
+    probability is P(the FORECAST implies X), not P(X is happening). live.html
+    renders it next to — never instead of — the operative posture.
+
+    Wetness for the engine runs comes from the standard ladder via
+    live_rainfall (soil percentile > API30), so the outlook shares the exact
+    antecedent state the live map shows; if that fetch fails, members still
+    publish with wetness=ARC-II default and the status line says so. If
+    WeatherNext itself is unavailable (access not yet approved, BigQuery
+    down), the file still publishes carrying the reason — the feeds.py
+    lesson: an absent file reads as 'broken', a present file saying WHY is
+    operational state."""
+    out = {"fetched_utc": now.isoformat(), "status": "unavailable",
+           "tier": "outlook", "cap": "WATCH"}
+    path = outdir / "outlook.json"
+    try:
+        import weathernext_source as wn
+        import outlook_engine
+        import wetness as wet
+        data = wn.latest()
+        out["status"] = data["status"]
+        out["source"] = data.get("source")
+        out["issued_utc"] = data.get("issued_utc")
+        out["n_members"] = data.get("n_members", 0)
+        if data["status"] != "ok":
+            path.write_text(json.dumps(out, indent=2))
+            print(f"outlook feed: {data['status']}")
+            return
+
+        # shared antecedent state (best effort; engine defaults are honest)
+        ante, ante_note = {}, "live_rainfall unavailable; ARC-II default"
+        try:
+            import live_rainfall
+            rows = live_rainfall.compute_from_response(
+                live_rainfall.fetch_all(), now=now)
+            ante = {b: dict(soil_pct=r.get("soil_moisture_pct"),
+                            p5=r.get("antecedent_5day"))
+                    for b, r in rows.items()}
+            ante_note = "live_rainfall ladder (soil percentile > p5)"
+        except Exception as e:                       # noqa: BLE001
+            ante_note += f" ({type(e).__name__})"
+        out["wetness_note"] = ante_note
+
+        basins_out = {}
+        for bid, members in data["basins"].items():
+            mult = wn.bias_mult(bid)
+            m24, starts = wn.max_window_totals(members, 24, horizon_hr=72)
+            m24 = wn.apply_bias(m24, mult)
+            a = ante.get(bid, {})
+            try:
+                fc = outlook_engine.forecast_basin_ens(
+                    bid, m24, soil_pct=a.get("soil_pct"), p5_in=a.get("p5"))
+            except Exception as e:                   # noqa: BLE001 — one bad basin
+                basins_out[bid] = {"error": f"{type(e).__name__}: {e}"}
+                continue
+            fc["bias_mult"] = mult
+            fc["qpf72_in"] = wn.quantiles(
+                wn.apply_bias(wn.window_totals(members, 72), mult))
+            fc["worst24_start_utc"] = (
+                data["valid_utc"][sorted(starts)[len(starts) // 2]]
+                if starts else None)                 # median member's onset
+            basins_out[bid] = fc
+        out["basins"] = basins_out
+
+        # campus wetness projection: does the horizon PRIME the watershed?
+        campus = data["basins"].get("CC-WCU-2260")
+        if campus:
+            a = ante.get("CC-WCU-2260", {})
+            api0 = (a.get("p5") or 0.0) * wet.API_5DAY_EQUIV
+            daily = wn.daily_series(campus, days=7)
+            out["campus_wetness_projection"] = wet.project_wetness_members(
+                api0, daily, month=now.month)
+    except Exception as e:                           # noqa: BLE001 — belt and braces
+        out["status"] = f"error: {type(e).__name__}: {e}"
+    path.write_text(json.dumps(out, indent=2))
+    print(f"outlook feed: {out['status']}"
+          + (f" ({out.get('n_members')} members, {out.get('source')})"
+             if out.get("status") == "ok" else ""))
+
+
 def _trend_from_rate(rate: Optional[float]) -> str:
     if rate is None:
         return "Unknown"
@@ -190,6 +274,13 @@ def main() -> None:
         publish_external(OUTDIR, now)
     except Exception as e:                                   # belt and braces
         print(f"external feed skipped: {e}")
+
+    # WeatherNext ensemble outlook — forecast tier, independent of the stage
+    # chain; runs unconditionally for the same reason publish_external does.
+    try:
+        publish_outlook(OUTDIR, now)
+    except Exception as e:                                   # belt and braces
+        print(f"outlook feed skipped: {e}")
 
     # 1. Resolve the best available stage. sources.resolve() already applies
     #    its own freshness and plausibility gates and will reject a sensor

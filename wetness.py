@@ -119,6 +119,47 @@ def wetness_from_api(api_in, month=None):
 # 3. SOIL-MOISTURE PERCENTILE  (preferred pre-sensor wetness source)
 # ----------------------------------------------------------------------------
 
+def project_api(api0_in, future_daily_in, k=API_K):
+    """Forward-run the API recursion over FORECAST daily rain: the same
+    api = k*api + rain step api_from_daily applies to the past, continued
+    into the future. Returns one API value per forecast day (end-of-day).
+    Deterministic per rain series; ensemble spread comes from running one
+    series per member (project_wetness_members)."""
+    out, api = [], max(0.0, api0_in or 0.0)
+    for r in future_daily_in:
+        api = k * api + max(0.0, r or 0.0)
+        out.append(round(api, 3))
+    return out
+
+
+def project_wetness_members(api0_in, members_daily_in, month=None):
+    """Per-day wetness QUANTILES across ensemble members: 'when does the
+    watershed get primed, and how sure are we'. Feeds the outlook feed's
+    wetness projection so the UI can say 'soils near saturation Thursday
+    under the median member' — forecasting the ANTECEDENT STATE, not just
+    the storm. today's API (api0_in) comes from the normal source ladder;
+    members_daily_in from weathernext_source.daily_series (bias-corrected).
+
+    SEASON NOTE: `month` is applied to every projected day. A projection
+    spanning the Mar/Apr or Oct/Nov season boundary carries the issuance
+    month's breakpoints throughout — a <=10-day horizon crosses it rarely,
+    and a mid-horizon threshold jump would read as a data artifact.
+
+    Returns [{"day": 1-based, "api": {...}, "w": {...}}, ...] (p10/p50/p90)."""
+    from weathernext_source import quantiles       # stdlib-only module; no cycle
+    if not members_daily_in:
+        return []
+    per_member = [project_api(api0_in, m) for m in members_daily_in]
+    ndays = min(len(m) for m in per_member)
+    out = []
+    for d in range(ndays):
+        apis = [m[d] for m in per_member]
+        ws = [wetness_from_api(a, month) for a in apis]
+        out.append({"day": d + 1, "api": quantiles(apis),
+                    "w": {k: round(v, 3) for k, v in quantiles(ws).items()}})
+    return out
+
+
 def soil_percentile(current_vwc, history_vwc):
     """Empirical percentile of the current depth-weighted VWC against the SAME
     grid cell's recent history (>= ~30 days recommended). Using the percentile
@@ -261,6 +302,23 @@ if __name__ == "__main__":
     api = api_from_daily(series)
     print(f"wet spell 16d ago: p5=0.00\" (old model: bone dry) | "
           f"API={api:.2f}\" -> w={wetness_from_api(api, month=7):.2f}")
+
+    # forward projection: dry future decays; wet future primes
+    dry = project_api(2.0, [0.0] * 7)
+    assert all(a < b for a, b in zip(dry[1:], dry))          # monotone decay
+    assert abs(dry[0] - 2.0 * API_K) < 1e-9
+    wet = project_api(2.0, [1.5] * 7)
+    assert all(a >= b for a, b in zip(wet, dry))
+    print(f"\nprojection: API 2.00\" + dry week -> {dry[-1]:.2f}\" | "
+          f"+1.5\"/day week -> {wet[-1]:.2f}\"")
+    members = [[0.0] * 7, [0.5] * 7, [1.0] * 7, [2.0] * 7]
+    proj = project_wetness_members(2.0, members, month=7)
+    assert len(proj) == 7
+    for day in proj:
+        assert day["w"]["p10"] <= day["w"]["p50"] <= day["w"]["p90"]
+    print(f"projected wetness day 7: p10={proj[-1]['w']['p10']} "
+          f"p50={proj[-1]['w']['p50']} p90={proj[-1]['w']['p90']}")
+    assert project_wetness_members(2.0, [], month=7) == []
 
     print("\nbaseflow (zero-storm total stage and posture):")
     for bid in QB_CFS:

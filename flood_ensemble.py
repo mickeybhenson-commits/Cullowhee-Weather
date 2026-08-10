@@ -46,6 +46,45 @@ def ensemble(bid, qpf, wetness, qpf_unc=0.25, w_unc=0.15):
             "firm": len(counts) == 1, "members": members}
 
 
+def ensemble_members(bid, member_qpfs, wetness, w_unc=0.15):
+    """REAL-ensemble successor to ensemble(): the QPF axis carries actual
+    forecast members (WeatherNext 2 via weathernext_source, bias-corrected
+    by the caller) instead of the synthetic +-25% grid. The wetness axis
+    keeps its own low/central/high perturbation — soil state uncertainty is
+    OURS (sensor sparsity, drydown model), not the weather model's, so the
+    two spreads compose rather than substitute.
+
+    members x 3 wetness cells, each run through the same authoritative
+    cwm_model -> flood_rating chain as ensemble(). Adds `p_exceed`:
+    fraction of cells at or above each posture level — the number live.html
+    shows next to the Outlook pill. Falls back to ensemble() upstream when
+    no members are available (caller's job; this function requires them).
+    """
+    if not member_qpfs:
+        raise ValueError("member_qpfs is empty — use ensemble() fallback")
+    ws = [max(0.0, wetness - w_unc), wetness, min(1.0, wetness + w_unc)]
+    members, counts = [], {}
+    for q in member_qpfs:
+        for w in ws:
+            qp_raw = cwm.assess(bid, q, w)["qp_raw"]
+            post = assess(qp_raw, bid)["posture"]
+            members.append((round(q, 2), round(w, 3), post))
+            counts[post] = counts.get(post, 0) + 1
+    tot = sum(counts.values())
+    dist = {k: round(v / tot, 3) for k, v in
+            sorted(counts.items(), key=lambda kv: (-kv[1], _ORDER.index(kv[0])))}
+    rank = {k: i for i, k in enumerate(_ORDER)}     # N/A ranks past EMERGENCY;
+    p_exceed = {}                                   # exclude it from exceedance
+    for lvl in ("WATCH", "WARNING", "EMERGENCY"):
+        n = sum(v for k, v in counts.items()
+                if k != "N/A" and rank[k] >= rank[lvl])
+        p_exceed[lvl] = round(n / tot, 3)
+    modal = next(iter(dist))
+    return {"basin": bid, "n_members": len(member_qpfs), "wetness": wetness,
+            "posture_dist": dist, "modal": modal, "p_exceed": p_exceed,
+            "firm": len(counts) == 1, "members": members}
+
+
 def ensemble_report(bid, qpf, wetness, **kw):
     e = ensemble(bid, qpf, wetness, **kw)
     dist = "  ".join(f"{k} {v:.0%}" for k, v in e["posture_dist"].items())
@@ -63,5 +102,20 @@ if __name__ == "__main__":
     for bid in routed_order():
         ensemble_report(bid, 10, 0.25)
     print("-" * 92)
+    print("\nREAL-MEMBER PATH (ensemble_members, synthetic 8-member spread around 10\"):")
+    mem = [7.5, 8.6, 9.3, 9.8, 10.2, 10.9, 11.8, 13.0]
+    e = ensemble_members("CC-WCU-2260", mem, 0.25)
+    assert abs(sum(e["posture_dist"].values()) - 1.0) < 0.01
+    assert e["p_exceed"]["WATCH"] >= e["p_exceed"]["WARNING"] >= e["p_exceed"]["EMERGENCY"]
+    assert len(e["members"]) == len(mem) * 3
+    pe = e["p_exceed"]
+    print(f"  CC-WCU-2260  modal={e['modal']}  P(>=WATCH)={pe['WATCH']:.0%} "
+          f"P(>=WARNING)={pe['WARNING']:.0%}  P(>=EMERGENCY)={pe['EMERGENCY']:.0%}")
+    try:
+        ensemble_members("CC-WCU-2260", [], 0.25)
+        raise AssertionError("empty members must raise")
+    except ValueError:
+        pass
+    print("  ensemble_members self-checks passed")
     print("A 'FIRM' reach posts the same category across the whole input envelope; a 'marginal'")
     print("one straddles a boundary - operators should read those with the PI band in mind.")

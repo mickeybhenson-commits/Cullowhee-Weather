@@ -73,6 +73,52 @@ def forecast_basin(bid, qpf_24h_in, p5_in):
             "outlook_level": _cap(r["posture"])}  # capped at WATCH for the tier
 
 
+def forecast_basin_ens(bid, member_qpf24_in, wetness=None, wetness_src=None,
+                       soil_pct=None, api_in=None, p5_in=None):
+    """ENSEMBLE forecast_basin: one engine run per WeatherNext member instead
+    of one run per QPF. Wetness is resolved ONCE through the standard source
+    ladder (soil percentile > API30 > legacy p5) and shared by all members —
+    the members carry the WEATHER spread; the soil state is a measurement of
+    now, not a forecast. (flood_ensemble.ensemble_members adds the wetness
+    perturbation when you want both axes; this function is the feed path.)
+
+    member_qpf24_in: per-member 24-h QPF (inches), ALREADY bias-corrected
+    (weathernext_source.apply_bias). Use max_window_totals() — the worst 24 h
+    each member produces in the horizon — not the first 24 h of lead time.
+
+    Returns stage quantiles + exceedance probabilities. `outlook_level` is
+    the WATCH-capped modal posture (two-tier rule unchanged: forecast
+    evidence, however probable, cannot assert a flood is happening)."""
+    from weathernext_source import quantiles
+    if not member_qpf24_in:
+        raise ValueError("no ensemble members — use forecast_basin()")
+    if wetness is None:
+        wetness, wetness_src = resolve_wetness(
+            soil_pct=soil_pct, api_in=api_in, p5_in=p5_in)
+    stages, postures = [], []
+    for q in member_qpf24_in:
+        r = assess_wet(bid, q, wetness)
+        if r["stage_ft"] is not None:
+            stages.append(round(r["stage_ft"], 2))
+        postures.append(r["posture"])
+    n = len(postures)
+    rank = {k: i for i, k in enumerate(_ORDER)}
+    p_exceed = {lvl: round(sum(1 for p in postures
+                               if p in rank and rank[p] >= rank[lvl]) / n, 3)
+                for lvl in ("WATCH", "WARNING", "EMERGENCY")}
+    counts = {}
+    for p in postures:
+        counts[p] = counts.get(p, 0) + 1
+    modal = max(counts, key=lambda k: (counts[k], -rank.get(k, 99)))
+    return {"basin": bid, "n_members": n,
+            "wetness": round(wetness, 3), "wetness_src": wetness_src,
+            "qpf24_in": quantiles(member_qpf24_in),
+            "stage_ft": quantiles(stages) if stages else None,
+            "p_exceed": p_exceed,
+            "forecast_posture": modal,          # uncapped (context only)
+            "outlook_level": _cap(modal)}       # capped at WATCH for the tier
+
+
 def forecast_site(site_id, qpf_24h_in, p5_in):
     """forecast_basin keyed by a flood_network gateway site.
     Returns None if the site has no basin mapping yet (caller keeps priming_index)."""
@@ -101,3 +147,19 @@ if __name__ == "__main__":
                   f"{fc['outlook_level']:>9}")
     print("\nForecast posture is engine-calibrated; outlook column is capped at WATCH")
     print("per flood_network (only measured stage confirms WARNING/EMERGENCY).")
+
+    print("\nENSEMBLE PATH (forecast_basin_ens, WeatherNext fixture members):")
+    import weathernext_source as wn
+    d = wn.make_fixture()
+    for bid in ("CC-WCU-2260", "CC-UP-503"):
+        m24, _ = wn.max_window_totals(d["basins"][bid], 24, horizon_hr=72)
+        m24 = wn.apply_bias(m24, wn.bias_mult(bid))
+        fc = forecast_basin_ens(bid, m24, p5_in=1.7)
+        pe, s = fc["p_exceed"], fc["stage_ft"]
+        assert pe["WATCH"] >= pe["WARNING"] >= pe["EMERGENCY"]
+        assert _ORDER.index(fc["outlook_level"]) <= _ORDER.index(_OUTLOOK_CAP)
+        print(f"  {bid:14s} n={fc['n_members']}  qpf24 p50={fc['qpf24_in']['p50']}\""
+              f"  stage p10/50/90={s['p10']}/{s['p50']}/{s['p90']} ft"
+              f"  P(W/Wr/E)={pe['WATCH']:.0%}/{pe['WARNING']:.0%}/{pe['EMERGENCY']:.0%}"
+              f"  outlook={fc['outlook_level']}")
+    print("  ensemble self-checks passed (exceedance monotone, WATCH cap held)")

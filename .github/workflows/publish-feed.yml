@@ -32,6 +32,15 @@ jobs:
         env:
           CULLOWHEE_SHADOW_MODE: "1"
           CULLOWHEE_DATUM_VERIFIED: "0"
+          # WeatherNext 2 outlook (feed/outlook.json). Until these are set the
+          # outlook publishes an honest "unavailable" status and nothing else
+          # changes. After Google's data-request approval: set the WN_BQ_TABLE
+          # repo secret and add a google-github-actions/auth step above this
+          # one (BigQuery needs ADC; see weathernext_source.py [CONFIRM]).
+          WN_BQ_TABLE: ${{ secrets.WN_BQ_TABLE }}
+          # learned per-basin orographic multipliers from the QPF ledger,
+          # e.g. {"CC-UP-503": 1.35} — leave unset until a season verifies
+          WN_BIAS_MULT_JSON: ${{ vars.WN_BIAS_MULT_JSON }}
         run: python feed_runner.py
 
       - name: Watch the state feed

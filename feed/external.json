@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-10T18:03:57.998947+00:00",
+  "fetched_utc": "2026-08-10T18:12:52.042869+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -226,64 +226,60 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1786374000,
-        129.9
-      ],
-      [
         1786377600,
-        140.2
+        127.5
       ],
       [
         1786381200,
-        152.9
+        138.1
       ],
       [
         1786384800,
-        166.7
+        150.8
       ],
       [
         1786388400,
-        180.5
+        164.9
       ],
       [
         1786392000,
-        192.8
+        179.1
       ],
       [
         1786395600,
-        202.7
+        191.8
       ],
       [
         1786399200,
-        210.1
+        202.0
       ],
       [
         1786402800,
-        215.4
+        209.8
       ],
       [
         1786406400,
-        218.9
+        215.1
       ],
       [
         1786410000,
-        221.1
+        218.6
       ],
       [
         1786413600,
-        222.8
+        221.1
       ],
       [
         1786417200,
-        223.5
+        222.5
       ],
       [
         1786420800,
-        224.2
+        223.5
       ],
       [
         1786424400,
-        224.6
+        224.2
       ],
       [
         1786428000,
@@ -291,10 +287,14 @@
       ],
       [
         1786431600,
-        224.9
+        224.6
       ],
       [
         1786435200,
+        224.9
+      ],
+      [
+        1786438800,
         224.9
       ]
     ]
@@ -309,7 +309,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 61.0,
+    "age_min": 69.9,
     "fresh": true,
     "last_updated_utc": "2026-08-10T17:03:00+00:00",
     "datum_verified": false,
@@ -357,7 +357,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260810_1700.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260810_1800.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -451,7 +451,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 15.2,
+        "streamflow_m3s": 14.8,
         "soil_sat_pct": 56.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -476,8 +476,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 14.0,
-    "valid_utc": "2026-08-10T17:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-10T18:12:56.499530+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-10T13:49:20.568408+00:00",
+  "fetched_utc": "2026-08-10T13:56:39.257644+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -314,17 +314,17 @@
     "stage_ft": 2.49,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Falling",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 76.5,
-    "fresh": false,
-    "last_updated_utc": "2026-08-10T12:33:00+00:00",
+    "age_min": 53.7,
+    "fresh": true,
+    "last_updated_utc": "2026-08-10T13:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 76.5 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -484,8 +484,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-10T13:49:32.314665+00:00",
+    "age_min": 6.7,
+    "valid_utc": "2026-08-10T13:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

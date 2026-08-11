@@ -45,8 +45,16 @@ TARGET_EPSG     = 32617          # UTM 17N — the zone this watershed sits in
 PIXEL_M         = 10.0           # Sentinel-2 B04/B08 native resolution
 MAX_CLOUD_PCT   = 60             # per-scene prefilter; SCL does the real masking
 
-NDVI_DROP       = -0.15          # a drop this large year-over-year is a candidate
-MIN_PATCH_HA    = 0.5            # ~50 Sentinel pixels; below this it is speckle
+NDVI_DROP       = -0.15          # a drop this large is a candidate
+# The 0.5 ha floor used until 2026-08-11 rejected the geometry it was meant to
+# find. Debris tracks and channel scour are 10-30 m wide: 1-3 pixels. Demanding
+# 50 contiguous pixels means a scar ~500 m long AND unbroken, and real scars
+# break on shadow, water and mixed pixels. Proven by the Helene control, which
+# found fewer patches than a quiet July. Floor is now just above speckle; the
+# signal is total affected area and count, not blob size.
+# 6 pixels. Low enough to keep a 3-px-wide scar segment (a 4x3 block is 12 px),
+# high enough that a 2x2 speck does not become a patch.
+MIN_PATCH_HA    = 0.06
 PERSISTENCE_N   = 2              # consecutive monthly runs a patch must survive
 MIN_VALID_FRAC  = 0.30           # skip a basin if <30% of its pixels are clear
 
@@ -142,10 +150,17 @@ def detect_patches(now, base, basin_index, basin_ids, pixel_m=PIXEL_M,
         bidx = basin_index[sel]
         vals, counts = np.unique(bidx[bidx >= 0], return_counts=True)
         home = basin_ids[int(vals[np.argmax(counts)])]
+        h = ys.max() - ys.min() + 1
+        w_ = xs.max() - xs.min() + 1
+        long_m = max(h, w_) * pixel_m
         patches.append({
             "basin_id": home,
             "area_ha": round(npx * px_ha, 3),
             "pixels": npx,
+            "long_axis_m": int(round(long_m)),
+            # >3 means markedly linear — the signature of a scoured corridor or a
+            # debris track, as opposed to the blocky footprint of a clearing
+            "elongation": round(max(h, w_) / max(1, min(h, w_)), 2),
             "ndvi_drop_mean": round(float(np.nanmean(delta[sel])), 4),
             "ndvi_drop_min": round(float(np.nanmin(delta[sel])), 4),
             "row_centroid": int(round(ys.mean())),
@@ -187,6 +202,30 @@ def year_earlier(ym):
 
 
 # ------------------------------------------------------------- geometry helpers
+def apply_corridor(basin_index, corridor_path, shape, transform):
+    """Restrict detection to a riparian corridor.
+
+    For EVENT response only. Flood damage is confined to the channel corridor,
+    and inside a ~100 m buffer the damaged fraction is perhaps 30% rather than
+    the 1.6% it is basin-wide — an order of magnitude of signal-to-noise for the
+    cost of a geometry intersect. NOT used for drift monitoring: development and
+    harvest are not riparian-confined, and masking would hide them.
+    """
+    import rasterio.features
+    from shapely.geometry import shape as shp
+    gj = json.load(open(corridor_path, encoding="utf-8"))
+    geoms = [shp(f["geometry"]).buffer(0) for f in gj["features"]]
+    mask = rasterio.features.rasterize(
+        [(g, 1) for g in geoms], out_shape=shape, transform=transform,
+        fill=0, dtype="uint8").astype(bool)
+    out = basin_index.copy()
+    out[~mask] = -1
+    kept = int((out >= 0).sum()); was = int((basin_index >= 0).sum())
+    print(f"corridor mask: {kept:,} of {was:,} pixels retained "
+          f"({kept/max(1,was)*100:.1f}%)")
+    return out
+
+
 def build_basin_index(geojson_path, bounds, shape, transform):
     """Rasterise the sub-basins onto the analysis grid.
 
@@ -298,6 +337,35 @@ def selftest():
     check("assigned to the basin containing it", p and p[0]["basin_id"] == "A")
     check("mean drop is -0.50", p and abs(p[0]["ndvi_drop_mean"] + 0.50) < 1e-3)
 
+    print("LINEAR SCAR — the Helene-control regression")
+    # 3 px wide x 30 px long = 90 px = 0.9 ha, but only 3 pixels across: the
+    # shape a debris track or scoured corridor actually makes. The old 0.5 ha
+    # floor passed this one; what it rejected was the BROKEN version below,
+    # which is what shadow and standing water leave behind.
+    b2=np.full((100,100),0.80,dtype="float32"); n2=b2.copy()
+    n2[20:50,40:43]=0.30
+    bidx2=np.zeros((100,100),dtype="int32")
+    lin=detect_patches(n2,b2,bidx2,["A"])
+    check("finds a 3-px-wide, 300 m-long scar", len(lin)==1, f"found {len(lin)}")
+    check("reports it as linear (elongation >= 8)", lin and lin[0]["elongation"]>=8,
+          f"elongation {lin[0]['elongation'] if lin else '-'}")
+    check("reports long-axis length in metres", lin and lin[0]["long_axis_m"]==300,
+          f"{lin[0]['long_axis_m'] if lin else '-'} m")
+    # broken into 5 segments by shadow — total area unchanged, no blob is big
+    n3=b2.copy()
+    for k in range(5): n3[20+k*6:24+k*6,40:43]=0.30
+    seg=detect_patches(n3,b2,bidx2,["A"])
+    tot=sum(p["area_ha"] for p in seg)
+    check("a scar broken into 5 segments still registers", len(seg)==5, f"found {len(seg)}")
+    check("total affected area is preserved (0.60 ha)", abs(tot-0.60)<1e-6, f"{tot:.2f} ha")
+    check("OLD 0.5 ha floor would have rejected every segment",
+          all(p["area_ha"]<0.5 for p in seg),
+          f"largest segment {max(p['area_ha'] for p in seg):.2f} ha")
+
+    print("speckle is still rejected")
+    n4=b2.copy(); n4[70,70]=0.30; n4[75,75]=0.30; n4[80:82,80]=0.30
+    check("1-2 px specks do not become patches", len(detect_patches(n4,b2,bidx2,["A"]))==0)
+
     print("patch detection ignores pixels clouded in either epoch")
     b2 = base.copy(); b2[10:30, 10:30] = np.nan
     check("no patch when the baseline is masked there", len(detect_patches(now, b2, bidx, ["A", "B"])) == 0)
@@ -332,7 +400,13 @@ def selftest():
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--month", help="YYYY-MM to analyse")
+    ap.add_argument("--month", help="YYYY-MM to analyse (drift mode)")
+    ap.add_argument("--event", nargs=2, metavar=("BEFORE","AFTER"),
+                    help="EVENT mode: two YYYY-MM months, e.g. --event 2024-08 2024-10. "
+                         "Compares them directly instead of same-month-year-earlier. "
+                         "Use with --corridor.")
+    ap.add_argument("--corridor", help="GeoJSON of the riparian corridor. Event mode only — "
+                                       "masking would hide development in drift mode.")
     ap.add_argument("--basins", default="cullowhee_subbasins_incremental.geojson")
     ap.add_argument("--out", default="feed")
     ap.add_argument("--selftest", action="store_true")
@@ -340,8 +414,13 @@ def main():
 
     if a.selftest:
         sys.exit(selftest())
-    if not a.month:
-        ap.error("--month YYYY-MM is required (or use --selftest)")
+    if not a.month and not a.event:
+        ap.error("--month YYYY-MM or --event BEFORE AFTER is required (or --selftest)")
+    if a.event and a.month:
+        ap.error("--month and --event are alternatives, not both")
+    if a.corridor and not a.event:
+        ap.error("--corridor is for --event only; masking to the channel would hide "
+                 "development and harvest, which is what drift mode exists to see")
 
     import rasterio.transform
     from shapely.geometry import shape as shp
@@ -369,21 +448,34 @@ def main():
              else [p[0] for p in f["geometry"]["coordinates"]]) for c in r]
     bbox = [min(lons), min(lats), max(lons), max(lats)]
 
-    base_ym = year_earlier(a.month)
-    print(f"analysis grid {h}x{w} @ {PIXEL_M:.0f} m  ·  {len(ids)} sub-basins")
-    print(f"comparing {a.month} against {base_ym} (same month, one year earlier)")
+    if a.event:
+        base_ym, this_ym = a.event
+        mode = "event"
+        print(f"analysis grid {h}x{w} @ {PIXEL_M:.0f} m  ·  {len(ids)} sub-basins")
+        print(f"EVENT mode: {this_ym} against {base_ym} (direct, not year-over-year)")
+        if a.corridor:
+            bidx = apply_corridor(bidx, a.corridor, (h, w), transform)
+        else:
+            print("no --corridor given: running basin-wide. The Helene control showed "
+                  "riparian damage is ~1.6% of basin pixels and does not register.")
+    else:
+        base_ym, this_ym, mode = year_earlier(a.month), a.month, "drift"
+        print(f"analysis grid {h}x{w} @ {PIXEL_M:.0f} m  ·  {len(ids)} sub-basins")
+        print(f"comparing {this_ym} against {base_ym} (same month, one year earlier)")
 
-    now, n_now, k_now = fetch_month(bbox, a.month, grid)
+    now, n_now, k_now = fetch_month(bbox, this_ym, grid)
     base, n_base, k_base = fetch_month(bbox, base_ym, grid)
     if now is None or base is None:
-        sys.exit(f"no usable scenes: {a.month}={k_now} items, {base_ym}={k_base} items")
-    print(f"scenes used: {k_now} ({a.month}), {k_base} ({base_ym})")
+        sys.exit(f"no usable scenes: {this_ym}={k_now} items, {base_ym}={k_base} items")
+    print(f"scenes used: {k_now} ({this_ym}), {k_base} ({base_ym})")
 
     os.makedirs(a.out, exist_ok=True)
-    prev_path = os.path.join(a.out, f"landcover_patches_{prev_month(a.month)}.json")
+    prev_path = os.path.join(a.out, f"landcover_patches_{prev_month(this_ym)}.json")
     previous = json.load(open(prev_path)) if os.path.exists(prev_path) else []
+    if mode == "event":
+        previous = []   # a one-off comparison has nothing to persist against
     if not previous:
-        print(f"note: no {prev_month(a.month)} patch file — nothing can confirm this run")
+        print(f"note: no {prev_month(this_ym)} patch file — nothing can confirm this run")
 
     patches = detect_patches(now, base, bidx, ids)
     confirmed, provisional = apply_persistence(patches, previous)
@@ -395,7 +487,7 @@ def main():
         cf = [p for p in confirmed if p["basin_id"] == bid]
         low = zs_now[i]["valid_frac"] < MIN_VALID_FRAC or zs_base[i]["valid_frac"] < MIN_VALID_FRAC
         rows.append({
-            "month": a.month, "baseline_month": base_ym, "basin_id": bid,
+            "month": this_ym, "baseline_month": base_ym, "basin_id": bid,
             "ndvi_median": zs_now[i]["ndvi_median"],
             "ndvi_median_baseline": zs_base[i]["ndvi_median"],
             "ndvi_delta": (None if None in (zs_now[i]["ndvi_median"], zs_base[i]["ndvi_median"])
@@ -419,15 +511,18 @@ def main():
             wr.writeheader()
         wr.writerows(rows)
     json.dump(confirmed + provisional,
-              open(os.path.join(a.out, f"landcover_patches_{a.month}.json"), "w"), indent=1)
+              open(os.path.join(a.out, f"landcover_patches_{this_ym}.json"), "w"), indent=1)
 
-    print(f"\n{'basin':<16}{'NDVI Δ':>9}{'clear':>8}{'confirmed':>11}{'ha':>8}")
-    print("-" * 52)
+    print(f"\n{'basin':<16}{'NDVI Δ':>9}{'clear':>8}{'patches':>9}{'total ha':>10}{'longest':>9}")
+    print("-" * 62)
     for r in rows:
         d = f"{r['ndvi_delta']:+.3f}" if r["ndvi_delta"] is not None else "  --"
         flag = "  <- low clear-sky, treat as no observation" if r["insufficient_clear_sky"] else ""
+        allp=[p for p in (confirmed+provisional) if p["basin_id"]==r["basin_id"]]
+        area=sum(p["area_ha"] for p in allp)
+        longest=max([p["long_axis_m"] for p in allp], default=0)
         print(f"{r['basin_id']:<16}{d:>9}{r['valid_frac']*100:>7.0f}%"
-              f"{r['confirmed_patches']:>11}{r['confirmed_area_ha']:>8.2f}{flag}")
+              f"{len(allp):>9}{area:>10.2f}{longest:>7} m{flag}")
     print(f"\nwrote {led} and the patch file. Nothing was written to basins.py — "
           "confirmed patches are input to the quarterly human review, not to the model.")
 

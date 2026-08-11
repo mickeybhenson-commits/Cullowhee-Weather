@@ -1,0 +1,71 @@
+# Monthly land-surface change watch for Cullowhee Creek.
+#
+# Runs on the 5th so the previous month's Sentinel-2 scenes are fully
+# catalogued. Compares that month against the SAME month one year earlier —
+# never the previous month, which in a deciduous watershed is phenology.
+#
+# This job writes feed/landcover_watch.csv and a patch file. It does NOT touch
+# basins.py. Confirmed patches are input to the quarterly human review; the CN
+# write is annual and gated. See
+# claude/noah_cn_sensitivity_and_imagery_cadence_2026-08-10.md for why.
+
+name: land-cover watch (monthly)
+
+on:
+  schedule:
+    - cron: "23 7 5 * *"        # 5th of each month, 07:23 UTC — off the hour on purpose
+  workflow_dispatch:
+    inputs:
+      month:
+        description: "Month to analyse as YYYY-MM (blank = previous month)"
+        required: false
+        default: ""
+
+concurrency:
+  group: landcover-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install numpy scipy shapely pyproj rasterio pystac-client planetary-computer
+
+      - name: Self-test the detection logic
+        run: python noah_landcover_watch.py --selftest
+
+      - name: Resolve target month
+        id: m
+        run: |
+          if [ -n "${{ github.event.inputs.month }}" ]; then
+            echo "month=${{ github.event.inputs.month }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "month=$(date -u -d 'last month' +%Y-%m)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run the watch
+        run: |
+          python noah_landcover_watch.py \
+            --month "${{ steps.m.outputs.month }}" \
+            --basins cullowhee_subbasins_incremental.geojson \
+            --out feed
+
+      - name: Commit the ledger
+        run: |
+          git config user.name  "noah-landcover-watch"
+          git config user.email "actions@users.noreply.github.com"
+          git add feed/landcover_watch.csv feed/landcover_patches_*.json
+          git diff --staged --quiet || git commit -m "land-cover watch ${{ steps.m.outputs.month }}"
+          git push

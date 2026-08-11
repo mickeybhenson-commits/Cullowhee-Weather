@@ -1,0 +1,42 @@
+[
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 2.81,
+  "pixels": 281,
+  "ndvi_drop_mean": -0.2144,
+  "ndvi_drop_min": -0.4005,
+  "row_centroid": 898,
+  "col_centroid": 109,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-SPD-1830",
+  "area_ha": 1.27,
+  "pixels": 127,
+  "ndvi_drop_mean": -0.215,
+  "ndvi_drop_min": -0.3418,
+  "row_centroid": 387,
+  "col_centroid": 537,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 0.55,
+  "pixels": 55,
+  "ndvi_drop_mean": -0.2129,
+  "ndvi_drop_min": -0.3076,
+  "row_centroid": 915,
+  "col_centroid": 153,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-MS-1100",
+  "area_ha": 0.53,
+  "pixels": 53,
+  "ndvi_drop_mean": -0.2151,
+  "ndvi_drop_min": -0.3288,
+  "row_centroid": 844,
+  "col_centroid": 557,
+  "streak": 1
+ }
+]

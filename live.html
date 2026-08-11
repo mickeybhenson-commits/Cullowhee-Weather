@@ -501,7 +501,9 @@ function tip(b){
         ?("Open&#8209;Meteo forecast rain + soil moisture"
            +((c&&c.shape==="real")?" &middot; observed storm shape":" &middot; design storm shape")
            +cellNote(b))
-        :"hypothetical design storm (what&#8209;if scenario)"}</span></div>`;
+        :"hypothetical SCS Type&nbsp;II <b>design storm</b>, 24&#8209;h \u2014 stacks its rain "
+          +"far more sharply than a real tropical event, so it reads 1.5\u20134&times; too severe "
+          +"for storms of Helene&rsquo;s length"}</span></div>`;
   }
   let h=`<div class="tt"><b>${m.disp}</b><br><span class="k">${b} &middot; ${m.role}</span><br>`+
         `status: <b style="color:${SEV[lv]}">${lv}</b> &middot; <span class="v">${stg}</span>`+
@@ -723,7 +725,13 @@ function repaint(){
       r.innerHTML=`live &middot; ${t} &middot; worst: <b style="color:${SEV[w]}">${w}</b>`+(wb?` (${META[wb].short})`:"")
         +(ahead?` &middot; <span style="color:${SEV[fw]}">outlook <b>${fw}</b>${fb?` (${META[fb].short})`:""} &mdash; forecast, unconfirmed</span>`:""); }
   } else {
-    document.getElementById("read").textContent=SCEN[idx].qpf.toFixed(0)+"\u2033 / 24 hr  \u00b7  ARC-"+ROMAN[SCEN[idx].arc];
+    /* Name the shape. These scenarios run assessBasin, i.e. the SCS Type II
+       DESIGN storm — all the rain stacked into a 24-h curve. test_model.py:
+       applied to a long tropical event that overpredicts the peak 2.5-3x.
+       Helene actually ran ~48 h. See rain_to_trip.html for the real-shape
+       numbers, and claude/noah_storm_duration_not_24h_2026-08-10.md. */
+    document.getElementById("read").innerHTML=SCEN[idx].qpf.toFixed(0)+"\u2033 / 24 hr  \u00b7  ARC-"+ROMAN[SCEN[idx].arc]+
+      ' <span style="opacity:.72">&middot; design storm</span>';
   }
   if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var c=cur(b);
     return {bid:b, lv:(c&&c.lvl?c.lvl:"N/A"), rain:(c&&c.qpf!=null?c.qpf:null), rp:(c?c.rp:null), stage:(c?c.stage:null)}; }));
@@ -977,7 +985,12 @@ function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,st
     if((rank[lv]||0)>(rank[ww]||0)){ww=lv;wb=b;} });
   if(typeof renderTable==="function") renderTable(_rows);
   var rd=document.getElementById("read");
-  if(rd) rd.innerHTML="storm "+SCEN[idx].qpf.toFixed(0)+"&Prime; peak &middot; R "+stormR.toFixed(1)+" mi &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":""); }
+  /* This is the readout the user actually sees in what-if mode (repaint()
+     returns early to paintStorm), so the design-storm caveat has to live HERE,
+     not on the dead #read branch. SCS Type II, 24 h: overpredicts a long
+     tropical event's peak 2.5-3x. */
+  if(rd) rd.innerHTML="storm "+SCEN[idx].qpf.toFixed(0)+"&Prime; peak &middot; R "+stormR.toFixed(1)+" mi &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"")+
+    ' <span style="opacity:.7">&middot; 24&#8209;h design storm</span>'; }
 var _animReset=null;
 var stormCircle=L.circle(stormLL,{radius:stormR*1609.34,color:"#2b6cb0",weight:1.5,fillColor:"#4299e1",fillOpacity:0.12,dashArray:"6,4",interactive:false});
 var stormMarker=L.marker(stormLL,{draggable:true,zIndexOffset:1000,icon:L.divIcon({className:"stormicon",html:'<div class="stormdot"></div>',iconSize:[18,18],iconAnchor:[9,9]})});

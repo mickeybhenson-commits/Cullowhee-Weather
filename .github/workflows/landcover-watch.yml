@@ -95,10 +95,35 @@ jobs:
               --out feed
           fi
 
+      # main is written continuously by the live-feed job, so by the time a
+      # 2-minute analysis finishes the remote has almost always moved. A plain
+      # push loses that race and the whole run is discarded — which is how the
+      # first corrected Helene run was lost. Rebase and retry.
+      #
+      # Stage the whole feed/ directory: the ledger migration can also emit a
+      # rotated copy, and naming files explicitly meant that copy was silently
+      # left behind.
       - name: Commit the ledger
         run: |
           git config user.name  "noah-landcover-watch"
           git config user.email "actions@users.noreply.github.com"
-          git add feed/landcover_watch.csv feed/landcover_patches_*.json
-          git diff --staged --quiet || git commit -m "land-cover watch ${{ steps.m.outputs.month }}"
-          git push
+          git add -A feed/
+          if git diff --staged --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "land-cover watch ${{ steps.m.outputs.month }}"
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "pushed on attempt $i"
+              exit 0
+            fi
+            echo "push rejected on attempt $i — rebasing onto origin/main"
+            sleep $(( i * 5 ))
+            git pull --rebase --autostash origin main || {
+              echo "::error::rebase failed — a human needs to look at this"
+              exit 1
+            }
+          done
+          echo "::error::could not push the ledger after 5 attempts"
+          exit 1

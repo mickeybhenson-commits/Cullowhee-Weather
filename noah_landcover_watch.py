@@ -212,17 +212,33 @@ def apply_corridor(basin_index, corridor_path, shape, transform):
     harvest are not riparian-confined, and masking would hide them.
     """
     import rasterio.features
+    import pyproj
     from shapely.geometry import shape as shp
+    from shapely.ops import transform as shp_transform
+
     gj = json.load(open(corridor_path, encoding="utf-8"))
-    geoms = [shp(f["geometry"]).buffer(0) for f in gj["features"]]
+    # The corridor file is WGS84; the analysis grid is UTM. Rasterising degrees
+    # against a metre grid puts the mask nowhere and silently returns an empty
+    # one — which is exactly what happened on 2026-08-11: valid_frac 0.0 across
+    # every basin and a clean-looking run of zeros.
+    to_utm = pyproj.Transformer.from_crs("EPSG:4326", f"EPSG:{TARGET_EPSG}",
+                                         always_xy=True).transform
+    geoms = [shp_transform(to_utm, shp(f["geometry"])).buffer(0) for f in gj["features"]]
     mask = rasterio.features.rasterize(
         [(g, 1) for g in geoms], out_shape=shape, transform=transform,
         fill=0, dtype="uint8").astype(bool)
     out = basin_index.copy()
     out[~mask] = -1
     kept = int((out >= 0).sum()); was = int((basin_index >= 0).sum())
-    print(f"corridor mask: {kept:,} of {was:,} pixels retained "
-          f"({kept/max(1,was)*100:.1f}%)")
+    pct = kept / max(1, was) * 100
+    print(f"corridor mask: {kept:,} of {was:,} pixels retained ({pct:.1f}%)")
+    # A mask that keeps almost nothing produces a page of zeros that reads like
+    # "no change detected". Absent data must render as absent, not as calm.
+    if pct < 1.0:
+        raise SystemExit(
+            f"corridor mask retained only {pct:.2f}% of basin pixels — refusing to "
+            "run. Usually a CRS mismatch between the corridor file and the "
+            "analysis grid, or a corridor that does not overlap the basins.")
     return out
 
 
@@ -663,10 +679,22 @@ def main():
         })
 
     led = os.path.join(a.out, "landcover_watch.csv")
-    new = not os.path.exists(led)
+    cols = list(rows[0].keys())
+    # If the schema has grown since the file was written, appending puts values
+    # under the wrong headings and every later read is quietly wrong. Rotate the
+    # old file instead — the history is kept, just not silently corrupted.
+    if os.path.exists(led):
+        with open(led, newline="", encoding="utf-8") as fh:
+            existing = next(csv.reader(fh), [])
+        if existing and existing != cols:
+            bak = led.replace(".csv", f"_schema{len(existing)}col.csv")
+            os.rename(led, bak)
+            print(f"ledger schema changed ({len(existing)} -> {len(cols)} columns); "
+                  f"previous rows preserved as {os.path.basename(bak)}")
+    fresh = not os.path.exists(led)
     with open(led, "a", newline="", encoding="utf-8") as fh:
-        wr = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
-        if new:
+        wr = csv.DictWriter(fh, fieldnames=cols)
+        if fresh:
             wr.writeheader()
         wr.writerows(rows)
     json.dump(confirmed + provisional,

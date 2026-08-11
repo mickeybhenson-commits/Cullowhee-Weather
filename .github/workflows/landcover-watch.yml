@@ -17,9 +17,22 @@ on:
   workflow_dispatch:
     inputs:
       month:
-        description: "Month to analyse as YYYY-MM (blank = previous month)"
+        description: "DRIFT mode: month to analyse as YYYY-MM (blank = previous month)"
         required: false
         default: ""
+      event_before:
+        description: "EVENT mode: the month BEFORE the storm, YYYY-MM (leave blank for drift)"
+        required: false
+        default: ""
+      event_after:
+        description: "EVENT mode: the month AFTER the storm, YYYY-MM"
+        required: false
+        default: ""
+      use_corridor:
+        description: "EVENT mode only: mask to the riparian corridor"
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
   group: landcover-watch
@@ -57,10 +70,30 @@ jobs:
 
       - name: Run the watch
         run: |
-          python noah_landcover_watch.py \
-            --month "${{ steps.m.outputs.month }}" \
-            --basins cullowhee_subbasins_incremental.geojson \
-            --out feed
+          B="${{ github.event.inputs.event_before }}"
+          A="${{ github.event.inputs.event_after }}"
+          if [ -n "$B" ] && [ -n "$A" ]; then
+            CORR=""
+            if [ "${{ github.event.inputs.use_corridor }}" = "true" ]; then
+              if [ -f cullowhee_riparian.geojson ]; then
+                CORR="--corridor cullowhee_riparian.geojson"
+              else
+                echo "::error::use_corridor was requested but cullowhee_riparian.geojson is missing."
+                echo "::error::Run the 'build riparian corridor (one-shot)' workflow first."
+                exit 1
+              fi
+            fi
+            python noah_landcover_watch.py --event "$B" "$A" $CORR \
+              --basins cullowhee_subbasins_incremental.geojson --out feed
+          elif [ -n "$B" ] || [ -n "$A" ]; then
+            echo "::error::EVENT mode needs BOTH event_before and event_after."
+            exit 1
+          else
+            python noah_landcover_watch.py \
+              --month "${{ steps.m.outputs.month }}" \
+              --basins cullowhee_subbasins_incremental.geojson \
+              --out feed
+          fi
 
       - name: Commit the ledger
         run: |

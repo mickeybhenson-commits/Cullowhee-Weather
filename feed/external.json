@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-11T14:36:43.283712+00:00",
+  "fetched_utc": "2026-08-11T14:38:09.286221+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -17,8 +17,8 @@
         333.0
       ],
       "00065": [
-        1786454100,
-        5.0
+        1786457700,
+        4.46
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -36,8 +36,8 @@
         924.0
       ],
       "00065": [
-        1786454100,
-        4.32
+        1786457700,
+        4.39
       ]
     },
     "local_inflow_cfs": 591.0,
@@ -117,6 +117,22 @@
       [
         1786454100,
         5.0
+      ],
+      [
+        1786455000,
+        4.8
+      ],
+      [
+        1786455900,
+        4.65
+      ],
+      [
+        1786456800,
+        4.54
+      ],
+      [
+        1786457700,
+        4.46
       ]
     ],
     "stage_series_down": [
@@ -195,6 +211,22 @@
       [
         1786454100,
         4.32
+      ],
+      [
+        1786455000,
+        4.36
+      ],
+      [
+        1786455900,
+        4.38
+      ],
+      [
+        1786456800,
+        4.39
+      ],
+      [
+        1786457700,
+        4.39
       ]
     ],
     "provenance": "MEASURED"
@@ -216,7 +248,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 64.1,
+    "age_min": 65.5,
     "fresh": true,
     "last_updated_utc": "2026-08-11T13:33:00+00:00",
     "datum_verified": false,
@@ -384,7 +416,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-11T14:37:06.157375+00:00",
+    "valid_utc": "2026-08-11T14:38:31.706538+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

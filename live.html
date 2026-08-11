@@ -113,9 +113,9 @@
     conditions &mdash; What&#8209;if never affects the live view.</p>
 
     <div class="legrow"><span class="chip" style="background:#1A7A52">NORMAL</span> baseline</div>
-    <div class="legrow"><span class="chip" style="background:#C08A00">WATCH</span> elevated &mdash; monitor</div>
-    <div class="legrow"><span class="chip" style="background:#C2410C">WARNING</span> flooding likely</div>
-    <div class="legrow"><span class="chip" style="background:#B42318">EMERGENCY</span> major flooding modeled</div>
+    <div class="legrow"><span class="chip" style="background:#F5C518;color:#2b2200">WATCH</span> elevated &mdash; monitor</div>
+    <div class="legrow"><span class="chip" style="background:#D14A16;color:#fff">WARNING</span> flooding likely</div>
+    <div class="legrow"><span class="chip" style="background:#5A0F14;color:#fff">EMERGENCY</span> major flooding modeled</div>
 
     <p class="how" style="margin-top:12px"><b>Reading a basin:</b> hover it for detail. The table
     (bottom-right) lists rainfall, modeled magnitude (return period, or stage in feet for the WCU
@@ -385,6 +385,15 @@ let idx=0, mode="live", useSoil=false, ONECELL=false;
    on, and which basins share one. Set by resolveCells() in fetchLive. */
 let NCELLS=null, CELLOF={}, CELLMATES={};
 const SEVRANK={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0};
+/* MAP FILLS ONLY — text keeps SEV. (2026-08-10)
+   The old ladder was drawn at fillOpacity .30 over the Carto Voyager base.
+   Composited, WARNING and EMERGENCY landed 2.9 dE apart against a floor of 15:
+   not distinguishable by anyone, colour-vision-deficient or not. Re-stepped for
+   monotone lightness (light=mild, dark=severe) so the ladder also survives as a
+   lightness ramp under CVD, and rendered at .60 so it survives compositing.
+   Validated: 16.3 dE normal, 14.0 dE protan.  Nested basins stack alpha, so the
+   status table remains the authoritative per-basin read. */
+const SEV_FILL={NORMAL:"#1A7A52",WATCH:"#F5C518",WARNING:"#D14A16",EMERGENCY:"#5A0F14","N/A":"#9AA5B1"};
 /* TWO-TIER POSTURE — the rule this whole project is built on, stated in
    flood_network.py, enforced by outlook_engine._cap, and already rendered as
    two tiers by streamlit_app.py:
@@ -444,8 +453,8 @@ function lvlOf(b){ const c=cur(b); return c?c.lvl:"N/A"; }
 function styleFor(b){const lv=lvlOf(b), c=cur(b);
   const fc=(mode==="live"&&c&&c.fcLvl)?c.fcLvl:lv;
   const ring=((SEVRANK[fc]||0)>(SEVRANK[lv]||0));
-  return {color:ring?SEV[fc]:SEV[lv], weight:ring?4:2, opacity:.95,
-          dashArray:ring?"6 3":null, fillColor:SEV[lv], fillOpacity:.30};}
+  return {color:ring?SEV_FILL[fc]:SEV_FILL[lv], weight:ring?4:2, opacity:.95,
+          dashArray:ring?"6 3":null, fillColor:SEV_FILL[lv], fillOpacity:.60};}
 const f1=x=>(x==null?"\u2014":x.toFixed(1));
 const pct=x=>(x==null?"n/a":Math.round(x*100)+"%");
 /* DEV=true (add ?dev=1 or #dev to the URL) shows full model internals.
@@ -705,7 +714,7 @@ function worst(){ const rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}; l
 function repaint(){
   if(mode==="whatif" && typeof paintStorm==="function"){ paintStorm(); return; }
   ORDER.forEach(b=>{ if(layerByBid[b]){layerByBid[b].setStyle(styleFor(b));layerByBid[b].setTooltipContent(tip(b));}
-    if(markerByBid[b]) markerByBid[b].setStyle({fillColor:SEV[lvlOf(b)]});});
+    if(markerByBid[b]) markerByBid[b].setStyle({fillColor:SEV_FILL[lvlOf(b)]});});
   if(mode==="live"){
     const r=document.getElementById("liveread");
     if(liveErr){ r.innerHTML="live weather unavailable &mdash; "+liveErr+". Use What&#8209;if."; }

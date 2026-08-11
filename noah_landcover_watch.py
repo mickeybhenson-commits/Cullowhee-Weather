@@ -296,6 +296,57 @@ def fetch_month(bbox_wgs84, ym, grid):
 
 
 
+def basin_baselines(ledger_path, this_month, this_baseline):
+    """Each basin's own candidate-count baseline, from prior runs.
+
+    Raw counts are not comparable across these basins. The Helene control
+    showed why: Upper Cullowhee and Tilley return 15-22 candidates in a quiet
+    July while Cox Branch returns 0 — they are the steepest and highest, and
+    inter-year sun-angle differences on steep slopes read as NDVI drops. That
+    is terrain, not change, and it is roughly constant for a given basin and
+    season. So compare each basin against itself.
+
+    Season matters: shadow depends on sun angle, so a July baseline does not
+    describe an October run. Same-calendar-month samples are preferred and the
+    basis is recorded, because a baseline built from one sample of the wrong
+    season is worse than none and must not be mistaken for a real one.
+    """
+    if not os.path.exists(ledger_path):
+        return {}
+    import csv as _csv
+    rows = list(_csv.DictReader(open(ledger_path, newline="", encoding="utf-8")))
+    rows = [r for r in rows if not (r["month"] == this_month
+                                    and r.get("baseline_month") == this_baseline)]
+    if not rows:
+        return {}
+    same_mo = [r for r in rows if r["month"][5:7] == this_month[5:7]]
+    use, basis = (same_mo, "same-month") if len(same_mo) >= 16 else (rows, "all-months")
+    per = defaultdict(list)
+    for r in use:
+        try:
+            per[r["basin_id"]].append(int(r.get("provisional_patches") or 0)
+                                      + int(r.get("confirmed_patches") or 0))
+        except ValueError:
+            pass
+    out = {}
+    for b, v in per.items():
+        v.sort()
+        med = v[len(v)//2] if len(v) % 2 else (v[len(v)//2 - 1] + v[len(v)//2]) / 2
+        out[b] = {"rate": round(float(med), 2), "n": len(v), "basis": basis}
+    return out
+
+
+def anomaly(count, base):
+    """Candidates against this basin's own floor, add-one smoothed.
+
+    Smoothing keeps a 0 -> 2 move from reading as infinite while still letting
+    a genuinely quiet basin register a real jump.
+    """
+    if not base:
+        return None
+    return round((count + 1.0) / (base["rate"] + 1.0), 2)
+
+
 # ------------------------------------------------------- corridor builder
 NLDI = "https://api.water.usgs.gov/nldi/linked-data/comid/{c}/navigation/UT/flowlines"
 OUTLET_COMID = 19730122      # campus -> mouth. UT from here is the whole Cullowhee
@@ -448,6 +499,35 @@ def selftest():
     check("mean per basin correct", abs(z[0]["ndvi_mean"] - 0.5) < 1e-6 and abs(z[1]["ndvi_mean"] - 0.9) < 1e-6)
     check("valid fraction accounts for the NaN", z[0]["valid_pixels"] == z[0]["pixels"] - 1)
 
+    print("per-basin baselines — the Helene-control lesson, encoded")
+    import tempfile, csv as _csv
+    tmp=os.path.join(tempfile.mkdtemp(),"led.csv")
+    with open(tmp,"w",newline="",encoding="utf-8") as fh:
+        wr=_csv.DictWriter(fh,fieldnames=["month","baseline_month","basin_id",
+                                          "provisional_patches","confirmed_patches"])
+        wr.writeheader()
+        # two quiet Julys: steep basin noisy, flat basin silent
+        for mo,bm in (("2025-07","2024-07"),("2026-07","2025-07")):
+            wr.writerow(dict(month=mo,baseline_month=bm,basin_id="STEEP",
+                             provisional_patches=20,confirmed_patches=0))
+            wr.writerow(dict(month=mo,baseline_month=bm,basin_id="FLAT",
+                             provisional_patches=0,confirmed_patches=0))
+    b=basin_baselines(tmp,"2024-10","2023-10")
+    check("baseline is per basin, not global", b["STEEP"]["rate"]==20 and b["FLAT"]["rate"]==0,
+          f"steep {b['STEEP']['rate']}, flat {b['FLAT']['rate']}")
+    check("falls back to all-months when same-month samples are thin",
+          b["STEEP"]["basis"]=="all-months", b["STEEP"]["basis"])
+    check("22 patches in the noisy basin is NOT an anomaly",
+          anomaly(22,b["STEEP"])<1.2, f"{anomaly(22,b['STEEP'])}x")
+    check("the same 22 in the quiet basin IS", anomaly(22,b["FLAT"])>20,
+          f"{anomaly(22,b['FLAT'])}x")
+    check("0 -> 2 does not read as infinite", anomaly(2,b["FLAT"])==3.0,
+          f"{anomaly(2,b['FLAT'])}x")
+    check("the current run is excluded from its own baseline",
+          basin_baselines(tmp,"2026-07","2025-07")["STEEP"]["n"]==1)
+    check("no ledger yields no baseline, not a fake one",
+          basin_baselines("/nonexistent.csv","2024-10","2023-10")=={} and anomaly(5,None) is None)
+
     print("date helpers")
     check("year_earlier(2026-07) = 2025-07", year_earlier("2026-07") == "2025-07")
     check("prev_month(2026-01) = 2025-12", prev_month("2026-01") == "2025-12")
@@ -548,6 +628,13 @@ def main():
     zs_now = zonal_stats(now, bidx, len(ids))
     zs_base = zonal_stats(base, bidx, len(ids))
 
+    base_rates = basin_baselines(os.path.join(a.out, "landcover_watch.csv"), this_ym, base_ym)
+    if base_rates:
+        anyb = next(iter(base_rates.values()))
+        print(f"per-basin baselines: {anyb['n']} prior samples each, {anyb['basis']}")
+    else:
+        print("no prior runs — no per-basin baseline yet; raw counts only")
+
     rows = []
     for i, bid in enumerate(ids):
         cf = [p for p in confirmed if p["basin_id"] == bid]
@@ -563,6 +650,12 @@ def main():
             "confirmed_patches": len(cf),
             "confirmed_area_ha": round(sum(p["area_ha"] for p in cf), 3),
             "provisional_patches": len([p for p in provisional if p["basin_id"] == bid]),
+            "baseline_rate": (base_rates.get(bid) or {}).get("rate"),
+            "baseline_n": (base_rates.get(bid) or {}).get("n"),
+            "baseline_basis": (base_rates.get(bid) or {}).get("basis"),
+            "anomaly_ratio": anomaly(len(cf) + len([p for p in provisional
+                                                   if p["basin_id"] == bid]),
+                                     base_rates.get(bid)),
             "insufficient_clear_sky": low,
             "provenance": "DERIVED: Sentinel-2 L2A NDVI, same-month YoY, "
                           f"drop<={NDVI_DROP}, min {MIN_PATCH_HA} ha, "
@@ -579,16 +672,21 @@ def main():
     json.dump(confirmed + provisional,
               open(os.path.join(a.out, f"landcover_patches_{this_ym}.json"), "w"), indent=1)
 
-    print(f"\n{'basin':<16}{'NDVI Δ':>9}{'clear':>8}{'patches':>9}{'total ha':>10}{'longest':>9}")
-    print("-" * 62)
+    print(f"\n{'basin':<16}{'NDVI Δ':>9}{'clear':>7}{'patches':>9}{'base':>7}"
+          f"{'vs base':>9}{'total ha':>10}{'longest':>9}")
+    print("-" * 78)
     for r in rows:
         d = f"{r['ndvi_delta']:+.3f}" if r["ndvi_delta"] is not None else "  --"
         flag = "  <- low clear-sky, treat as no observation" if r["insufficient_clear_sky"] else ""
         allp=[p for p in (confirmed+provisional) if p["basin_id"]==r["basin_id"]]
         area=sum(p["area_ha"] for p in allp)
         longest=max([p["long_axis_m"] for p in allp], default=0)
-        print(f"{r['basin_id']:<16}{d:>9}{r['valid_frac']*100:>7.0f}%"
-              f"{len(allp):>9}{area:>10.2f}{longest:>7} m{flag}")
+        br = r["baseline_rate"]
+        ar = r["anomaly_ratio"]
+        print(f"{r['basin_id']:<16}{d:>9}{r['valid_frac']*100:>6.0f}%"
+              f"{len(allp):>9}{('—' if br is None else f'{br:g}'):>7}"
+              f"{('—' if ar is None else f'{ar:.2f}x'):>9}"
+              f"{area:>10.2f}{longest:>7} m{flag}")
     print(f"\nwrote {led} and the patch file. Nothing was written to basins.py — "
           "confirmed patches are input to the quarterly human review, not to the model.")
 

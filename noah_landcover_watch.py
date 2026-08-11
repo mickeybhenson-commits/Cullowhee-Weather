@@ -295,6 +295,66 @@ def fetch_month(bbox_wgs84, ym, grid):
     return med, n, len(items)
 
 
+
+# ------------------------------------------------------- corridor builder
+NLDI = "https://api.water.usgs.gov/nldi/linked-data/comid/{c}/navigation/UT/flowlines"
+OUTLET_COMID = 19730122      # campus -> mouth. UT from here is the whole Cullowhee
+                             # network; 19730084 below it is the Tuckasegee, out of scope.
+CORRIDOR_M = 100             # buffer either side of the channel
+
+
+def build_corridor(basins_path, out_path, buffer_m=CORRIDOR_M):
+    """Fetch the NHD flowline network and write the riparian corridor.
+
+    Run once; the result is committed and read by --event thereafter. Kept out
+    of the monthly job deliberately: a scheduled job should not depend on a
+    third-party geometry service it does not need.
+    """
+    import urllib.request
+    import pyproj
+    from shapely.geometry import shape as shp, mapping
+    from shapely.ops import transform as shptr, unary_union
+
+    url = NLDI.format(c=OUTLET_COMID) + "?f=json&distance=9999"
+    print(f"fetching flowlines: {url}")
+    with urllib.request.urlopen(url, timeout=120) as r:
+        gj = json.load(r)
+    feats = gj.get("features", [])
+    if not feats:
+        raise SystemExit("NLDI returned no flowlines — check the outlet comid")
+    print(f"  {len(feats)} flowline segments")
+
+    to_utm = pyproj.Transformer.from_crs("EPSG:4326", f"EPSG:{TARGET_EPSG}", always_xy=True).transform
+    to_wgs = pyproj.Transformer.from_crs(f"EPSG:{TARGET_EPSG}", "EPSG:4326", always_xy=True).transform
+
+    lines = [shptr(to_utm, shp(f["geometry"])) for f in feats]
+    corridor = unary_union([l.buffer(buffer_m) for l in lines])
+
+    # clip to the watershed: NLDI returns whole segments, which can run past the
+    # divide, and a corridor outside the basins would be counted against nothing
+    bas = json.load(open(basins_path, encoding="utf-8"))
+    hull = unary_union([shptr(to_utm, shp(f["geometry"])).buffer(0) for f in bas["features"]])
+    corridor = corridor.intersection(hull)
+
+    pct = corridor.area / hull.area * 100
+    print(f"  corridor {corridor.area/1e6:.2f} km2 of {hull.area/1e6:.2f} km2 watershed "
+          f"({pct:.1f}%), {buffer_m} m either side")
+    if not 2 < pct < 45:
+        raise SystemExit(f"corridor is {pct:.1f}% of the watershed — implausible; "
+                         "check the buffer distance and the outlet comid before using it")
+
+    json.dump({"type": "FeatureCollection",
+               "metadata": {"source": f"NHD flowlines via NLDI, UT from comid {OUTLET_COMID}",
+                            "buffer_m": buffer_m, "crs": "EPSG:4326",
+                            "pct_of_watershed": round(pct, 2),
+                            "use": "EVENT mode only — masking drift monitoring would hide "
+                                   "development and harvest away from the channel"},
+               "features": [{"type": "Feature", "properties": {"name": "riparian corridor"},
+                             "geometry": mapping(shptr(to_wgs, corridor))}]},
+              open(out_path, "w"), indent=1)
+    print(f"wrote {out_path}")
+
+
 # ----------------------------------------------------------------------- selftest
 def selftest():
     """Prove the logic without touching the network."""
@@ -410,10 +470,16 @@ def main():
     ap.add_argument("--basins", default="cullowhee_subbasins_incremental.geojson")
     ap.add_argument("--out", default="feed")
     ap.add_argument("--selftest", action="store_true")
+    ap.add_argument("--build-corridor", action="store_true",
+                    help="fetch NHD flowlines and write the riparian corridor, then exit")
+    ap.add_argument("--corridor-out", default="cullowhee_riparian.geojson")
     a = ap.parse_args()
 
     if a.selftest:
         sys.exit(selftest())
+    if a.build_corridor:
+        build_corridor(a.basins, a.corridor_out)
+        sys.exit(0)
     if not a.month and not a.event:
         ap.error("--month YYYY-MM or --event BEFORE AFTER is required (or --selftest)")
     if a.event and a.month:

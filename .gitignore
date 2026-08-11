@@ -1,1 +1,32 @@
+# Python
 __pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# Credentials — this repo is PUBLIC and serves GitHub Pages from its root.
+# Anything committed here is world-readable and stays in the history even
+# after deletion. Keep keys in environment variables or Actions secrets.
+.env
+.env.*
+*.secret
+*secrets*.json
+noah_sources.json
+noah_contrail.json
+credentials.json
+token.txt
+*.pem
+.netrc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Local scratch
+*.log
+tmp/
+scratch/

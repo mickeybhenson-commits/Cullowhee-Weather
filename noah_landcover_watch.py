@@ -33,7 +33,7 @@ USAGE   python noah_landcover_watch.py --month 2026-07
         python noah_landcover_watch.py --selftest     # no network needed
 """
 
-import argparse, csv, json, os, sys, datetime as dt
+import argparse, csv, json, os, shutil, sys, datetime as dt
 from collections import defaultdict
 
 import numpy as np
@@ -312,7 +312,41 @@ def fetch_month(bbox_wgs84, ym, grid):
 
 
 
-def basin_baselines(ledger_path, this_month, this_baseline):
+def migrate_ledger(path, cols):
+    """Bring an existing ledger up to the current column set, in place.
+
+    Appending rows whose keys have grown under an older, narrower header
+    misaligns every value from the added column rightward, and nothing
+    downstream can tell. The first fix for that rotated the whole file away,
+    which stopped the corruption but threw out the run history the per-basin
+    baselines are computed from — the ledger's only real purpose.
+
+    Rewrite instead. Columns the current schema adds are backfilled empty;
+    columns it no longer writes would be lost, so those rotate to a copy first.
+    Returns None when nothing needed doing.
+    """
+    if not os.path.exists(path):
+        return None
+    with open(path, newline="", encoding="utf-8") as fh:
+        rdr = csv.DictReader(fh)
+        old = rdr.fieldnames or []
+        rows = list(rdr)
+    if old == cols:
+        return None
+    dropped = [c for c in old if c not in cols]
+    if dropped:
+        shutil.copyfile(path, path.replace(".csv", f"_pre{len(old)}col.csv"))
+    tmp = path + ".tmp"
+    with open(tmp, "w", newline="", encoding="utf-8") as fh:
+        wr = csv.DictWriter(fh, fieldnames=cols, extrasaction="ignore")
+        wr.writeheader()
+        for r in rows:
+            wr.writerow({c: (r.get(c) if r.get(c) is not None else "") for c in cols})
+    os.replace(tmp, path)
+    return {"old": old, "new": cols, "rows": len(rows), "dropped": dropped}
+
+
+def basin_baselines(ledger_path, this_month, this_baseline, mask="basin"):
     """Each basin's own candidate-count baseline, from prior runs.
 
     Raw counts are not comparable across these basins. The Helene control
@@ -326,6 +360,23 @@ def basin_baselines(ledger_path, this_month, this_baseline):
     describe an October run. Same-calendar-month samples are preferred and the
     basis is recorded, because a baseline built from one sample of the wrong
     season is worse than none and must not be mistaken for a real one.
+
+    Two things make a prior row comparable, and both are enforced here:
+
+      mask   A corridor-masked run sees ~14% of the basin area, so its counts
+             are structurally lower than a basin-wide run's. Pooling the two
+             deflates the basin-wide baseline and inflates the corridor one —
+             an event run would then look anomalous purely because the
+             baseline behind it was measured over seven times more ground.
+             Rows written before this column existed are basin-wide.
+
+      window Which two months are being differenced. A drift run is same-month
+             year-on-year; an event run spans a season. October-vs-August and
+             October-vs-October share an analysis month but not a comparison,
+             and leaf-turn alone separates them. A prior run of the identical
+             window is the strongest baseline available — it is the negative
+             control for this one — so it is preferred over merely sharing a
+             calendar month.
     """
     if not os.path.exists(ledger_path):
         return {}
@@ -333,10 +384,19 @@ def basin_baselines(ledger_path, this_month, this_baseline):
     rows = list(_csv.DictReader(open(ledger_path, newline="", encoding="utf-8")))
     rows = [r for r in rows if not (r["month"] == this_month
                                     and r.get("baseline_month") == this_baseline)]
+    rows = [r for r in rows if (r.get("mask") or "basin") == mask]
     if not rows:
         return {}
+    window = lambda r: (r["month"][5:7], (r.get("baseline_month") or "")[5:7])
+    want = (this_month[5:7], this_baseline[5:7])
+    same_win = [r for r in rows if window(r) == want]
     same_mo = [r for r in rows if r["month"][5:7] == this_month[5:7]]
-    use, basis = (same_mo, "same-month") if len(same_mo) >= 16 else (rows, "all-months")
+    if len(same_win) >= 8:            # >= one full pass over the sub-basins
+        use, basis = same_win, "same-window"
+    elif len(same_mo) >= 16:
+        use, basis = same_mo, "same-month"
+    else:
+        use, basis = rows, "all-months"
     per = defaultdict(list)
     for r in use:
         try:
@@ -544,6 +604,74 @@ def selftest():
     check("no ledger yields no baseline, not a fake one",
           basin_baselines("/nonexistent.csv","2024-10","2023-10")=={} and anomaly(5,None) is None)
 
+    print("baseline comparability — mask and window")
+    COLS=["month","baseline_month","basin_id","mask",
+          "provisional_patches","confirmed_patches"]
+    def led(path, spec):
+        with open(path,"w",newline="",encoding="utf-8") as fh:
+            wr=_csv.DictWriter(fh,fieldnames=COLS); wr.writeheader()
+            for mo,bm,mk,n in spec:
+                for b in range(8):
+                    wr.writerow(dict(month=mo,baseline_month=bm,basin_id=f"B{b}",
+                                     mask=mk,provisional_patches=n,confirmed_patches=0))
+    d=tempfile.mkdtemp()
+
+    # A corridor run sees ~1/7 of the ground. Its counts must not set the floor
+    # for a basin-wide run, nor the reverse.
+    t2=os.path.join(d,"mask.csv")
+    led(t2,[("2025-10","2025-08","basin",70),("2023-10","2023-08","basin",70),
+            ("2025-10","2025-08","corridor",10)])
+    bw=basin_baselines(t2,"2024-10","2024-08",mask="basin")
+    co=basin_baselines(t2,"2024-10","2024-08",mask="corridor")
+    check("a corridor run does not set the basin-wide floor", bw["B0"]["rate"]==70,
+          f"{bw['B0']['rate']}")
+    check("a basin-wide run does not set the corridor floor", co["B0"]["rate"]==10,
+          f"{co['B0']['rate']}")
+    check("each mask counts only its own samples (pooling would give 3)",
+          bw["B0"]["n"]==2 and co["B0"]["n"]==1, f"{bw['B0']['n']}/{co['B0']['n']}")
+    check("a corridor run with no corridor history gets no baseline at all",
+          basin_baselines(t2,"2024-10","2024-08",mask="corridor")["B0"]["rate"]==10
+          and basin_baselines(os.path.join(d,"none.csv"),"2024-10","2024-08",
+                              mask="corridor")=={})
+
+    # October-vs-August and October-vs-October share a month but not a
+    # comparison: one spans leaf-turn, the other does not.
+    t3=os.path.join(d,"window.csv")
+    led(t3,[("2025-10","2025-08","basin",30),
+            ("2025-10","2024-10","basin",0),("2023-10","2022-10","basin",0),
+            ("2022-10","2021-10","basin",0)])
+    w=basin_baselines(t3,"2024-10","2024-08",mask="basin")
+    check("the identical window wins over merely the same calendar month",
+          w["B0"]["basis"]=="same-window" and w["B0"]["rate"]==30,
+          f"{w['B0']['basis']} rate {w['B0']['rate']}")
+    check("a Helene-sized count is not an anomaly against a leaf-turn control",
+          anomaly(33,w["B0"])<1.2, f"{anomaly(33,w['B0'])}x")
+    check("the same count against the wrong window would have screamed",
+          anomaly(33,basin_baselines(t3,"2024-10","2023-10",mask="basin")["B0"])>15)
+
+    print("ledger migration")
+    t4=os.path.join(d,"mig.csv")
+    with open(t4,"w",newline="",encoding="utf-8") as fh:
+        wr=_csv.DictWriter(fh,fieldnames=["month","basin_id","confirmed_patches"])
+        wr.writeheader(); wr.writerow(dict(month="2025-10",basin_id="B0",confirmed_patches=4))
+    r=migrate_ledger(t4,["month","basin_id","mask","confirmed_patches"])
+    got=list(_csv.DictReader(open(t4,newline="",encoding="utf-8")))
+    check("a widened schema rewrites in place instead of discarding history",
+          r and r["rows"]==1 and len(got)==1 and got[0]["confirmed_patches"]=="4",
+          str(got))
+    check("the added column is present and empty, not shifted",
+          got[0]["mask"]=="" and got[0]["month"]=="2025-10", str(got[0]))
+    check("migrated rows without a mask are read as basin-wide",
+          (got[0].get("mask") or "basin")=="basin")
+    check("an unchanged schema is left alone",
+          migrate_ledger(t4,["month","basin_id","mask","confirmed_patches"]) is None)
+    r2=migrate_ledger(t4,["month","basin_id"])
+    check("a dropped column is copied aside before it is lost",
+          r2["dropped"]==["mask","confirmed_patches"]
+          and os.path.exists(t4.replace(".csv","_pre4col.csv")), str(r2))
+    check("appending after migration stays aligned",
+          list(_csv.DictReader(open(t4,newline="",encoding="utf-8")))[0]["month"]=="2025-10")
+
     print("date helpers")
     check("year_earlier(2026-07) = 2025-07", year_earlier("2026-07") == "2025-07")
     check("prev_month(2026-01) = 2025-12", prev_month("2026-01") == "2025-12")
@@ -644,12 +772,16 @@ def main():
     zs_now = zonal_stats(now, bidx, len(ids))
     zs_base = zonal_stats(base, bidx, len(ids))
 
-    base_rates = basin_baselines(os.path.join(a.out, "landcover_watch.csv"), this_ym, base_ym)
+    mask_label = "corridor" if a.corridor else "basin"
+    base_rates = basin_baselines(os.path.join(a.out, "landcover_watch.csv"),
+                                 this_ym, base_ym, mask=mask_label)
     if base_rates:
         anyb = next(iter(base_rates.values()))
-        print(f"per-basin baselines: {anyb['n']} prior samples each, {anyb['basis']}")
+        print(f"per-basin baselines: {anyb['n']} prior {mask_label} samples each, "
+              f"{anyb['basis']}")
     else:
-        print("no prior runs — no per-basin baseline yet; raw counts only")
+        print(f"no prior {mask_label} runs of this window — no per-basin baseline "
+              "yet; raw counts only")
 
     rows = []
     for i, bid in enumerate(ids):
@@ -657,6 +789,7 @@ def main():
         low = zs_now[i]["valid_frac"] < MIN_VALID_FRAC or zs_base[i]["valid_frac"] < MIN_VALID_FRAC
         rows.append({
             "month": this_ym, "baseline_month": base_ym, "basin_id": bid,
+            "mask": mask_label,
             "ndvi_median": zs_now[i]["ndvi_median"],
             "ndvi_median_baseline": zs_base[i]["ndvi_median"],
             "ndvi_delta": (None if None in (zs_now[i]["ndvi_median"], zs_base[i]["ndvi_median"])
@@ -673,24 +806,19 @@ def main():
                                                    if p["basin_id"] == bid]),
                                      base_rates.get(bid)),
             "insufficient_clear_sky": low,
-            "provenance": "DERIVED: Sentinel-2 L2A NDVI, same-month YoY, "
-                          f"drop<={NDVI_DROP}, min {MIN_PATCH_HA} ha, "
-                          f"{PERSISTENCE_N}-month persistence. NOT a model input.",
+            "provenance": f"DERIVED: Sentinel-2 L2A NDVI, {this_ym} vs {base_ym}, "
+                          f"{mask_label}-masked, drop<={NDVI_DROP}, "
+                          f"min {MIN_PATCH_HA} ha, {PERSISTENCE_N}-month "
+                          "persistence. NOT a model input.",
         })
 
     led = os.path.join(a.out, "landcover_watch.csv")
     cols = list(rows[0].keys())
-    # If the schema has grown since the file was written, appending puts values
-    # under the wrong headings and every later read is quietly wrong. Rotate the
-    # old file instead — the history is kept, just not silently corrupted.
-    if os.path.exists(led):
-        with open(led, newline="", encoding="utf-8") as fh:
-            existing = next(csv.reader(fh), [])
-        if existing and existing != cols:
-            bak = led.replace(".csv", f"_schema{len(existing)}col.csv")
-            os.rename(led, bak)
-            print(f"ledger schema changed ({len(existing)} -> {len(cols)} columns); "
-                  f"previous rows preserved as {os.path.basename(bak)}")
+    mig = migrate_ledger(led, cols)
+    if mig:
+        print(f"ledger migrated {len(mig['old'])} -> {len(cols)} columns, "
+              f"{mig['rows']} rows carried forward"
+              + (f"; dropped {','.join(mig['dropped'])} (copy kept)" if mig["dropped"] else ""))
     fresh = not os.path.exists(led)
     with open(led, "a", newline="", encoding="utf-8") as fh:
         wr = csv.DictWriter(fh, fieldnames=cols)

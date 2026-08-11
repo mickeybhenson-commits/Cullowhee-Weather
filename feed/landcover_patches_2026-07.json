@@ -1,0 +1,112 @@
+[
+ {
+  "basin_id": "CC-MS-1100",
+  "area_ha": 3.72,
+  "pixels": 372,
+  "ndvi_drop_mean": -0.2828,
+  "ndvi_drop_min": -0.4769,
+  "row_centroid": 834,
+  "col_centroid": 531,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-UP-503",
+  "area_ha": 2.71,
+  "pixels": 271,
+  "ndvi_drop_mean": -0.3091,
+  "ndvi_drop_min": -0.5262,
+  "row_centroid": 1156,
+  "col_centroid": 349,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-MOUTH-2340",
+  "area_ha": 1.71,
+  "pixels": 171,
+  "ndvi_drop_mean": -0.3121,
+  "ndvi_drop_min": -0.4962,
+  "row_centroid": 114,
+  "col_centroid": 526,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-MS-1100",
+  "area_ha": 1.51,
+  "pixels": 151,
+  "ndvi_drop_mean": -0.3009,
+  "ndvi_drop_min": -0.507,
+  "row_centroid": 794,
+  "col_centroid": 507,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 1.14,
+  "pixels": 114,
+  "ndvi_drop_mean": -0.1708,
+  "ndvi_drop_min": -0.2042,
+  "row_centroid": 492,
+  "col_centroid": 272,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-UP-503",
+  "area_ha": 0.86,
+  "pixels": 86,
+  "ndvi_drop_mean": -0.1825,
+  "ndvi_drop_min": -0.2688,
+  "row_centroid": 942,
+  "col_centroid": 338,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 0.83,
+  "pixels": 83,
+  "ndvi_drop_mean": -0.1914,
+  "ndvi_drop_min": -0.2518,
+  "row_centroid": 670,
+  "col_centroid": 204,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 0.64,
+  "pixels": 64,
+  "ndvi_drop_mean": -0.1769,
+  "ndvi_drop_min": -0.2172,
+  "row_centroid": 540,
+  "col_centroid": 283,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 0.59,
+  "pixels": 59,
+  "ndvi_drop_mean": -0.1727,
+  "ndvi_drop_min": -0.199,
+  "row_centroid": 479,
+  "col_centroid": 423,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 0.57,
+  "pixels": 57,
+  "ndvi_drop_mean": -0.1848,
+  "ndvi_drop_min": -0.2166,
+  "row_centroid": 528,
+  "col_centroid": 371,
+  "streak": 1
+ },
+ {
+  "basin_id": "CC-TIL-705",
+  "area_ha": 0.54,
+  "pixels": 54,
+  "ndvi_drop_mean": -0.174,
+  "ndvi_drop_min": -0.2078,
+  "row_centroid": 657,
+  "col_centroid": 186,
+  "streak": 1
+ }
+]

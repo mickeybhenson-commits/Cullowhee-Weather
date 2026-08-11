@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How much rain would it take? — Cullowhee Creek</title>
+<meta name="description" content="How much rain it takes to flood Cullowhee Creek depends on two things the forecast alone does not tell you: how long the rain lasts, and how wet the ground already is. This shows both, live.">
+<meta name="theme-color" content="#0a161a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a161a'/><path d='M6 21c3-5 5-9 10-9s7 4 10 9' stroke='%2345d0c0' stroke-width='2.4' fill='none' stroke-linecap='round'/><circle cx='16' cy='9' r='2.6' fill='%2345d0c0'/></svg>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="How much rain would it take? — Cullowhee Creek">
+<meta property="og:description" content="The same total rainfall is harmless over three days and dangerous over six hours. Live thresholds for Cullowhee Creek, by storm length and ground wetness.">
+<meta property="og:url" content="https://mickeybhenson-commits.github.io/Cullowhee-Weather/rain_to_trip.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Newsreader:opsz,wght@6..72,300;6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abyss:#0a161a; --shoal:#102128; --shoal2:#0e1c22;
+    --mist:#e9f1ef; --slate:#8aa6a6; --faint:#5c7576;
+    --current:#45d0c0; --watch:#e2b52b; --warning:#f2882d; --emergency:#ef5350;
+    --line:#20363c;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --body:'Newsreader',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--abyss);color:var(--mist);
+    font-family:var(--body);font-size:18px;line-height:1.6;font-weight:300;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:940px;margin:0 auto;padding:34px 22px 80px}
+  a{color:var(--current)}
+  h1{font-family:var(--disp);font-weight:500;font-size:clamp(26px,4.4vw,38px);
+     line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--current);margin:0 0 16px;
+    display:flex;align-items:center;gap:9px}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--current);
+    box-shadow:0 0 0 0 rgba(69,208,192,.55);animation:pulse 2.4s ease-out infinite;flex:0 0 auto}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(69,208,192,.5)}70%{box-shadow:0 0 0 9px rgba(69,208,192,0)}100%{box-shadow:0 0 0 0 rgba(69,208,192,0)}}
+  .lede{color:var(--slate);margin:0 0 26px;max-width:66ch}
+  .card{background:var(--shoal);border:1px solid var(--line);border-radius:13px;
+    padding:20px 22px;margin:0 0 20px}
+  .cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--faint);margin:0 0 14px}
+  .segs{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 20px}
+  .segs button{font-family:var(--mono);font-size:12px;letter-spacing:.03em;
+    background:transparent;border:1px solid var(--line);color:var(--slate);
+    border-radius:8px;padding:7px 13px;cursor:pointer;transition:.14s}
+  .segs button:hover{border-color:#2e4c53;color:var(--mist)}
+  .segs button[aria-pressed="true"]{border-color:var(--current);color:var(--abyss);
+    background:var(--current);font-weight:500}
+  .hero{display:flex;flex-wrap:wrap;gap:24px;align-items:baseline}
+  .hero .big{font-family:var(--disp);font-weight:600;font-size:clamp(40px,8.4vw,64px);
+    line-height:1;letter-spacing:-.02em}
+  .hero .unit{font-family:var(--disp);font-size:19px;font-weight:500;color:var(--slate);margin-left:9px}
+  .hero .said{color:var(--slate);max-width:38ch;font-size:16.5px}
+  .wet{display:flex;flex-wrap:wrap;gap:22px;margin-top:18px;padding-top:16px;
+    border-top:1px solid var(--line)}
+  .wet div{min-width:130px}
+  .wet .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--faint)}
+  .wet .v{font-family:var(--disp);font-size:22px;font-weight:500}
+  .wet .s{font-size:13px;color:var(--slate);line-height:1.35}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;padding:0 4px}
+  .swipe{display:none;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--faint);margin:10px 0 0}
+  @media(max-width:760px){ .scrollx > svg{min-width:660px} .scrollx > table{min-width:540px} .swipe{display:block} }
+  .ax{font-family:var(--mono);font-size:10.5px;fill:var(--faint)}
+  .lbl{font-family:var(--mono);font-size:11px;font-weight:500}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;font-family:var(--mono);font-weight:400}
+  th{text-align:right;color:var(--faint);font-size:10.5px;letter-spacing:.08em;
+     text-transform:uppercase;font-weight:500;padding:0 0 9px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  td{padding:9px 0;border-bottom:1px solid rgba(32,54,60,.55);text-align:right;
+     color:var(--slate);white-space:nowrap}
+  td:first-child{color:var(--mist)}
+  tr:last-child td{border-bottom:none}
+  tr.hi td{color:var(--mist)}
+  tr.design td{color:var(--faint);font-style:italic}
+  .note{font-size:14.5px;color:var(--faint);line-height:1.62}
+  .note b{color:var(--slate);font-weight:400}
+  .warnbar{background:rgba(239,83,80,.09);border:1px solid rgba(239,83,80,.35);
+    color:#f6b3b1;border-radius:10px;padding:12px 16px;margin:0 0 22px;
+    font-family:var(--mono);font-size:12px;letter-spacing:.03em;line-height:1.55}
+  .err{color:var(--warning)}
+  @media(max-width:620px){ .wrap{padding:24px 16px 60px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow"><span class="live-dot"></span><span id="stamp">loading live conditions…</span></p>
+  <h1>How much rain would it take?</h1>
+  <p class="lede">A total on its own tells you very little. Ten inches over three days is
+     survivable; the same ten inches in six hours is not. What matters is <b>how long the
+     rain lasts</b> and <b>how much water the ground can still absorb</b>. Both are below,
+     for today.</p>
+
+  <div class="warnbar">NOT AN OFFICIAL FLOOD WARNING &middot; modelled from forecast rain and
+     inferred soil wetness &middot; for official warnings see NWS Greenville&#8209;Spartanburg</div>
+
+  <div class="card">
+    <p class="cap">Storm length &mdash; pick one</p>
+    <div class="segs" id="segs"></div>
+    <div class="hero">
+      <div><span class="big" id="heroNum">&mdash;</span><span class="unit" id="heroUnit">inches</span></div>
+      <div class="said" id="heroSaid">&nbsp;</div>
+    </div>
+    <div class="wet">
+      <div><div class="k">Ground wetness</div><div class="v" id="wetV">&mdash;</div>
+           <div class="s" id="wetS">&nbsp;</div></div>
+      <div><div class="k">Forecast, next 3 days</div><div class="v" id="qpfV">&mdash;</div>
+           <div class="s">total, all remaining forecast hours</div></div>
+      <div><div class="k">Margin to Watch</div><div class="v" id="marV">&mdash;</div>
+           <div class="s" id="marS">&nbsp;</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <p class="cap">The answer to &ldquo;why 24 hours?&rdquo; &middot; rain needed vs how long it falls</p>
+    <div class="scrollx"><svg id="dur" viewBox="0 0 900 330" role="img"
+      aria-label="Chart of total rainfall needed to reach each posture as storm duration increases."></svg></div>
+    <p class="swipe">swipe the chart sideways &rarr;</p>
+    <p class="note" style="margin:14px 0 0" id="durNote">&nbsp;</p>
+  </div>
+
+  <div class="card">
+    <p class="cap">The other lever &middot; rain needed vs ground wetness</p>
+    <div class="scrollx"><svg id="sens" viewBox="0 0 900 330" role="img"
+      aria-label="Chart of rainfall needed to reach each posture as ground wetness increases."></svg></div>
+    <p class="swipe">swipe the chart sideways &rarr;</p>
+    <p class="note" style="margin:14px 0 0" id="sensNote">&nbsp;</p>
+  </div>
+
+  <div class="card">
+    <p class="cap">Every sub-basin &middot; total inches, at today&rsquo;s wetness and the selected length</p>
+    <div class="scrollx"><table>
+      <thead><tr><th>Sub-basin</th><th>Watch</th><th>Warning</th><th>Emergency</th><th>Lead</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <p class="cap">Why the shape matters &middot; campus reach, same wetness</p>
+    <div class="scrollx"><table>
+      <thead><tr><th>How the rain falls</th><th>Watch</th><th>Warning</th><th>Emergency</th></tr></thead>
+      <tbody id="cmp"></tbody>
+    </table></div>
+    <p class="note" style="margin:16px 0 0" id="cmpNote">&nbsp;</p>
+  </div>
+
+  <p class="note" id="foot"></p>
+</div>
+
+<script>
+/* ===== embedded engine (validated bit-identical to Python) ===== */
+/* engine.js — JS PORT of the Cullowhee Creek flood engine.
+   Mirrors test_model.py (rainfall->peak) + flood_rating.py (calibrate->rating->posture)
+   + basins.py (per-basin params). PYTHON REMAINS AUTHORITATIVE — keep this in sync.
+   Peak chain uses test_model DA/Tc/CN; calibration/rating/thresholds use basins.py. */
+/* qb = baseflow discharge (cfs, MODELED 2.0 cfs/mi^2 - wetness.py); floor =
+   observed clear-day stage (ft, rating extrapolation floor; campus only). */
+const BASINS = {
+ "CC-UP-503":    {DA:5.35, Tc:40,  CN2:63, calib:[1.449,0.815], rating:"rectangular", sec:{w:29.7,n:0.045,s:0.0888}, thr:[1.78,2.67,3.56], qb:10.1},
+ "CC-MS-1100":   {DA:11.03,Tc:63,  CN2:63, calib:[2.777,0.760], rating:"rectangular", sec:{w:45.7,n:0.045,s:0.0446}, thr:[2.32,3.48,4.64], qb:22.0},
+ "CC-TIL-705":   {DA:7.05, Tc:62,  CN2:63, calib:[2.241,0.784], rating:"rectangular", sec:{w:38.4,n:0.050,s:0.0547}, thr:[2.02,3.03,4.04], qb:14.1},
+ "CC-SPD-1830":  {DA:18.3, Tc:62,  CN2:63, calib:[3.404,0.739], rating:"rectangular", sec:{w:55.7,n:0.045,s:0.0425}, thr:[2.71,4.07,5.42], qb:36.6},
+ "CC-COX-097":   {DA:0.97, Tc:29,  CN2:66, calib:[0.600,0.940], rating:"rectangular", sec:{w:15.0,n:0.045,s:0.1000}, thr:[1.11,1.67,2.22], qb:1.9},
+ "CC-LB-171":    {DA:1.71, Tc:36,  CN2:65, calib:[0.677,0.921], rating:"rectangular", sec:{w:19.0,n:0.045,s:0.0753}, thr:[1.31,1.97,2.62], qb:3.4},
+ "CC-WCU-2260":  {DA:22.6, Tc:127, CN2:64, calib:[4.222,0.744], rating:"tva", tva_wse:[[2580,2079.2],[5155,2081.5],[7305,2082.9]], bed:2070.5, thr:[7.0,9.0,11.0], qb:45.2, floor:4.0},
+ "CC-MOUTH-2340":{DA:23.4, Tc:147, CN2:64, calib:[4.610,0.742], rating:"none", thr:null, qb:null},
+};
+
+/* ===== Frequency-based classification (reviewed & approved: Dr. Mickey B. Henson, Ph.D., 2026-07-15) =====
+   Fixes a demonstrated under-warning (Helene back-test): the rectangular stage rating
+   is invalid out-of-bank, so the 7 non-campus reaches are classified by DISCHARGE
+   return period on the USGS StreamStats regression (reg_q) instead of stage.
+   Campus (CC-WCU-2260) keeps its field-validated 7/9/11 ft stage rating. */
+const REGQ={
+ "CC-UP-503":{2:269,5:504,10:705,25:987,50:1250,100:1500,200:1780,500:2160},
+ "CC-MS-1100":{2:532,5:965,10:1330,25:1830,50:2290,100:2740,200:3220,500:3870},
+ "CC-TIL-705":{2:361,5:667,10:927,25:1290,50:1620,100:1950,200:2300,500:2780},
+ "CC-SPD-1830":{2:829,5:1470,10:2010,25:2740,50:3410,100:4050,200:4740,500:5660},
+ "CC-COX-097":{2:64.3,5:129,10:186,25:269,50:347,100:426,200:513,500:631},
+ "CC-LB-171":{2:105,5:206,10:294,25:421,50:539,100:658,200:788,500:964},
+ "CC-WCU-2260":{2:996,5:1750,10:2380,25:3230,50:4010,100:4760,200:5560,500:6630},
+ "CC-MOUTH-2340":{2:1030,5:1800,10:2450,25:3320,50:4120,100:4880,200:5710,500:6800}};
+const REGPI={ "CC-UP-503":{10:[395,1260],100:[781,2880]},"CC-MS-1100":{10:[746,2370],100:[1430,5260]},
+ "CC-TIL-705":{10:[520,1650],100:[1020,3740]},"CC-SPD-1830":{10:[1130,3580],100:[2110,7770]},
+ "CC-COX-097":{10:[104,333],100:[221,822]},"CC-LB-171":{10:[164,526],100:[342,1270]},
+ "CC-WCU-2260":{10:[1330,4240],100:[2480,9130]},"CC-MOUTH-2340":{10:[1370,4370],100:[2540,9360]}};
+const LEADMIN={"CC-UP-503":40,"CC-MS-1100":86,"CC-TIL-705":62,"CC-SPD-1830":91,"CC-COX-097":29,"CC-LB-171":36,"CC-WCU-2260":127,"CC-MOUTH-2340":147};
+const STAGE_BASED={"CC-WCU-2260":1};   // campus keeps validated stage; every other reach classifies by discharge frequency
+function rpFromQ(q,bid){ const rq=REGQ[bid]; if(!rq)return null;
+  const rps=[2,5,10,25,50,100,200,500], pts=rps.map(r=>[rq[r],r]).sort((a,b)=>a[0]-b[0]);
+  if(q<=pts[0][0])return pts[0][1]*q/pts[0][0];
+  if(q>=pts[pts.length-1][0])return pts[pts.length-1][1];
+  for(let i=0;i<pts.length-1;i++){ const q0=pts[i][0],r0=pts[i][1],q1=pts[i+1][0],r1=pts[i+1][1];
+    if(q>=q0&&q<=q1){ const f=(Math.log(q)-Math.log(q0))/(Math.log(q1)-Math.log(q0)); return r0+f*(r1-r0); } }
+  return null; }
+function catFromRP(T){ if(T==null)return "N/A"; if(T>=100)return "EMERGENCY"; if(T>=10)return "WARNING"; if(T>=2)return "WATCH"; return "NORMAL"; }
+function freqPosture(cq,bid){ return catFromRP(rpFromQ(cq,bid)); }
+function freqInfo(cq,bid){ const rq=REGQ[bid],pi=REGPI[bid]; if(!rq||!pi)return null;
+  const best=rpFromQ(cq,bid), T=best==null?10:best;
+  const rlo10=pi[10][0]/rq[10],rhi10=pi[10][1]/rq[10],rlo01=pi[100][0]/rq[100],rhi01=pi[100][1]/rq[100];
+  function sc(w){ if(T<=10)return w=="lo"?rlo10:rhi10;
+    const f=Math.min(Math.max((Math.log(Math.max(T,10))-Math.log(10))/(Math.log(100)-Math.log(10)),0),1);
+    const a=w=="lo"?rlo10:rhi10,c=w=="lo"?rlo01:rhi01; return a+f*(c-a); }
+  return {rp:best, cat:catFromRP(best), catLo:catFromRP(rpFromQ(cq/sc("hi"),bid)), catHi:catFromRP(rpFromQ(cq/sc("lo"),bid))}; }
+const TYPE2=[0.000,0.011,0.022,0.035,0.048,0.064,0.080,0.098,0.120,0.147,0.181,0.235,
+             0.663,0.772,0.820,0.854,0.880,0.902,0.921,0.938,0.953,0.967,0.984,1.000];
+function arcClass(p5,growing=true){
+  if(growing){ if(p5<1.4)return 1; if(p5<=2.1)return 2; return 3; }
+  if(p5<0.5)return 1; if(p5<=1.1)return 2; return 3;
+}
+function cnAdjust(cn2,arc){
+  if(arc===1) return cn2/(2.281-0.01281*cn2);
+  if(arc===3) return cn2/(0.427+0.00573*cn2);
+  return cn2;
+}
+/* ===== antecedent wetness engine — PORT of wetness.py (PYTHON AUTHORITATIVE) ===== */
+const API_K=0.90, API_DAYS=30;
+const API_5DAY_EQUIV=(1-Math.pow(API_K,API_DAYS))/(1-API_K)/5.0;   /* 1.9152 */
+function cnBounds(cn2){ return [cn2/(2.281-0.01281*cn2), cn2, cn2/(0.427+0.00573*cn2)]; }
+function cnFromWetness(cn2,w){ const b=cnBounds(cn2); w=Math.max(0,Math.min(1,w));
+  return w<0.5 ? b[0]+(b[1]-b[0])*(w/0.5) : b[1]+(b[2]-b[1])*((w-0.5)/0.5); }
+function isGrowingSeason(d){ const m=((d||new Date()).getMonth())+1; return m>=4&&m<=10; }
+function wetnessFromAPI(api){ const g=isGrowingSeason();
+  const lo=(g?1.4:0.5)*API_5DAY_EQUIV, hi=(g?2.1:1.1)*API_5DAY_EQUIV;
+  if(api<=0)return 0; if(api<lo)return 0.5*api/lo;
+  if(api<=hi)return 0.5+0.5*(api-lo)/(hi-lo); return 1; }
+function wetnessFromSoilPct(p){ return Math.max(0,Math.min(1,p)); }
+function stageTotalFromQ(cq,bid){ const b=BASINS[bid];
+  if(b.rating==="none") return null;
+  const t=depthFromQ((cq||0)+(b.qb||0),bid);
+  return t==null?null:Math.max(t,b.floor||0); }
+function stormHyetograph(total,dt=0.25){
+  const steps=Math.round(24.0/dt), cum=[];
+  for(let k=0;k<=steps;k++){ const h=k*dt, i=Math.min(Math.floor(h),23), frac=h-i;
+    cum.push((TYPE2[i]+frac*(TYPE2[Math.min(i+1,23)]-TYPE2[i]))*total); }
+  const inc=[]; for(let i=0;i<cum.length-1;i++) inc.push(cum[i+1]-cum[i]); return inc;
+}
+function runoffDepth(P,CN){ const S=1000.0/CN-10.0; if(P<=0.2*S)return 0.0; return Math.pow(P-0.2*S,2)/(P+0.8*S); }
+function incrementalRunoff(hyeto,CN){ const cumP=[]; let s=0; for(const p of hyeto){s+=p;cumP.push(s);}
+  const cumQ=cumP.map(P=>runoffDepth(P,CN)); const inc=[cumQ[0]];
+  for(let i=1;i<cumQ.length;i++) inc.push(cumQ[i]-cumQ[i-1]); return inc; }
+function unitHydrograph(DA,TcHr,PRF=484.0,dt=0.25){
+  const Tp=0.6*TcHr+dt/2.0, Tb=2.67*Tp, qp=PRF*DA/Tp, ords=[]; let t=0.0;
+  while(t<=Tb){ ords.push(Math.max(t<=Tp?qp*t/Tp:qp*(Tb-t)/(Tb-Tp),0.0)); t+=dt; }
+  return ords; }
+function peakDischarge(hyeto,CN,DA,TcHr,PRF=484.0,dt=0.25){
+  const incr=incrementalRunoff(hyeto,CN), uh=unitHydrograph(DA,TcHr,PRF,dt);
+  const h=new Array(incr.length+uh.length).fill(0.0);
+  for(let i=0;i<incr.length;i++){ const r=incr[i]; if(r<=0)continue;
+    for(let j=0;j<uh.length;j++) h[i+j]+=r*uh[j]; }
+  return Math.max.apply(null,h); }
+function calibratePeak(q,bid){ const c=BASINS[bid].calib; return q>0?c[0]*Math.pow(q,c[1]):0.0; }
+function rectQ(d,sec){ const A=sec.w*d, P=sec.w+2.0*d, R=P>0?A/P:0.0;
+  return (1.49/sec.n)*A*Math.pow(R,2.0/3.0)*Math.sqrt(sec.s); }
+function rectDepth(q,sec,dmax=30.0){ let lo=0.0,hi=dmax; if(rectQ(hi,sec)<q)return hi;
+  for(let i=0;i<60;i++){ const m=0.5*(lo+hi); if(rectQ(m,sec)<q)lo=m;else hi=m; } return 0.5*(lo+hi); }
+function tvaRating(rec){ const pts=rec.tva_wse.map(p=>[p[0],p[1]-rec.bed]);
+  const lx=pts.map(p=>Math.log(p[1])), ly=pts.map(p=>Math.log(p[0])), n=lx.length;
+  const mx=lx.reduce((a,b)=>a+b,0)/n, my=ly.reduce((a,b)=>a+b,0)/n; let num=0,den=0;
+  for(let i=0;i<n;i++){ num+=(lx[i]-mx)*(ly[i]-my); den+=(lx[i]-mx)*(lx[i]-mx); }
+  const B=num/den; return [Math.exp(my-B*mx),B]; }
+function depthFromQ(q,bid){ const rec=BASINS[bid]; if(q===null||q<=0)return 0.0;
+  if(rec.rating==="tva"){ const cb=tvaRating(rec); return Math.pow(q/cb[0],1.0/cb[1]); }
+  if(rec.rating==="rectangular") return rectDepth(q,rec.sec); return null; }
+function posture(depth,bid){ const t=BASINS[bid].thr; if(t===null||depth===null)return "N/A";
+  if(depth>=t[2])return "EMERGENCY"; if(depth>=t[1])return "WARNING"; if(depth>=t[0])return "WATCH"; return "NORMAL"; }
+function runCase(total,p5){ const arc=arcClass(p5), hyeto=stormHyetograph(total), out={};
+  for(const bid in BASINS){ const b=BASINS[bid], CN=cnAdjust(b.CN2,arc);
+    const Q=runoffDepth(total,CN), qp=peakDischarge(hyeto,CN,b.DA,b.Tc/60.0);
+    const cq=calibratePeak(qp,bid), stage=depthFromQ(cq,bid);
+    out[bid]={CN,Q,qp,calib_q:cq,stage,posture:posture(stage,bid)}; }
+  return {arc,out}; }
+// Per-basin entry point (UPGRADED per wetness.py): continuous CN from a
+// wetness index w in [0,1], baseflow Qb added before the rating, posture on
+// TOTAL stage. The stepped-ARC path survives only in runCase (what-if/tests).
+function assessBasin(bid, qpf, wetness){
+  const b=BASINS[bid];
+  const CN=cnFromWetness(b.CN2,wetness);
+  const qp=peakDischarge(stormHyetograph(qpf),CN,b.DA,b.Tc/60.0);
+  const cq=calibratePeak(qp,bid);
+  const storm=depthFromQ(cq,bid);
+  const stage=stageTotalFromQ(cq,bid);
+  const post = STAGE_BASED[bid] ? posture(stage,bid) : freqPosture(cq,bid);
+  const rp = REGQ[bid] ? rpFromQ(cq,bid) : null;
+  return {wetness,CN,qp,calib_q:cq,storm,stage,rp,posture:post,shape:"designII"};
+}
+/* ===== REAL-HYETOGRAPH PATH - JS twin of test_model.run_event (2026-07-31) =====
+   test_model.py: "Warning operations MUST use this path with observed/forecast
+   rain. The SCS Type II design shape is for TABLETOP design storms only:
+   applied to a long-duration tropical event it overpredicts the peak 2.5-3x."
+   Verified: Helene 7.0 in / 36 h -> real shape 2548 cfs (13 yr, WARNING) vs
+   Type II on the same total 6305 cfs (414 yr, EMERGENCY) = 2.47x. The surveyed
+   band for Helene is 10-25 yr, so the real-shape path is the one that lands.
+   assessBasin() above is UNCHANGED and still drives the what-if design storm. */
+function realHyetograph(hourlyIn,dt=0.25){
+  const per=Math.max(1,Math.round(1.0/dt)), out=[];
+  for(const v of hourlyIn){ const x=(+v||0)/per; for(let k=0;k<per;k++) out.push(x); }
+  return out; }
+function peakDischargeAt(hy,CN,DA,TcHr,PRF=484.0,dt=0.25){
+  const incr=incrementalRunoff(hy,CN), uh=unitHydrograph(DA,TcHr,PRF,dt);
+  const h=new Array(incr.length+uh.length).fill(0.0);
+  for(let i=0;i<incr.length;i++){ const r=incr[i]; if(r<=0)continue;
+    for(let j=0;j<uh.length;j++) h[i+j]+=r*uh[j]; }
+  let pk=0,pi=0; for(let i=0;i<h.length;i++) if(h[i]>pk){pk=h[i];pi=i;}
+  return {peak:pk, tHr:pi*dt}; }
+/* hourlyIn = forecast rain (in/hr) from NOW forward. Same return shape as
+   assessBasin, plus leadMin = modelled time from now to the peak. */
+function assessBasinEvent(bid, hourlyIn, wetness){
+  const b=BASINS[bid];
+  const CN=cnFromWetness(b.CN2,wetness);
+  const p=peakDischargeAt(realHyetograph(hourlyIn),CN,b.DA,b.Tc/60.0);
+  const cq=calibratePeak(p.peak,bid);
+  const storm=depthFromQ(cq,bid);
+  const stage=stageTotalFromQ(cq,bid);
+  const post = STAGE_BASED[bid] ? posture(stage,bid) : freqPosture(cq,bid);
+  const rp = REGQ[bid] ? rpFromQ(cq,bid) : null;
+  return {wetness,CN,qp:p.peak,calib_q:cq,storm,stage,rp,posture:post,
+          leadMin:Math.round(p.tHr*60), shape:"real",
+          total:hourlyIn.reduce((a,v)=>a+(+v||0),0)};
+}
+// Soil-moisture -> ARC (root-zone volumetric m3/m3). PROVISIONAL bands, NOT calibrated;
+// placeholder until TEROS sensors tie soil moisture to this basin's curve number.
+function arcFromSoil(vwc){ if(vwc<0.22)return 1; if(vwc<=0.33)return 2; return 3; }
+if(typeof module!=="undefined") module.exports={runCase,assessBasin,arcClass,arcFromSoil,BASINS,cnBounds,cnFromWetness,wetnessFromAPI,wetnessFromSoilPct,stageTotalFromQ,API_5DAY_EQUIV};
+
+/* ================= live panel ================= */
+const CENTROID={"CC-COX-097":[35.296244268499706,-83.19693591017943],"CC-LB-171":[35.30081209302478,-83.20722582856314],"CC-MOUTH-2340":[35.26243999816037,-83.19702658034828],"CC-MS-1100":[35.24131501022818,-83.18920854372517],"CC-SPD-1830":[35.249410001003604,-83.19821281120066],"CC-TIL-705":[35.26549098965683,-83.2146517457967],"CC-UP-503":[35.224976410404174,-83.19938924242301],"CC-WCU-2260":[35.25782399136858,-83.1983308176473]};
+const NAME={"CC-UP-503":"Mountain","CC-MS-1100":"Lower Mountain","CC-TIL-705":"Tilley Creek","CC-SPD-1830":"Speedwell","CC-COX-097":"Cox Branch","CC-LB-171":"Long Branch","CC-WCU-2260":"WCU campus","CC-MOUTH-2340":"Cullowhee"};
+const ORDER=["CC-COX-097","CC-LB-171","CC-UP-503","CC-TIL-705","CC-MS-1100","CC-SPD-1830","CC-WCU-2260","CC-MOUTH-2340"];
+const RECEPTOR="CC-WCU-2260";
+const SEV={WATCH:"#e2b52b",WARNING:"#f2882d",EMERGENCY:"#ef5350"};
+const RANK={NORMAL:1,WATCH:2,WARNING:3,EMERGENCY:4,"N/A":0};
+
+/* Helene's OBSERVED hourly rainfall at K24A, 25-27 Sep 2024 (claude/k24a_helene_hourly.csv).
+   48 hours, 7.22 in, peak 0.48 in/hr. Used as the delivery SHAPE: this is what a
+   tropical event in this watershed actually looks like, rather than a design curve. */
+const HEL=[0.02,0.03,0.0,0.01,0.06,0.18,0.24,0.07,0.28,0.22,0.08,0.02,0.03,0.01,0.07,0.37,
+0.06,0.04,0.04,0.15,0.30,0.11,0.42,0.48,0.16,0.02,0.04,0.01,0.04,0.03,0.05,0.13,0.19,0.07,
+0.25,0.38,0.10,0.12,0.23,0.36,0.28,0.33,0.39,0.22,0.28,0.12,0.12,0.01];
+
+/* Resample Helene's shape to `hours` bins and scale to `total` inches. Stretching or
+   compressing the real pattern keeps its burstiness, which is what sets the peak —
+   a flat storm of the same length and total understates it badly. */
+function helShape(total, hours){
+  const out=new Array(hours).fill(0);
+  for(let i=0;i<hours;i++){
+    const a=i*HEL.length/hours, b=(i+1)*HEL.length/hours;
+    let s=0;
+    for(let k=Math.floor(a);k<Math.min(HEL.length,Math.ceil(b));k++){
+      s += HEL[k]*(Math.min(b,k+1)-Math.max(a,k));
+    }
+    out[i]=s;
+  }
+  const sum=out.reduce((x,y)=>x+y,0)||1;
+  return out.map(v=>v*total/sum);
+}
+function tripDur(bid,w,target,hours){
+  const hit=T=>(RANK[assessBasinEvent(bid,helShape(T,hours),w).posture]||0)>=RANK[target];
+  let lo=0.05,hi=48; if(!hit(hi))return null; if(hit(lo))return lo;
+  for(let i=0;i<42;i++){const m=(lo+hi)/2; hit(m)?hi=m:lo=m;} return hi;
+}
+function tripTypeII(bid,w,target){
+  const hit=T=>(RANK[assessBasin(bid,T,w).posture]||0)>=RANK[target];
+  let lo=0.05,hi=48; if(!hit(hi))return null; if(hit(lo))return lo;
+  for(let i=0;i<42;i++){const m=(lo+hi)/2; hit(m)?hi=m:lo=m;} return hi;
+}
+
+const DURS=[6,12,24,48,72];
+/* a gridline step that lands on round inches and gives 4-6 lines */
+function niceStep(max){ for(const st of [1,2,3,5,6,10,12,15,20,25]) if(max/st<=6) return st; return 30; }
+let DUR=48, W_NOW=null, QPF3=null, SOIL=false;
+
+function omTodayIdx(days,off){const s=new Date(Date.now()+(off||0)*1000).toISOString().slice(0,10);return days.indexOf(s);}
+function omNowIdx(t,off){const now=Date.now();let hi=0,best=1/0;
+  for(let i=0;i<t.length;i++){const d=Math.abs(new Date(t[i]).getTime()-now);if(d<best){best=d;hi=i;}}return hi;}
+function deriveOne(loc){
+  const days=loc.daily.time, pr=loc.daily.precipitation_sum, off=loc.utc_offset_seconds||0;
+  let ti=omTodayIdx(days,off); if(ti<0) ti=Math.min(API_DAYS+1,days.length-1);
+  let api=0; for(let i=Math.max(0,ti-API_DAYS);i<ti;i++) api=API_K*api+(pr[i]||0);
+  const H=loc.hourly||{}, t=H.time||[];
+  let fc3=0;
+  if(t.length&&H.precipitation){const h0=omNowIdx(t,off);
+    for(let i=h0;i<t.length;i++) fc3+=(H.precipitation[i]||0);}
+  const L=[H.soil_moisture_0_to_1cm,H.soil_moisture_1_to_3cm,H.soil_moisture_3_to_9cm,H.soil_moisture_9_to_27cm], W=[1,2,6,18];
+  function dw(i){let s=0,sw=0;for(let k=0;k<4;k++){if(L[k]&&L[k][i]!=null){s+=L[k][i]*W[k];sw+=W[k];}}return sw>0?s/sw:null;}
+  let soilPct=null;
+  if(t.length&&L[0]){let hi=omNowIdx(t,off); while(hi>0&&dw(hi)==null)hi--;
+    const v=dw(hi);
+    if(v!=null){let below=0,n=0;for(let i=0;i<=hi;i++){const q=dw(i);if(q!=null){n++;if(q<=v)below++;}}
+      if(n>=48) soilPct=below/n;}}
+  return {api,fc3,soilPct};
+}
+
+async function load(){
+  const lat=ORDER.map(b=>CENTROID[b][0]).join(","), lon=ORDER.map(b=>CENTROID[b][1]).join(",");
+  const url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+
+    "&daily=precipitation_sum&hourly=precipitation,soil_moisture_0_to_1cm,soil_moisture_1_to_3cm,"+
+    "soil_moisture_3_to_9cm,soil_moisture_9_to_27cm&past_days=31&forecast_days=3"+
+    "&precipitation_unit=inch&timezone=auto&cell_selection=nearest";
+  const r=await fetch(url); if(!r.ok) throw new Error("Open-Meteo HTTP "+r.status);
+  let d=await r.json(); if(!Array.isArray(d)) d=[d];
+  const per=ORDER.map((b,i)=>deriveOne(d.length===1?d[0]:d[i]));
+  const rec=per[ORDER.indexOf(RECEPTOR)];
+  SOIL = rec.soilPct!=null;
+  W_NOW = SOIL ? wetnessFromSoilPct(rec.soilPct) : wetnessFromAPI(rec.api);
+  QPF3 = Math.max.apply(null, per.map(p=>p.fc3||0));
+  buildSegs(); render();
+}
+
+function buildSegs(){
+  const el=document.getElementById("segs");
+  el.innerHTML = DURS.map(h=>'<button data-h="'+h+'" aria-pressed="'+(h===DUR)+'">'+
+      (h<24? h+" hours" : (h/24)+(h===24?" day":" days"))+'</button>').join("");
+  el.querySelectorAll("button").forEach(b=>b.onclick=()=>{DUR=+b.dataset.h;buildSegs();render();});
+}
+
+function render(){
+  const w=W_NOW, f=v=>v==null?"—":v.toFixed(2)+"″";
+  document.getElementById("stamp").textContent =
+    "live · "+new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+
+    " · Cullowhee Creek, Jackson County NC";
+
+  const tW=tripDur(RECEPTOR,w,"WATCH",DUR);
+  document.getElementById("heroNum").textContent = tW==null? "—" : tW.toFixed(1);
+  document.getElementById("heroUnit").textContent = "inches over "+(DUR<24?DUR+" h":(DUR/24)+(DUR===24?" day":" days"));
+  document.getElementById("heroSaid").innerHTML =
+    "falling the way a tropical storm actually falls here would be enough to reach "+
+    "<b style='color:"+SEV.WATCH+"'>Watch</b> at the campus, with the ground as wet as it is now.";
+  document.getElementById("wetV").textContent=(w*100).toFixed(0)+"%";
+  document.getElementById("wetS").textContent = SOIL
+    ? "modelled soil moisture, as a percentile of this cell’s own past month"
+    : "inferred from 30 days of rainfall — not a soil measurement";
+  document.getElementById("qpfV").textContent = QPF3.toFixed(2)+"″";
+  const m = tW==null? null : tW-QPF3;
+  document.getElementById("marV").textContent = m==null? "—" : (m>0? m.toFixed(1)+"″" : "reached");
+  document.getElementById("marS").textContent = m==null? ""
+    : (m>0? "more than the forecast holds" : "forecast already meets the threshold");
+
+  /* ---- chart 1: rain needed vs storm length ---- */
+  const L=66,R=806,T=20,B=258;
+  const xs=DURS.map((h,i)=>L+(i/(DURS.length-1))*(R-L));
+  /* size the axis to the data — a line silently flattening against a fixed
+     ceiling reads as "it stops rising", which is the opposite of the point */
+  const durSeries={};
+  ["WATCH","WARNING","EMERGENCY"].forEach(k=>{
+    durSeries[k]=DURS.map(h=>tripDur(RECEPTOR,w,k,h));});
+  const durMax=Math.max.apply(null,[].concat.apply([],Object.values(durSeries)).filter(v=>v!=null));
+  const step1=niceStep(durMax), ymax=Math.ceil(durMax/step1)*step1;
+  const py=v=>B-(v/ymax)*(B-T);
+  let g="";
+  for(let v=0;v<=ymax+1e-9;v+=step1){
+    g+='<line x1="'+L+'" y1="'+py(v)+'" x2="'+R+'" y2="'+py(v)+'" stroke="#20363c"/>'+
+       '<text class="ax" x="'+(L-10)+'" y="'+(py(v)+4)+'" text-anchor="end">'+v+'″</text>';}
+  ["WATCH","WARNING","EMERGENCY"].forEach(k=>{
+    const pts=durSeries[k].map((t,i)=>t==null?null:[xs[i],py(t)]).filter(Boolean);
+    if(pts.length<2) return;
+    g+='<polyline points="'+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+
+       '" fill="none" stroke="'+SEV[k]+'" stroke-width="2.4" stroke-linejoin="round"/>';
+    pts.forEach(p=>{g+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="'+SEV[k]+'"/>';});
+    const e=pts[pts.length-1];
+    g+='<text class="lbl" x="'+(e[0]+10)+'" y="'+(e[1]+4)+'" fill="'+SEV[k]+'">'+
+       k.charAt(0)+k.slice(1).toLowerCase()+'</text>';});
+  const xi=DURS.indexOf(DUR);
+  g+='<line x1="'+xs[xi]+'" y1="'+T+'" x2="'+xs[xi]+'" y2="'+B+'" stroke="#45d0c0" stroke-width="1.5" stroke-dasharray="4 4"/>'+
+     '<text class="lbl" x="'+xs[xi]+'" y="'+(T-6)+'" text-anchor="middle" fill="#45d0c0">selected</text>';
+  DURS.forEach((h,i)=>{g+='<text class="ax" x="'+xs[i]+'" y="'+(B+22)+'" text-anchor="middle">'+
+     (h<24?h+" h":(h/24)+" d")+'</text>';});
+  g+='<text class="ax" x="'+((L+R)/2)+'" y="'+(B+46)+'" text-anchor="middle">how long the rain lasts</text>';
+  document.getElementById("dur").innerHTML=g;
+
+  const t6=tripDur(RECEPTOR,w,"WATCH",6), t72=tripDur(RECEPTOR,w,"WATCH",72);
+  document.getElementById("durNote").innerHTML =
+    "Six hours of rain reaches Watch at <b>"+f(t6)+"</b>. Spread the same weather over three days and it takes <b>"+
+    f(t72)+"</b> &mdash; <b>"+(t72/t6).toFixed(1)+"&times;</b> as much water for the same posture. "+
+    "Helene ran about 48 hours. Long, steady rain rarely produces the dangerous peak; what it does is "+
+    "fill the soil, so the <i>next</i> storm arrives with nowhere to put its water. That is how "+
+    "Frances and Ivan killed people here in 2004, nine days apart.";
+
+  /* ---- chart 2: rain needed vs wetness, at the selected duration ---- */
+  const wmin=0.05,wmax=1.0, px=q=>L+((q-wmin)/(wmax-wmin))*(R-L);
+  const wSeries={}; const wq=[];
+  for(let q=wmin;q<=wmax+1e-9;q+=0.0625) wq.push(q);
+  ["WATCH","WARNING","EMERGENCY"].forEach(k=>{wSeries[k]=wq.map(q=>tripDur(RECEPTOR,q,k,DUR));});
+  const wMax=Math.max.apply(null,[].concat.apply([],Object.values(wSeries)).filter(v=>v!=null));
+  const step2=niceStep(wMax), ymax2=Math.ceil(wMax/step2)*step2;
+  const py2=v=>B-(v/ymax2)*(B-T);
+  let s2="";
+  for(let v=0;v<=ymax2+1e-9;v+=step2){
+    s2+='<line x1="'+L+'" y1="'+py2(v)+'" x2="'+R+'" y2="'+py2(v)+'" stroke="#20363c"/>'+
+        '<text class="ax" x="'+(L-10)+'" y="'+(py2(v)+4)+'" text-anchor="end">'+v+'″</text>';}
+  ["WATCH","WARNING","EMERGENCY"].forEach(k=>{
+    const pts=[];
+    wSeries[k].forEach((t,i)=>{ if(t!=null) pts.push([px(wq[i]),py2(t)]); });
+    if(pts.length<2) return;
+    s2+='<polyline points="'+pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ")+
+        '" fill="none" stroke="'+SEV[k]+'" stroke-width="2.4" stroke-linejoin="round"/>';
+    const e=pts[pts.length-1];
+    s2+='<text class="lbl" x="'+(e[0]+10)+'" y="'+(e[1]+4)+'" fill="'+SEV[k]+'">'+
+        k.charAt(0)+k.slice(1).toLowerCase()+'</text>';});
+  s2+='<line x1="'+px(w)+'" y1="'+T+'" x2="'+px(w)+'" y2="'+B+'" stroke="#45d0c0" stroke-width="1.5" stroke-dasharray="4 4"/>'+
+      '<text class="lbl" x="'+px(w)+'" y="'+(T-6)+'" text-anchor="middle" fill="#45d0c0">today</text>';
+  ["WATCH","WARNING","EMERGENCY"].forEach(k=>{const t=tripDur(RECEPTOR,w,k,DUR);
+    if(t!=null) s2+='<circle cx="'+px(w)+'" cy="'+py2(t)+'" r="5" fill="'+SEV[k]+'" stroke="#102128" stroke-width="2"/>';});
+  s2+='<text class="ax" x="'+L+'" y="'+(B+22)+'">dry ground</text>'+
+      '<text class="ax" x="'+R+'" y="'+(B+22)+'" text-anchor="end">saturated</text>'+
+      '<text class="ax" x="'+((L+R)/2)+'" y="'+(B+46)+'" text-anchor="middle">how much water the ground can still take</text>';
+  document.getElementById("sens").innerHTML=s2;
+  const dry=tripDur(RECEPTOR,0.15,"WATCH",DUR), wet=tripDur(RECEPTOR,1.0,"WATCH",DUR);
+  document.getElementById("sensNote").innerHTML =
+    "At the selected length, drought&#8209;dry ground needs <b>"+f(dry)+"</b> to reach Watch and saturated ground <b>"+
+    f(wet)+"</b> &mdash; <b>"+(dry/wet).toFixed(1)+"&times;</b>. Helene delivered roughly 200&#8209;year rainfall onto "+
+    "drought&#8209;dry soil and produced about a 9&#8209;year peak. The rain was extreme; the ground was merciful.";
+
+  /* ---- per-basin table ---- */
+  document.getElementById("tbody").innerHTML = ORDER.map(b=>{
+    const a=["WATCH","WARNING","EMERGENCY"].map(k=>f(tripDur(b,w,k,DUR)));
+    return "<tr"+(b===RECEPTOR?' class="hi"':'')+"><td>"+NAME[b]+"</td><td>"+a[0]+"</td><td>"+
+           a[1]+"</td><td>"+a[2]+"</td><td>"+(LEADMIN[b]||"?")+" min</td></tr>";}).join("");
+
+  /* ---- delivery-shape comparison ---- */
+  let rows="";
+  DURS.forEach(h=>{
+    const a=["WATCH","WARNING","EMERGENCY"].map(k=>f(tripDur(RECEPTOR,w,k,h)));
+    rows+="<tr"+(h===DUR?' class="hi"':'')+"><td>Helene&rsquo;s pattern over "+
+      (h<24?h+" h":(h/24)+(h===24?" day":" days"))+"</td><td>"+a[0]+"</td><td>"+a[1]+"</td><td>"+a[2]+"</td></tr>";});
+  const t2=["WATCH","WARNING","EMERGENCY"].map(k=>f(tripTypeII(RECEPTOR,w,k)));
+  rows+='<tr class="design"><td>SCS Type II design storm, 24 h</td><td>'+t2[0]+"</td><td>"+t2[1]+"</td><td>"+t2[2]+"</td></tr>";
+  document.getElementById("cmp").innerHTML=rows;
+  const h48=tripDur(RECEPTOR,w,"WATCH",48), tii=tripTypeII(RECEPTOR,w,"WATCH");
+  document.getElementById("cmpNote").innerHTML =
+    "The last row is the standard engineering design storm &mdash; a synthetic 24&#8209;hour curve with all "+
+    "its rain stacked in the middle. It reaches Watch at <b>"+f(tii)+"</b> where a real 48&#8209;hour tropical "+
+    "event needs <b>"+f(h48)+"</b>, so it reads roughly <b>"+(h48/tii).toFixed(1)+"&times;</b> too severe for the storms "+
+    "this watershed actually gets. It is shown for reference because it is what most published "+
+    "thresholds are built on, and it is <b>not</b> what the numbers above use.";
+
+  document.getElementById("foot").innerHTML =
+    "<b>How this is computed.</b> Rain is delivered in the hourly pattern Helene actually had at K24A "+
+    "on 25&ndash;27 September 2024, stretched or compressed to the length you select, then run through the "+
+    "same engine as the <a href='live.html'>live map</a> &mdash; NRCS curve&#8209;number runoff, NRCS unit "+
+    "hydrograph, per&#8209;basin StreamStats regression (NC SIR 2023&#8209;5006). Ground wetness "+
+    (SOIL? "comes from a soil&#8209;moisture model, not a soil sensor in this watershed."
+         : "is inferred from 30 days of rainfall, not measured.")+
+    "<br><br><b>Known limits.</b> Wetness is held constant through the storm; in reality the ground "+
+    "saturates as it goes, so long events are under&#8209;predicted here. The live map caps forecast "+
+    "evidence at Watch &mdash; Warning and Emergency require a measured stream rise, and this watershed "+
+    "has one gauge. For seven of eight reaches the stage thresholds behind these numbers are not yet "+
+    "survey&#8209;validated. A planning aid, not a warning.";
+}
+
+load().catch(e=>{
+  document.getElementById("stamp").textContent="live conditions unavailable";
+  document.getElementById("heroSaid").innerHTML=
+    "<span class='err'>Could not reach Open&#8209;Meteo ("+e.message+"). Nothing is shown rather than a guessed number.</span>";
+});
+</script>
+</body>
+</html>

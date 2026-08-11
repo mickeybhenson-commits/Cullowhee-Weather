@@ -1,0 +1,42 @@
+# One-shot: fetch the NHD flowline network and commit the riparian corridor.
+#
+# Run this once, manually. The monthly watch then reads the committed geometry,
+# so the scheduled job never depends on a third-party service it does not need.
+# Only --event uses the corridor; drift monitoring stays basin-wide on purpose.
+
+name: build riparian corridor (one-shot)
+
+on:
+  workflow_dispatch:
+    inputs:
+      buffer_m:
+        description: "Metres either side of the channel"
+        required: false
+        default: "100"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install numpy scipy shapely pyproj rasterio
+      - name: Build the corridor
+        run: |
+          python noah_landcover_watch.py --build-corridor \
+            --basins cullowhee_subbasins_incremental.geojson \
+            --corridor-out cullowhee_riparian.geojson
+      - name: Commit it
+        run: |
+          git config user.name  "noah-landcover-watch"
+          git config user.email "actions@users.noreply.github.com"
+          git add cullowhee_riparian.geojson
+          git diff --staged --quiet || git commit -m "riparian corridor from NHD flowlines"
+          git push

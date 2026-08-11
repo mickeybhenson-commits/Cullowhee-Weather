@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-11T17:32:06.731471+00:00",
+  "fetched_utc": "2026-08-11T17:38:41.913613+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786464900,
-        102.0
+        1786468500,
+        92.8
       ],
       "00065": [
-        1786464900,
-        4.2
+        1786468500,
+        4.16
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,15 +32,15 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786464900,
-        978.0
+        1786468500,
+        986.0
       ],
       "00065": [
-        1786464900,
-        4.39
+        1786468500,
+        4.4
       ]
     },
-    "local_inflow_cfs": 876.0,
+    "local_inflow_cfs": 893.2,
     "stage_series_up": [
       [
         1786448700,
@@ -117,6 +117,22 @@
       [
         1786464900,
         4.2
+      ],
+      [
+        1786465800,
+        4.19
+      ],
+      [
+        1786466700,
+        4.18
+      ],
+      [
+        1786467600,
+        4.17
+      ],
+      [
+        1786468500,
+        4.16
       ]
     ],
     "stage_series_down": [
@@ -195,6 +211,22 @@
       [
         1786464900,
         4.39
+      ],
+      [
+        1786465800,
+        4.4
+      ],
+      [
+        1786466700,
+        4.4
+      ],
+      [
+        1786467600,
+        4.4
+      ],
+      [
+        1786468500,
+        4.4
       ]
     ],
     "provenance": "MEASURED"
@@ -216,7 +248,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 59.5,
+    "age_min": 66.1,
     "fresh": true,
     "last_updated_utc": "2026-08-11T16:33:00+00:00",
     "datum_verified": false,
@@ -383,7 +415,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 102.5,
+    "age_min": 109.1,
     "valid_utc": "2026-08-11T15:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

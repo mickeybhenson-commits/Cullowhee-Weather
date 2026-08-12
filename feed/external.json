@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-12T20:42:13.796613+00:00",
+  "fetched_utc": "2026-08-12T21:43:13.831012+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ReadTimeout",
+    "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786565700,
-        82.2
+        1786569300,
+        80.4
       ],
       "00065": [
-        1786565700,
-        4.11
+        1786569300,
+        4.1
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,32 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786565700,
-        589.0
+        1786569300,
+        553.0
       ],
       "00065": [
-        1786565700,
-        3.83
+        1786569300,
+        3.77
       ]
     },
-    "local_inflow_cfs": 506.8,
+    "local_inflow_cfs": 472.6,
     "stage_series_up": [
-      [
-        1786545900,
-        4.2
-      ],
-      [
-        1786546800,
-        4.19
-      ],
-      [
-        1786547700,
-        4.19
-      ],
-      [
-        1786548600,
-        4.18
-      ],
       [
         1786549500,
         4.17
@@ -133,25 +117,25 @@
       [
         1786565700,
         4.11
+      ],
+      [
+        1786566600,
+        4.11
+      ],
+      [
+        1786567500,
+        4.1
+      ],
+      [
+        1786568400,
+        4.1
+      ],
+      [
+        1786569300,
+        4.1
       ]
     ],
     "stage_series_down": [
-      [
-        1786545900,
-        3.91
-      ],
-      [
-        1786546800,
-        3.91
-      ],
-      [
-        1786547700,
-        3.9
-      ],
-      [
-        1786548600,
-        3.9
-      ],
       [
         1786549500,
         3.9
@@ -227,6 +211,22 @@
       [
         1786565700,
         3.83
+      ],
+      [
+        1786566600,
+        3.82
+      ],
+      [
+        1786567500,
+        3.81
+      ],
+      [
+        1786568400,
+        3.79
+      ],
+      [
+        1786569300,
+        3.77
       ]
     ],
     "provenance": "MEASURED"
@@ -237,20 +237,97 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": null,
+  "nwm": {
+    "reach": 19730552,
+    "reach_is_cullowhee": false,
+    "series": [
+      [
+        1786561200,
+        103.1
+      ],
+      [
+        1786564800,
+        116.2
+      ],
+      [
+        1786568400,
+        132.1
+      ],
+      [
+        1786572000,
+        149.7
+      ],
+      [
+        1786575600,
+        167.4
+      ],
+      [
+        1786579200,
+        182.9
+      ],
+      [
+        1786582800,
+        196.0
+      ],
+      [
+        1786586400,
+        205.5
+      ],
+      [
+        1786590000,
+        212.2
+      ],
+      [
+        1786593600,
+        216.8
+      ],
+      [
+        1786597200,
+        219.7
+      ],
+      [
+        1786600800,
+        221.8
+      ],
+      [
+        1786604400,
+        222.8
+      ],
+      [
+        1786608000,
+        223.5
+      ],
+      [
+        1786611600,
+        223.9
+      ],
+      [
+        1786615200,
+        224.2
+      ],
+      [
+        1786618800,
+        224.2
+      ],
+      [
+        1786622400,
+        224.6
+      ]
+    ]
+  },
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.52,
+    "stage_ft": 2.5,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 69.6,
+    "age_min": 70.3,
     "fresh": true,
-    "last_updated_utc": "2026-08-12T19:33:00+00:00",
+    "last_updated_utc": "2026-08-12T20:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -296,7 +373,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260812_2000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260812_2100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -325,7 +402,7 @@
         "name": "Mtn. Lower",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.5,
+        "streamflow_m3s": 0.4,
         "soil_sat_pct": 38.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -390,7 +467,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 13.1,
+        "streamflow_m3s": 12.4,
         "soil_sat_pct": 56.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -416,7 +493,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-12T20:42:36.240414+00:00",
+    "valid_utc": "2026-08-12T21:43:17.123527+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

@@ -35,8 +35,24 @@ Regressed across enough events, the intercept IS the datum tie and the slope
 says whether the rating shape is right. That is a survey you get for free by
 writing two numbers to disk every half hour.
 
+2026-08-11: the MODELED half now logs ALL EIGHT basins, not just Speedwell.
+Verification (POD / FAR / CSI) has to be computed per basin against each basin's
+own lead requirement — a pooled score hides that Cox Branch and Long Branch, the
+flashiest reaches, are where the system is most likely to fail. Logging one basin
+made a per-basin score impossible. The MEASURED half is still Speedwell only,
+because it is still the only gage in the watershed.
+
+Caveat, recorded deliberately: all eight basins are forced from ONE Open-Meteo
+point. That is the same single-cell forcing the live page uses and it is why the
+basins move in lockstep; basin-averaged MRMS QPE is the open fix. The log is
+honest about it via the `source` column — do not read basin-to-basin spread in
+this table as real spatial contrast.
+
 Run: every 30 min from systemd (deploy/qpf-stage.timer), or by hand:
-    python3 fetch_stage.py [--db /path/to/qpf_ledger.db] [--dry-run]
+    python3 fetch_stage.py [--db PATH] [--csv PATH] [--dry-run]
+`--csv` appends to a plain append-only CSV. Use it when no SQLite host is up:
+an unlogged storm is a permanently lost verification sample, and enough of them
+take years to accumulate.
 Deps: standard library, plus the repo modules fiman_source and cwm_model.
 """
 
@@ -127,10 +143,46 @@ def forcing():
     return [hp[i] or 0.0 for i in range(hi_idx, len(hp))], round(w, 4), now
 
 
+CSV_COLUMNS = ["kind", "basin_id", "issued_utc", "valid_utc", "stage_ft", "q_cfs",
+               "rp_yr", "level", "wetness", "cn", "condition", "trend", "age_min",
+               "fresh", "site_id", "source"]
+
+
+def _append_csv(path, obs_rows, mod_rows):
+    """Append-only decision log. One row per basin per run, plus the measured row.
+
+    Append-only and plain text on purpose: it is diffable, it survives with no
+    database host, and it is the correct-negative denominator that FAR and CSI
+    need. Every run that is not logged is a verification sample that cannot be
+    recovered later.
+    """
+    import csv as _csv
+    new = not os.path.exists(path) or os.path.getsize(path) == 0
+    d = os.path.dirname(os.path.abspath(path))
+    if d:
+        os.makedirs(d, exist_ok=True)
+    with open(path, "a", newline="", encoding="utf-8") as fh:
+        wr = _csv.DictWriter(fh, fieldnames=CSV_COLUMNS)
+        if new:
+            wr.writeheader()
+        for (bid, valid, stage, cond, level, trend, age, fresh, site, src) in obs_rows:
+            wr.writerow({"kind": "obs", "basin_id": bid, "valid_utc": valid,
+                         "stage_ft": stage, "level": level, "condition": cond,
+                         "trend": trend, "age_min": age, "fresh": fresh,
+                         "site_id": site, "source": src})
+        for (bid, issued, valid, stage, q, rp, level, w, cn, src) in mod_rows:
+            wr.writerow({"kind": "model", "basin_id": bid, "issued_utc": issued,
+                         "valid_utc": valid, "stage_ft": stage, "q_cfs": q,
+                         "rp_yr": rp, "level": level, "wetness": w, "cn": cn,
+                         "source": src})
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db")
+    ap.add_argument("--csv", help="append rows to this CSV as well as / instead of "
+                                  "SQLite; survives having no database host")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
 
@@ -152,14 +204,21 @@ def main():
     try:
         import cwm_model
         hourly, w, issued = forcing()
-        r = cwm_model.assess_event(BASIN, hourly, w)
-        valid = issued + dt.timedelta(hours=r["peak_hr"])
-        mod_rows.append((BASIN, _iso(issued), _iso(valid), r["stage_ft"],
-                         r["calib_q"], r["rp_yr"], r["posture"], w, r["CN"],
-                         MODEL_SOURCE))
-        print(f"modeled   {r['stage_ft']:.2f} ft · {r['calib_q']:.0f} cfs · "
-              f"RP {r['rp_yr']} yr · {r['posture']} · peak +{r['peak_hr']} h · "
-              f"w={w} · {r['total_in']} in forecast")
+        for bid in cwm_model.ORDER:
+            try:
+                r = cwm_model.assess_event(bid, hourly, w)
+            except Exception as e:                     # one basin must not lose the rest
+                print(f"modeled   {bid}: {e}", file=sys.stderr)
+                continue
+            valid = issued + dt.timedelta(hours=r["peak_hr"])
+            mod_rows.append((bid, _iso(issued), _iso(valid), r["stage_ft"],
+                             r["calib_q"], r["rp_yr"], r["posture"], w, r["CN"],
+                             MODEL_SOURCE))
+            _st = "  --  " if r["stage_ft"] is None else f"{r['stage_ft']:6.2f}"
+            print(f"modeled   {bid:<14} {_st} ft · {r['calib_q']:>6.0f} cfs · "
+                  f"RP {r['rp_yr']:>5} yr · {r['posture']:<9} · peak +{r['peak_hr']} h")
+        print(f"modeled   forcing: w={w} · {r['total_in']} in · ONE point "
+              f"(single-cell — see module docstring)")
     except Exception as e:
         print(f"modeled   unavailable: {e}", file=sys.stderr)
 
@@ -169,6 +228,12 @@ def main():
     if not (obs_rows or mod_rows):
         print("nothing to write")
         return 1
+
+    if a.csv:
+        _append_csv(a.csv, obs_rows, mod_rows)
+        print(f"appended {len(obs_rows) + len(mod_rows)} row(s) -> {a.csv}")
+        if not a.db and not os.environ.get("QPF_LEDGER_DB"):
+            return 0            # CSV-only run (e.g. CI); no database host expected
 
     conn = ledger_db.connect(a.db)
     if obs_rows:

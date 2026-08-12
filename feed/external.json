@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-12T12:09:14.747525+00:00",
+  "fetched_utc": "2026-08-12T12:26:51.794979+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ReadTimeout",
+    "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": 423.0,
     "stage_series_up": [
-      [
-        1786515300,
-        4.88
-      ],
       [
         1786516200,
         4.89
@@ -128,10 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1786515300,
-        3.72
-      ],
       [
         1786516200,
         3.7
@@ -221,20 +213,97 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": null,
+  "nwm": {
+    "reach": 19730552,
+    "reach_is_cullowhee": false,
+    "series": [
+      [
+        1786528800,
+        284.3
+      ],
+      [
+        1786532400,
+        278.3
+      ],
+      [
+        1786536000,
+        271.2
+      ],
+      [
+        1786539600,
+        263.1
+      ],
+      [
+        1786543200,
+        255.3
+      ],
+      [
+        1786546800,
+        247.9
+      ],
+      [
+        1786550400,
+        241.5
+      ],
+      [
+        1786554000,
+        236.6
+      ],
+      [
+        1786557600,
+        232.7
+      ],
+      [
+        1786561200,
+        229.9
+      ],
+      [
+        1786564800,
+        228.1
+      ],
+      [
+        1786568400,
+        226.7
+      ],
+      [
+        1786572000,
+        226.0
+      ],
+      [
+        1786575600,
+        225.3
+      ],
+      [
+        1786579200,
+        224.9
+      ],
+      [
+        1786582800,
+        224.9
+      ],
+      [
+        1786586400,
+        224.9
+      ],
+      [
+        1786590000,
+        224.9
+      ]
+    ]
+  },
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.66,
+    "stage_ft": 2.65,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 66.6,
+    "age_min": 53.9,
     "fresh": true,
-    "last_updated_utc": "2026-08-12T11:03:00+00:00",
+    "last_updated_utc": "2026-08-12T11:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -399,7 +468,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 19.6,
+    "age_min": 36.9,
     "valid_utc": "2026-08-12T11:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

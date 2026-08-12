@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-12T18:28:41.243620+00:00",
+  "fetched_utc": "2026-08-12T19:40:26.668991+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786554900,
-        88.5
+        1786562100,
+        84.3
       ],
       "00065": [
-        1786554900,
-        4.14
+        1786562100,
+        4.12
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,36 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786554900,
-        614.0
+        1786562100,
+        608.0
       ],
       "00065": [
-        1786554900,
-        3.87
+        1786562100,
+        3.86
       ]
     },
-    "local_inflow_cfs": 525.5,
+    "local_inflow_cfs": 523.7,
     "stage_series_up": [
-      [
-        1786537800,
-        4.85
-      ],
-      [
-        1786538700,
-        4.76
-      ],
-      [
-        1786539600,
-        4.64
-      ],
-      [
-        1786540500,
-        4.53
-      ],
-      [
-        1786541400,
-        4.43
-      ],
       [
         1786542300,
         4.35
@@ -121,29 +101,41 @@
       [
         1786554900,
         4.14
+      ],
+      [
+        1786555800,
+        4.14
+      ],
+      [
+        1786556700,
+        4.14
+      ],
+      [
+        1786557600,
+        4.13
+      ],
+      [
+        1786558500,
+        4.13
+      ],
+      [
+        1786559400,
+        4.12
+      ],
+      [
+        1786560300,
+        4.12
+      ],
+      [
+        1786561200,
+        4.12
+      ],
+      [
+        1786562100,
+        4.12
       ]
     ],
     "stage_series_down": [
-      [
-        1786537800,
-        3.98
-      ],
-      [
-        1786538700,
-        3.97
-      ],
-      [
-        1786539600,
-        3.95
-      ],
-      [
-        1786540500,
-        3.95
-      ],
-      [
-        1786541400,
-        3.94
-      ],
       [
         1786542300,
         3.93
@@ -203,6 +195,38 @@
       [
         1786554900,
         3.87
+      ],
+      [
+        1786555800,
+        3.86
+      ],
+      [
+        1786556700,
+        3.86
+      ],
+      [
+        1786557600,
+        3.86
+      ],
+      [
+        1786558500,
+        3.86
+      ],
+      [
+        1786559400,
+        3.85
+      ],
+      [
+        1786560300,
+        3.85
+      ],
+      [
+        1786561200,
+        3.85
+      ],
+      [
+        1786562100,
+        3.86
       ]
     ],
     "provenance": "MEASURED"
@@ -218,15 +242,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.54,
+    "stage_ft": 2.52,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Constant",
+    "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 56.1,
+    "age_min": 67.8,
     "fresh": true,
-    "last_updated_utc": "2026-08-12T17:33:00+00:00",
+    "last_updated_utc": "2026-08-12T18:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -272,7 +296,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260812_1800.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260812_1900.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -366,7 +390,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 15.1,
+        "streamflow_m3s": 13.9,
         "soil_sat_pct": 56.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -392,7 +416,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-12T18:29:03.921738+00:00",
+    "valid_utc": "2026-08-12T19:40:49.505339+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

@@ -143,9 +143,70 @@ def forcing():
     return [hp[i] or 0.0 for i in range(hi_idx, len(hp))], round(w, 4), now
 
 
+# Columns 1-16 are what the run knew at decision time. They are written once and
+# never revised.
+#
+# Columns 17-20 are what ACTUALLY HAPPENED, filled in later by a human or a
+# reconciliation job. Added 2026-08-12 because the ledger could not do the job its
+# own workflow header claims for it: "verification (POD / FAR / CSI) needs the
+# correct-negative denominator." True, and insufficient — POD, FAR and CSI each
+# need the OUTCOME as well as the prediction. The log was accumulating forecasts
+# with nowhere to record truth, which looks complete and scores nothing.
+#
+# Schema follows noah_decision_ledger.md, which specified these on 2026-08-03 and
+# whose implementation never reached the repo.
+#
+# `outcome` vocabulary, deliberately small:
+#   flood      a flood occurred in this basin in this window
+#   no_flood   confirmed nothing happened (a real observation, not an absence of one)
+#   unknown    nobody looked, or nobody could tell   <- the honest default
+# Leave it EMPTY rather than writing "no_flood" when nobody checked. An unverified
+# quiet hour is not a correct negative, and scoring it as one inflates every skill
+# statistic the ledger exists to produce.
+OUTCOME_COLUMNS = ["outcome", "outcome_ts", "outcome_src", "outcome_note"]
 CSV_COLUMNS = ["kind", "basin_id", "issued_utc", "valid_utc", "stage_ft", "q_cfs",
                "rp_yr", "level", "wetness", "cn", "condition", "trend", "age_min",
-               "fresh", "site_id", "source"]
+               "fresh", "site_id", "source"] + OUTCOME_COLUMNS
+
+
+def _migrate_csv_header(path):
+    """Widen an existing log to the current schema, once, in place.
+
+    Only ever ADDS columns, and only when the on-disk header is an exact prefix of
+    CSV_COLUMNS — so this cannot reorder, rename or drop a field, and it refuses
+    loudly on any header it does not recognise rather than guessing. Existing rows
+    are padded with empty strings, which is the correct value for "nobody has
+    recorded an outcome for this row yet".
+
+    Writes to a temp file and renames, so an interrupted run leaves the original
+    intact. The ledger-stage workflow sets `concurrency: cancel-in-progress: false`,
+    which serialises runs, so there is no writer racing this.
+    """
+    import csv as _csv
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        return "new"
+    with open(path, newline="", encoding="utf-8") as fh:
+        rows = list(_csv.reader(fh))
+    if not rows:
+        return "new"
+    header = rows[0]
+    if header == CSV_COLUMNS:
+        return "current"
+    if header != CSV_COLUMNS[:len(header)]:
+        raise SystemExit(
+            f"{path}: header is not a prefix of the current schema, refusing to "
+            f"migrate.\n  on disk: {header}\n  expected prefix of: {CSV_COLUMNS}\n"
+            "Fix by hand — an automatic guess here would corrupt the verification "
+            "record.")
+    pad = [""] * (len(CSV_COLUMNS) - len(header))
+    tmp = path + ".migrating"
+    with open(tmp, "w", newline="", encoding="utf-8") as fh:
+        wr = _csv.writer(fh)
+        wr.writerow(CSV_COLUMNS)
+        for r in rows[1:]:
+            wr.writerow(r + pad[:len(CSV_COLUMNS) - len(r)])
+    os.replace(tmp, path)
+    return f"migrated +{len(pad)} column(s), {len(rows)-1} row(s) padded"
 
 
 def _append_csv(path, obs_rows, mod_rows):
@@ -155,8 +216,15 @@ def _append_csv(path, obs_rows, mod_rows):
     database host, and it is the correct-negative denominator that FAR and CSI
     need. Every run that is not logged is a verification sample that cannot be
     recovered later.
+
+    The outcome columns are left EMPTY here by design — this function records what
+    was predicted, never what happened. Anything that fills them in must be a
+    separate pass with its own evidence, or the log starts marking its own homework.
     """
     import csv as _csv
+    state = _migrate_csv_header(path)
+    if state.startswith("migrated"):
+        print(f"  ledger schema: {state}")
     new = not os.path.exists(path) or os.path.getsize(path) == 0
     d = os.path.dirname(os.path.abspath(path))
     if d:

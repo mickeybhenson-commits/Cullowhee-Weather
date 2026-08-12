@@ -21,24 +21,31 @@ TYPE2 = [0.000,0.011,0.022,0.035,0.048,0.064,0.080,0.098,0.120,0.147,0.181,0.235
 
 # Deployed runnable params + authoritative regression flows (reg_q) from basins.py.
 # reg_q AEP keys -> return period: .50=2yr .20=5 .10=10 .04=25 .02=50 .01=100 .005=200 .002=500
+# thr = surveyed threshold ladder (WATCH / WARNING / EMERGENCY), ft above bed.
+# 2026-08-11: five reaches moved from the old bankfull x(1.0,1.5,2.0) placeholders to
+# the SURVEYED LiDAR ladders committed to basins.py on 2026-08-03 (f4026bb). They had
+# never been propagated here. Inert today - only CC-WCU-2260 classifies by stage - but
+# these become the Confirmation-tier trigger the moment a LoRa stage node reports, and
+# the deployed Speedwell WATCH sat 1.24 ft ABOVE the surveyed one. Kept in step with
+# basins.py by test_registry_engine_consistency.py.
 BASINS = {
  "CC-UP-503":   dict(DA=5.03, Tc=40,  CN2=63, calib=(1.449,0.815), rating="rectangular",
     sec=dict(w=29.7,n=0.045,s=0.0888), thr=(1.78,2.67,3.56), qb=10.1,
     reg_q={0.50:269,0.20:504,0.10:705,0.04:987,0.02:1250,0.01:1500,0.005:1780,0.002:2160}),
  "CC-MS-1100":  dict(DA=11.03,Tc=63,  CN2=63, calib=(2.777,0.760), rating="rectangular",
-    sec=dict(w=45.7,n=0.045,s=0.0446), thr=(2.32,3.48,4.64), qb=22.0,
+    sec=dict(w=45.7,n=0.045,s=0.0446), thr=(1.65,2.79,4.82), qb=22.0,
     reg_q={0.50:532,0.20:965,0.10:1330,0.04:1830,0.02:2290,0.01:2740,0.005:3220,0.002:3870}),
  "CC-TIL-705":  dict(DA=7.05, Tc=62,  CN2=63, calib=(2.241,0.784), rating="rectangular",
-    sec=dict(w=38.4,n=0.050,s=0.0547), thr=(2.02,3.03,4.04), qb=14.1,
+    sec=dict(w=38.4,n=0.050,s=0.0547), thr=(1.77,2.41,4.58), qb=14.1,
     reg_q={0.50:361,0.20:667,0.10:927,0.04:1290,0.02:1620,0.01:1950,0.005:2300,0.002:2780}),
  "CC-SPD-1830": dict(DA=18.3, Tc=62,  CN2=63, calib=(3.404,0.739), rating="rectangular",
-    sec=dict(w=55.7,n=0.045,s=0.0425), thr=(2.71,4.07,5.42), qb=36.6,
+    sec=dict(w=55.7,n=0.045,s=0.0425), thr=(1.47,2.75,4.71), qb=36.6,
     reg_q={0.50:829,0.20:1470,0.10:2010,0.04:2740,0.02:3410,0.01:4050,0.005:4740,0.002:5660}),
  "CC-COX-097":  dict(DA=0.97, Tc=29,  CN2=66, calib=(0.600,0.940), rating="rectangular",
-    sec=dict(w=15.0,n=0.045,s=0.1000), thr=(1.11,1.67,2.22), qb=1.9,
+    sec=dict(w=15.0,n=0.045,s=0.1000), thr=(1.67,2.0,2.54), qb=1.9,
     reg_q={0.50:64.3,0.20:129,0.10:186,0.04:269,0.02:347,0.01:426,0.005:513,0.002:631}),
  "CC-LB-171":   dict(DA=1.71, Tc=36,  CN2=65, calib=(0.677,0.921), rating="rectangular",
-    sec=dict(w=19.0,n=0.045,s=0.0753), thr=(1.31,1.97,2.62), qb=3.4,
+    sec=dict(w=19.0,n=0.045,s=0.0753), thr=(1.65,2.73,3.24), qb=3.4,
     reg_q={0.50:105,0.20:206,0.10:294,0.04:421,0.02:539,0.01:658,0.005:788,0.002:964}),
  "CC-WCU-2260": dict(DA=22.6, Tc=127, CN2=64, calib=(4.222,0.744), rating="tva",
     tva_wse={10:(2580,2079.2),100:(5155,2081.5),500:(7305,2082.9)}, bed=2070.5,

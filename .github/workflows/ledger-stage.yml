@@ -1,0 +1,53 @@
+# Decision log — appends one row per basin per run to an append-only CSV.
+#
+# Why this exists: verification (POD / FAR / CSI) needs the correct-negative
+# denominator, which is every run where nothing happened. That denominator only
+# exists if the system logs continuously. Collection previously depended on a
+# systemd timer on a host; a run that is not logged is a verification sample
+# that cannot be recovered later. See noah_system_audit_2026-08-11.md.
+#
+# This is deliberately CSV, not SQLite: diffable, append-only, and it needs no
+# database host. The systemd path (deploy/qpf-stage.timer) still writes SQLite
+# and remains the richer record where a host is available.
+
+name: ledger — stage decision log
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ledger-stage
+  cancel-in-progress: false        # never drop a sample to a newer run
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Append decision row for all eight basins
+        run: python ledger/fetch_stage.py --csv ledger/decisions.csv
+
+      - name: Commit
+        run: |
+          git config user.name  "noah-ledger"
+          git config user.email "noah-ledger@users.noreply.github.com"
+          git add ledger/decisions.csv
+          git diff --staged --quiet && echo "no new rows" && exit 0
+          git commit -m "ledger: decision rows $(date -u +%Y-%m-%dT%H:%MZ)"
+          # rebase before push: a 30-minute cadence WILL collide with human commits
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push origin main && exit 0
+            echo "push attempt $i failed, retrying"
+            sleep 5
+          done
+          exit 1

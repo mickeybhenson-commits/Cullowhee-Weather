@@ -1,32 +1,38 @@
-# Python
 __pycache__/
 *.py[cod]
+
+# ---------------------------------------------------------------------------
+# CREDENTIALS — this repository is PUBLIC and is served by GitHub Pages.
+# Anything committed here is world-readable and stays in git history forever,
+# even after deletion. A leaked service-account key must be revoked in GCP, not
+# just removed from the tree.
+# Added 2026-08-11: .gitignore previously covered only __pycache__/, while the
+# panel's documented credential path is .streamlit/secrets.toml.
+# ---------------------------------------------------------------------------
+.streamlit/secrets.toml
+secrets.toml
+*-service-account*.json
+*serviceaccount*.json
+gcp-*.json
+application_default_credentials.json
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# tokens seen in this project's history: Synoptic, CLOUDS, Earthdata JWT, GitHub PATs
+*token*.txt
+*.secret
+
+# ---------------------------------------------------------------------------
+# Local artefacts
+# ---------------------------------------------------------------------------
+feed_demo/
+*.sqlite
+*.db
+qpf_ledger.db
 .ipynb_checkpoints/
 .venv/
 venv/
-
-# Credentials — this repo is PUBLIC and serves GitHub Pages from its root.
-# Anything committed here is world-readable and stays in the history even
-# after deletion. Keep keys in environment variables or Actions secrets.
-.env
-.env.*
-*.secret
-*secrets*.json
-noah_sources.json
-noah_contrail.json
-credentials.json
-token.txt
-*.pem
-.netrc
-
-# OS / editor
-.DS_Store
-Thumbs.db
-*.swp
-.vscode/
-.idea/
-
-# Local scratch
-*.log
-tmp/
-scratch/

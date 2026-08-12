@@ -287,6 +287,25 @@ def publish(readings: dict[str, Optional[Reading]], outdir: str = "docs") -> Non
 
 
 if __name__ == "__main__":
+    # gages.geojson is a PUBLISHED artifact. A bare `python publish_feed.py` used to
+    # overwrite it with the fabricated reading below — a cron entry, a CI step or a
+    # habit was all it took (audit 2026-08-11, finding M1). A bare run now refuses.
+    import argparse
+    import sys as _sys
+    _ap = argparse.ArgumentParser(description="Publish the NOAH gage feed.")
+    _ap.add_argument("--demo", action="store_true",
+                     help="write a SYNTHETIC reading to --out; never the live feed")
+    _ap.add_argument("--out", default="feed_demo",
+                     help="output directory for --demo (default: feed_demo)")
+    _a = _ap.parse_args()
+    if not _a.demo:
+        _sys.exit(
+            "publish_feed.py has no real data source wired in yet.\n"
+            "Call publish() from the engine (flood_engine.assess / sources.resolve),\n"
+            "or run:  python publish_feed.py --demo --out feed_demo")
+    if _a.out in ("docs", "feed"):
+        _sys.exit(f"refusing to write synthetic data to the served directory {_a.out!r}")
+
     # Replace with a real call into flood_engine.assess(...) / sources.resolve(...)
     demo = Reading(
         stage_ft=2.4,
@@ -300,4 +319,4 @@ if __name__ == "__main__":
         warn_probability=0.03,
         discharge_cfs=42.0,
     )
-    publish({"CULLOWHEE_CK": demo})
+    publish({"CULLOWHEE_CK": demo}, outdir=_a.out)

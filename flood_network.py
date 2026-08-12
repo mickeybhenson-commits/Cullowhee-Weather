@@ -336,7 +336,17 @@ def tiered_posture(rw, warning_id="belk", upwind=None):
         names = ", ".join(n for n, lv, *_ in tp.stream_sites if lv != "NORMAL")
         tp.stream_note = f"Measured stage rising at {names} — confirmed."
     elif tp.stream_confirmed:
-        tp.stream_note = "Stage sensors online; no rise measured yet."
+        # Name the count and the coverage. "Stage sensors online" reads as
+        # "we are watching the creek" on a Confirmation tier that may be standing on
+        # a single gauge at one pour point, with every flashy headwater reach
+        # unmonitored. Under the no-lost-lives standard the reassuring reading is the
+        # dangerous one: a quiet sensor says nothing about a reach that has none.
+        _n = len(tp.stream_sites)
+        _who = ", ".join(n for n, *_ in tp.stream_sites)
+        tp.stream_note = (
+            f"{_n} stage sensor{'' if _n == 1 else 's'} reporting ({_who}); no rise "
+            f"measured there. Reaches with no sensor cannot be confirmed at all — a "
+            f"quiet gauge here is not evidence against a rise elsewhere.")
     else:
         tp.stream_note = ("No headwater stage sensor reporting yet — confirmation tier "
                           "pending deployment. This is the data only NOAH provides.")

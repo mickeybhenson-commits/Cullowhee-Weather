@@ -3,6 +3,7 @@ requests
 pandas
 numpy
 plotly
+pydeck
 streamlit-autorefresh
 folium>=0.15.0
 streamlit-folium>=0.20.0

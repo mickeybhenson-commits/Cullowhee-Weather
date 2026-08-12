@@ -15,7 +15,16 @@ import requests
 import streamlit as st
 import streamlit.components.v1 as components
 import pydeck as pdk
-from google.cloud import firestore
+
+# Firestore is the telemetry terminus for the LoRa network and is used in exactly
+# one function (get_db). A bare top-level import meant a missing or broken cloud
+# SDK took the entire operator panel down at startup — the same class of defect as
+# a non-essential dependency killing the warning surface. Degrade, don't die.
+try:
+    from google.cloud import firestore
+    FIRESTORE_OK, _FIRESTORE_ERR = True, ""
+except Exception as _fe:                      # not installed, or `google` namespace clash
+    firestore, FIRESTORE_OK, _FIRESTORE_ERR = None, False, str(_fe)
 
 try:
     import flood_engine
@@ -80,6 +89,11 @@ html, body, [class*="css"] {font-family:'Inter',sans-serif; color:#1B2A38;}
 .mode-badge {display:inline-block; background:#C08A00; color:#1B2A38; font-weight:600;
              font-size:0.72rem; letter-spacing:0.5px; padding:3px 10px; border-radius:4px;
              text-transform:uppercase;}
+/* Every mode gets an affirmative badge. The ABSENCE of a warning label must never
+   be the only signal that data is real (audit 2026-08-11, finding C2). */
+.mode-badge.mode-live   {background:#1A7A52; color:#FFFFFF;}
+.mode-badge.mode-demo   {background:#C08A00; color:#1B2A38;}
+.mode-badge.mode-nodata {background:#8A97A4; color:#12202C;}
 .appbar-meta {font-size:0.76rem; color:#9DB2C4; margin-top:6px;}
 
 .threat {border:1px solid; border-left-width:8px; border-radius:8px; padding:16px 22px;
@@ -146,10 +160,24 @@ html, body, [class*="css"] {font-family:'Inter',sans-serif; color:#1B2A38;}
 # ---------------------------------------------------------------------
 @st.cache_resource(show_spinner=False)
 def get_db():
-    if "gcp_service_account" in st.secrets:
+    if not FIRESTORE_OK:
+        # Callers must treat None as "no stored telemetry", never as "no flood".
+        return None
+    # st.secrets RAISES StreamlitSecretNotFoundError when no secrets.toml exists
+    # anywhere on the search path — so even the membership test `"x" in st.secrets`
+    # throws on a fresh clone, and the failure surfaces as an unreadable feed rather
+    # than a missing credential. Treat "no secrets file" as "no service account" and
+    # fall through to Application Default Credentials.
+    sa = None
+    try:
+        if "gcp_service_account" in st.secrets:
+            sa = st.secrets["gcp_service_account"]
+    except Exception:
+        sa = None
+
+    if sa is not None:
         import json
         from google.oauth2 import service_account
-        sa = st.secrets["gcp_service_account"]
         info = json.loads(sa["json"]) if "json" in sa else dict(sa)
         creds = service_account.Credentials.from_service_account_info(info)
         return firestore.Client(project=PROJECT_ID, database=DATABASE, credentials=creds)
@@ -306,18 +334,47 @@ SRC_COLOR = {"HRRR": "#0F6E56", "NWS": "#1C6E8C", "ECMWF": "#534AB7", "N/A": "#8
 # ---------------------------------------------------------------------
 # STAGE + INPUTS
 # ---------------------------------------------------------------------
+# A read that FAILED and a collection that is genuinely EMPTY used to return the
+# same bare None (`except Exception: return None`), so the panel could not tell
+# "we cannot see the creek" from "the creek is quiet". Under the project standard
+# those are opposite states. The status is RETURNED rather than written to a global
+# because @st.cache_data replays the return value on a cache hit and would skip any
+# side effect, leaving the diagnosis stale exactly when it is re-read.
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_stage_series(collection, max_docs=2000):
-    if not collection: return None
+def _fetch_stage_series_raw(collection, max_docs=2000):
+    """-> (rows_or_None, {"state": ok|empty|error|unconfigured, "detail": str})"""
+    if not collection:
+        return None, {"state": "unconfigured", "detail": "no stage_coll configured for this site"}
+    if not FIRESTORE_OK:
+        return None, {"state": "error", "detail": f"Firestore SDK unavailable: {_FIRESTORE_ERR}"}
     try:
-        db = get_db(); docs = list(db.collection(collection).limit(max_docs).stream())
-    except Exception: return None
-    rows = []
+        db = get_db()
+        if db is None:
+            return None, {"state": "error", "detail": "get_db() returned None"}
+        docs = list(db.collection(collection).limit(max_docs).stream())
+    except Exception as e:
+        return None, {"state": "error", "detail": f"{type(e).__name__}: {e}"}
+    rows, skipped = [], 0
     for d in docs:
         rec = d.to_dict() or {}; t = parse_time(rec.get("timestamp"), d); s = _clean(rec.get("stage_ft"))
-        if t is None or s is None: continue
+        if t is None or s is None:
+            skipped += 1
+            continue
         rows.append((int(t.timestamp()), s))
-    rows.sort(); return rows or None
+    rows.sort()
+    if not rows:
+        return None, {"state": "empty",
+                      "detail": f"{len(docs)} document(s) read, 0 usable stage rows"
+                                + (f" ({skipped} unparseable)" if skipped else "")}
+    return rows, {"state": "ok", "detail": f"{len(rows)} rows, {skipped} skipped"}
+
+
+FEED_STATUS = {}          # collection -> status dict, for the diagnostic panel
+
+def fetch_stage_series(collection, max_docs=2000):
+    rows, status = _fetch_stage_series_raw(collection, max_docs)
+    FEED_STATUS[collection or "(unset)"] = status
+    return rows
 
 def assemble_live_inputs():
     inputs = {}
@@ -415,28 +472,81 @@ def overall_level(rw):
 # RENDER
 # =====================================================================
 now_str = datetime.now(TIMEZONE).strftime("%a %b %d, %Y · %I:%M %p %Z")
-st.markdown(f"""
+
+_MODE_BADGE = {
+    "live":   '<span class="mode-badge mode-live">LIVE · measured + forecast</span>',
+    "demo":   '<span class="mode-badge mode-demo">DEMONSTRATION · synthetic data</span>',
+    "nodata": '<span class="mode-badge mode-nodata">NO LIVE DATA · model not run</span>',
+}
+
+def _appbar_html(mode):
+    return f"""
 <div class="appbar">
   <div>
     <div class="wordmark">NOAH</div>
     <div class="brand-sub">Cullowhee Creek Flood Warning System</div>
   </div>
   <div class="appbar-right">
-    <span class="mode-badge">Demonstration · synthetic data</span>
+    {_MODE_BADGE[mode]}
     <div class="appbar-meta">Western Carolina University · College of Engineering</div>
     <div class="appbar-meta mono">Generated {now_str}</div>
   </div>
 </div>
-""", unsafe_allow_html=True)
+"""
+
+# Placeholder: the header is rendered only once `demo` is known, so the badge can
+# state which mode is actually in force. Previously it was hard-coded to
+# "Demonstration · synthetic data" and rendered unconditionally, which meant a
+# LIVE panel was labelled synthetic and the label carried no information at all
+# (audit 2026-08-11, finding C2).
+_appbar = st.empty()
 
 if not FLOOD_OK:
+    _appbar.markdown(_appbar_html("nodata"), unsafe_allow_html=True)
     st.error(f"Flood modules could not be imported: {_FLOOD_ERR}")
     st.stop()
 
 flood_network.recompute_travel_times()
 live = assemble_live_inputs()
-demo = st.toggle("Scenario: demonstration (synthetic)", value=not any(live.values()))
+
+# Default OFF. This was `value=not any(live.values())`, which silently switched the
+# panel to synthetic data whenever every feed was empty — i.e. during exactly the
+# network/feed outage this system exists to work through (audit 2026-08-11, C1).
+# Absent data must render as absent, never as a plausible number.
+demo = st.toggle("Scenario: demonstration (synthetic)", value=False)
+
+# Rendered BEFORE the no-data stop below: an outage here is the most likely CAUSE
+# of empty inputs, so the diagnosis has to survive the st.stop() that follows.
+if not FIRESTORE_OK:
+    st.warning(
+        f"**Firestore unavailable — stage history is not being read.** "
+        f"`assemble_live_inputs()` sources every reach's stage series from Firestore, "
+        f"so this alone empties the live inputs. The model and external feeds are "
+        f"unaffected.  \n`{_FIRESTORE_ERR}`  \n"
+        f"Fix: `pip install google-cloud-firestore`"
+    )
+
+_appbar.markdown(_appbar_html("demo" if demo else "live"), unsafe_allow_html=True)
+
+
+# Prose used in the footer disclaimer; must follow the mode, not assume it.
+_mode_prose = ("This demonstration uses synthetic data and provisional parameters "
+               "pending field calibration."
+               if demo else
+               "This page is running on live feeds with provisional parameters "
+               "pending field calibration.")
+
 inputs = demo_inputs() if demo else live
+
+# Which sources actually contributed. The no-data decision below is made AFTER every
+# source has been tried, not after the first one: Firestore stage history, Open-Meteo
+# forcing and the FIMAN gage fail independently, and two of the three need no
+# credentials. Stopping on Firestore alone — as this did briefly on 2026-08-11 —
+# discards live measured stage and live rainfall because a cloud database was
+# unreachable. Absent ONE source is not absent data.
+SOURCE_STATUS = {"Firestore stage history": bool(any(live.values()))}
+_forcing_err = ""
+
 # live per-basin forcing (storm + 5-day antecedent) for the calibrated Outlook hook;
 # shadow-mode (Open-Meteo under-calls orographic rain) — see live_rainfall caveat.
 if not demo:
@@ -444,13 +554,17 @@ if not demo:
         import live_rainfall as lr
         from outlook_engine import SITE_TO_BASIN
         _wx = lr.compute_from_response(lr.fetch_all())
+        _n_wx = 0
         for _sid, _bid in SITE_TO_BASIN.items():
             _b = _wx.get(_bid)
             if _b is not None:
                 inputs.setdefault(_sid, {}).update(
                     storm_rain_in=_b["storm"], antecedent_5day=_b["antecedent_5day"])
-    except Exception:
-        pass  # forcing unavailable (no network / sources) — hook falls back to priming
+                _n_wx += 1
+        SOURCE_STATUS["Open-Meteo forcing"] = _n_wx > 0
+    except Exception as _we:
+        SOURCE_STATUS["Open-Meteo forcing"] = False
+        _forcing_err = f"{type(_we).__name__}: {_we}"
 oro = demo_orographic() if demo else {}
 # FIMAN gage 25380 (CUCN7) at Speedwell — the state's in-watershed gage.
 # Fresh + condition-classified -> measured confirmation input on the
@@ -460,6 +574,45 @@ if fim and fim.get("fresh") and fim.get("level") is not None:
     inputs.setdefault("speedwell", {}).update(
         stage_level=fim["level"], stage_ft=fim.get("stage_ft"),
         stage_src=fim["source"])
+    SOURCE_STATUS["FIMAN 25380 (measured stage)"] = True
+elif not demo:
+    SOURCE_STATUS["FIMAN 25380 (measured stage)"] = False
+
+# ---- the no-data decision, made once every source has been tried -------------
+if not demo and not any(inputs.values()):
+    _appbar.markdown(_appbar_html("nodata"), unsafe_allow_html=True)
+    st.error(
+        "**NO LIVE DATA.**  Every input source failed or returned nothing, so the "
+        "model has not been run. This is **not** a NORMAL reading — it is an absence "
+        "of data. If you meant to view synthetic data, tick the demonstration toggle."
+    )
+    st.markdown("**Source status**")
+    st.dataframe(
+        pd.DataFrame([{"source": k, "contributed": "yes" if v else "NO"}
+                      for k, v in SOURCE_STATUS.items()]),
+        hide_index=True, use_container_width=True)
+    if _forcing_err:
+        st.caption(f"Open-Meteo: `{_forcing_err}`")
+    if FEED_STATUS:
+        _ICON = {"ok": "OK", "empty": "empty", "error": "ERROR", "unconfigured": "unset"}
+        st.markdown("**Firestore — per stage collection**")
+        st.dataframe(
+            pd.DataFrame([{"collection": c,
+                           "state": _ICON.get(v["state"], "?"),
+                           "detail": v["detail"]}
+                          for c, v in sorted(FEED_STATUS.items())]),
+            hide_index=True, use_container_width=True)
+        st.caption("`ERROR` = we could not read the creek.  `empty` = we read it and "
+                   "there was nothing there.  These are opposite states and must never "
+                   "be shown the same way.")
+    st.stop()
+
+# Some sources down but not all: run, and say so rather than implying full coverage.
+if not demo and not all(SOURCE_STATUS.values()):
+    _down = ", ".join(k for k, v in SOURCE_STATUS.items() if not v)
+    st.warning(f"**Running on partial data — {_down} unavailable.** "
+               f"Coverage is reduced; treat postures as less certain than usual.")
+
 rw = flood_network.routed_assessment("belk", inputs, orographic_by_site=oro)
 upwind = None if demo else fetch_upwind()
 gov = {"status": {}} if demo else fetch_gov_bundle()
@@ -580,12 +733,15 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
 st.markdown('<div class="eyebrow">Cullowhee Creek corridor \u2014 watershed map</div>',
             unsafe_allow_html=True)
 with st.container(border=True):
-    st.markdown("""
+    # Chip follows the mode (audit 2026-08-11, C2) — it was hard-coded "Demonstration".
+    _chip_txt = "Demonstration" if demo else "Live"
+    _chip_fg, _chip_bg = ("#92633A", "#F3E9DC") if demo else ("#1A7A52", "#DDF0E6")
+    st.markdown(f"""
     <div style="display:flex;justify-content:space-between;align-items:center;margin:2px 2px 10px;">
       <div style="font-family:'Archivo',sans-serif;font-weight:700;font-size:1.08rem;color:#13212E;">
         Watershed corridor &middot; Watch / Warning / Emergency</div>
-      <span style="font-size:0.66rem;font-weight:600;color:#92633A;background:#F3E9DC;
-        padding:3px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;">Demonstration</span>
+      <span style="font-size:0.66rem;font-weight:600;color:{_chip_fg};background:{_chip_bg};
+        padding:3px 10px;border-radius:4px;text-transform:uppercase;letter-spacing:0.5px;">{_chip_txt}</span>
     </div>""", unsafe_allow_html=True)
     try:
         _basin = flood_profile.BASIN_FEATURE
@@ -820,7 +976,7 @@ st.markdown(f"""
   measured upwind arc (USGS precip + Synoptic via gov_gauges) ·
   in-network LoRa sensors (rain, soil moisture, stream stage).</div>
   <div class="disclaimer">Research prototype developed at Western Carolina University.
-  This demonstration uses synthetic data and provisional parameters pending field calibration.
+  {_mode_prose}
   Not an operational warning service and not for life-safety decisions.</div>
 </div>
 """, unsafe_allow_html=True)

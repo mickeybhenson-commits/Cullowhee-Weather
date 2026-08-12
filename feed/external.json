@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-12T10:51:50.290676+00:00",
+  "fetched_utc": "2026-08-12T11:21:19.804582+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 433.0,
     "stage_series_up": [
-      [
-        1786510800,
-        4.88
-      ],
-      [
-        1786511700,
-        4.88
-      ],
       [
         1786512600,
         4.89
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1786510800,
-        3.65
-      ],
-      [
-        1786511700,
-        3.69
-      ],
       [
         1786512600,
         3.71
@@ -234,68 +218,64 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1786521600,
-        284.3
-      ],
-      [
         1786525200,
-        278.3
+        287.8
       ],
       [
         1786528800,
-        271.2
+        281.5
       ],
       [
         1786532400,
-        263.1
+        273.7
       ],
       [
         1786536000,
-        255.3
+        265.6
       ],
       [
         1786539600,
-        247.9
+        257.1
       ],
       [
         1786543200,
-        241.5
+        249.3
       ],
       [
         1786546800,
-        236.6
+        242.6
       ],
       [
         1786550400,
-        232.7
+        237.3
       ],
       [
         1786554000,
-        229.9
+        233.1
       ],
       [
         1786557600,
-        228.1
+        230.2
       ],
       [
         1786561200,
-        226.7
+        228.1
       ],
       [
         1786564800,
-        226.0
+        227.1
       ],
       [
         1786568400,
-        225.3
+        226.0
       ],
       [
         1786572000,
-        224.9
+        225.3
       ],
       [
         1786575600,
-        224.9
+        225.3
       ],
       [
         1786579200,
@@ -304,6 +284,10 @@
       [
         1786582800,
         224.9
+      ],
+      [
+        1786586400,
+        224.9
       ]
     ]
   },
@@ -311,20 +295,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.74,
+    "stage_ft": 2.72,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 78.9,
+    "age_min": 78.4,
     "fresh": false,
-    "last_updated_utc": "2026-08-12T09:33:00+00:00",
+    "last_updated_utc": "2026-08-12T10:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 78.9 min, limit 75)"
+    "note": "NOT driving posture: stale/invalid (age 78.4 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -365,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260812_1000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260812_1100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -394,7 +378,7 @@
         "name": "Mtn. Lower",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 1.3,
+        "streamflow_m3s": 1.2,
         "soil_sat_pct": 39.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -459,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 21.3,
+        "streamflow_m3s": 21.4,
         "soil_sat_pct": 57.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -484,8 +468,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 1.9,
-    "valid_utc": "2026-08-12T10:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-12T11:21:24.711222+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

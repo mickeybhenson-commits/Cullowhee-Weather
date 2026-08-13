@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-13T20:40:55.928730+00:00",
+  "fetched_utc": "2026-08-13T21:43:09.888605+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786652100,
-        76.9
+        1786655700,
+        75.1
       ],
       "00065": [
-        1786652100,
-        4.08
+        1786655700,
+        4.07
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,32 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786652100,
-        672.0
+        1786655700,
+        577.0
       ],
       "00065": [
-        1786652100,
-        4.01
+        1786655700,
+        3.86
       ]
     },
-    "local_inflow_cfs": 595.1,
+    "local_inflow_cfs": 501.9,
     "stage_series_up": [
-      [
-        1786632300,
-        4.32
-      ],
-      [
-        1786633200,
-        4.28
-      ],
-      [
-        1786634100,
-        4.25
-      ],
-      [
-        1786635000,
-        4.22
-      ],
       [
         1786635900,
         4.2
@@ -133,25 +117,25 @@
       [
         1786652100,
         4.08
+      ],
+      [
+        1786653000,
+        4.08
+      ],
+      [
+        1786653900,
+        4.08
+      ],
+      [
+        1786654800,
+        4.07
+      ],
+      [
+        1786655700,
+        4.07
       ]
     ],
     "stage_series_down": [
-      [
-        1786632300,
-        4.37
-      ],
-      [
-        1786633200,
-        4.37
-      ],
-      [
-        1786634100,
-        4.38
-      ],
-      [
-        1786635000,
-        4.37
-      ],
       [
         1786635900,
         4.38
@@ -227,6 +211,22 @@
       [
         1786652100,
         4.01
+      ],
+      [
+        1786653000,
+        3.96
+      ],
+      [
+        1786653900,
+        3.93
+      ],
+      [
+        1786654800,
+        3.89
+      ],
+      [
+        1786655700,
+        3.86
       ]
     ],
     "provenance": "MEASURED"
@@ -325,9 +325,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 38.0,
+    "age_min": 70.3,
     "fresh": true,
-    "last_updated_utc": "2026-08-13T20:03:00+00:00",
+    "last_updated_utc": "2026-08-13T20:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -373,7 +373,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260813_2000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260813_2100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -390,7 +390,7 @@
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 48.0,
+        "soil_sat_pct": 47.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -493,7 +493,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-13T20:41:00.299321+00:00",
+    "valid_utc": "2026-08-13T21:43:17.765095+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

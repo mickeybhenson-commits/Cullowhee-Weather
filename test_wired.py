@@ -19,13 +19,13 @@ separate components were found that were correct, careful, and **wired to nothin
               FORCING. Reachability does not say a result is used.
   (undated)   the entire QPF-bias ledger — fetch_mrms.py, three forecast fetchers and
               bias_report.py, called by no workflow, with no database host to write to
-  (undated)   confluence_panel.py — its own docstring carries the wiring steps, and
-              they were never followed
-  (undated)   confluence_status.py — the BACKWATER model for the mouth, where the
-              homes are. basins.py says the mouth "hands backwater to
-              confluence_status"; flood_rating.py says the operational posture comes
-              from "confluence_status + live USGS 03508050/TKRN7". Nothing imports it,
-              so that handoff has never happened.
+  (undated)   confluence_panel.py and confluence_status.py — the BACKWATER model for
+              the mouth, where the homes are, plus its console card. basins.py said the
+              mouth "hands backwater to confluence_status" and flood_rating.py said the
+              operational posture came from "confluence_status + live USGS
+              03508050/TKRN7"; nothing imported either one, so that handoff had never
+              happened. WIRED 2026-08-13 — streamlit_app.py renders the card, and both
+              declarations were deleted because this test demanded it.
 
 None of those were sloppy. Each has good internal discipline: bias_report refuses to
 print a statistic with fewer than 8 paired windows, mrms_live omits a basin it cannot
@@ -104,34 +104,6 @@ DECLARED = {
     "ledger.fetch_forecast": ("as ledger.fetch_mrms — forecast side of the same ledger."),
     "ledger.fetch_nws_qpf": ("as ledger.fetch_mrms."),
     "ledger.fetch_weathernext": ("as ledger.fetch_mrms."),
-    "confluence_status": (
-        "THE MOUTH, WHERE THE HOUSES ARE. CC-MOUTH-2340 floods by BACKWATER off the "
-        "Tuckasegee, which is why basins.py sets rating='none' — the creek's own rating "
-        "is meaningless there. This module is the missing half: it posts "
-        "max(creek frequency posture, Tuckasegee backwater posture) off live USGS "
-        "03508050 / TKRN7, a gauge that sits UPSTREAM of the confluence and therefore "
-        "gives real lead time — the only such lead anywhere in this flashy watershed. "
-        "Two DEPLOYED files already document the handoff to it: basins.py "
-        "('hands backwater to confluence_status') and flood_rating.py ('add Tuckasegee "
-        "backwater via confluence_status + live USGS 03508050/TKRN7 for operational "
-        "posture'). Nothing imports it, so the handoff has never occurred and the mouth "
-        "runs creek-only. flood_rating is honest about this — it stamps "
-        "confidence='creek-only (backwater not included here)' — so nothing is "
-        "MISREPORTED; the half that under-predicts is simply the only half there is. "
-        "Note basins.py also says of the mouth: 'Held for completeness. Needs a "
-        "non-backwater section to ever go live; not a warning point.' Whether that "
-        "scoping still holds, given houses in the bottomland and the governing standard, "
-        "is a decision for a human, not a waiver for this test to make. "
-        "CLOSES WHEN: the mouth is wired (flood_rating or the console consumes it), or "
-        "the mouth is confirmed out of scope IN WRITING and this plus confluence_panel "
-        "are deleted."),
-    "confluence_panel": (
-        "Streamlit card for the same confluence node; imports confluence_status, so the "
-        "whole two-module subsystem is orphaned together. Its own docstring carries the "
-        "installation steps -- 'WIRING (add to streamlit_app.py, right after the "
-        "monitoring-sites grid...)' -- and they were never followed, so the mouth still "
-        "has no confluence status in the console. "
-        "CLOSES WHEN: streamlit_app imports it, or it is deleted with confluence_status."),
     "landuse_cn": (
         "Referenced only in two COMMENTS in merge_subbasins.py ('landuse_cn.py expects "
         "...', 'ready for landuse_cn.py') -- never imported. Either the CN-from-landcover "

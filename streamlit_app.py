@@ -725,6 +725,32 @@ st.markdown('<div class="site-detail" style="margin-top:8px;color:#8A97A4;">'
             'and cannot affect the warning point.'
             '</div>', unsafe_allow_html=True)
 
+# --- downstream confluence (Cullowhee Creek x Tuckasegee) --------------------
+# The mouth is the one node with homes in the bottomland, and it floods by a
+# mechanism nothing above it shares: BACKWATER off the Tuckasegee. basins.py sets
+# rating="none" there for exactly that reason, and flood_rating.assess() stamps
+# the mouth confidence="creek-only (backwater not included here)" because the
+# backwater half lives in confluence_status.py -- which, until this line, nothing
+# imported. flood_network.SITES has no mouth node either (its "confluence" role is
+# Speedwell, inside the creek), so this card is the mouth's only representation.
+#
+# The card posts max(creek level, Tuckasegee backwater level). max() is monotone:
+# it can only ever RAISE a posture, so wiring it cannot introduce an under-warning.
+# It matters most in the quadrant where the creek is quiet and the river is not --
+# the Tuckasegee drains ~147 sq mi against Cullowhee Creek's 23.4, so a storm can
+# sit on the mainstem and miss the creek entirely. Before this, that quadrant read
+# NORMAL at the mouth. With the gauge at moderate flood (>=19 ft) it reads
+# EMERGENCY: a three-level gap, and the quadrant Helene never exercised because
+# Helene put water everywhere at once.
+#
+# Fail direction: if the gauge cannot be reached, render() degrades to the
+# creek-side signal and SAYS SO on the card. It never renders NORMAL by default.
+try:
+    import confluence_panel
+    confluence_panel.render(st, SEV, ORDER, creek_level=lvl)
+except Exception as _e:
+    st.caption(f"Confluence panel unavailable: {_e}")
+
 # incoming weather
 # corridor profile (simulated depth & discharge along the creek)
 # =========================================================================

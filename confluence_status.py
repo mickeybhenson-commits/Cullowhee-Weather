@@ -81,7 +81,13 @@ def creek_posture(model_peak_q_cfs):
     (§2), independent of stage (the mouth has no valid stage rating)."""
     cq = calibrate_peak(model_peak_q_cfs, CONFLUENCE_BID)
     rp = rp_from_q(cq, BASINS[CONFLUENCE_BID]["reg_q"])
-    return category_from_rp(rp), (round(rp) if rp is not None else None), round(cq)
+    # Pass the bid: category_from_rp(T, bid) selects a per-basin WATCH cutoff
+    # (flood_rating.WATCH_1_5YR). The mouth is not in that set today, so this is
+    # a no-op RIGHT NOW -- but calling it without a bid is how an engine silently
+    # uses the wrong ladder the day a basin joins the set. That is precisely the
+    # 1.5-yr WATCH failure of 2026-07-15, which ran four weeks unnoticed.
+    return (category_from_rp(rp, CONFLUENCE_BID),
+            (round(rp) if rp is not None else None), round(cq))
 
 
 # ---- river side: Tuckasegee backwater posture from the gauge -----------------

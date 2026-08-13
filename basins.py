@@ -84,7 +84,13 @@ BASINS = {
     pour=(35.23320, -83.18689), downstream="CC-MS-1100",
     reg_q={0.50:269, 0.20:504, 0.10:705, 0.04:987, 0.02:1250, 0.01:1500, 0.005:1780, 0.002:2160},
     reg_pi={0.10:(395,1260), 0.01:(781,2880)}, reg_src=REG_SRC, tva_q=None,
-    calib=(1.449, 0.815), calib_anchors=[(1984,705),(5011,1500)],   # (model 10/100-yr -> reg)
+    # 2026-08-13 (audit H2): DA was corrected 5.35 -> 5.03 but calib stayed fitted
+    # against 5.35, so the engine carried a 4.90% UNDER-read on the largest
+    # incremental area in the watershed. Raw UH peak is exactly linear in DA, so the
+    # model-side anchors scale by 5.03/5.35 and the exponent b is invariant; only a
+    # moves, by a_new = a_old / (5.03/5.35)^b. A refit, NOT a re-tune: calibrated
+    # discharge is unchanged for a given storm, because reg_q never changed.
+    calib=(1.524, 0.815), calib_anchors=[(1865,705),(4711,1500)],   # (model 10/100-yr -> reg)
     rating="rectangular",
     section=dict(w=29.7, d=1.78, n=0.045, s=0.0888),                 # Bieger App-Highlands-D
     bankfull_curve="Appalachian Highlands D (Blue Ridge eq EXCLUDED: DA 5.03 < 5.46 floor)",

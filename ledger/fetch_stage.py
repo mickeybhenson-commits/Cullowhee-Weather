@@ -164,9 +164,65 @@ def forcing():
 # quiet hour is not a correct negative, and scoring it as one inflates every skill
 # statistic the ledger exists to produce.
 OUTCOME_COLUMNS = ["outcome", "outcome_ts", "outcome_src", "outcome_note"]
+
+# FORCING columns. Until 2026-08-12 the log recorded the posture and the wetness but
+# never the rainfall that produced them, so skill could not be scored against the
+# forcing that drove it.
+#
+#   rain_in     depth the model actually consumed for this basin, inches. Today that
+#               is ONE Open-Meteo point shared by all eight basins, which is why the
+#               basins move in lockstep. Recording it makes that visible in the data
+#               rather than only in the docs.
+#   mrms_in     basin-AREA-AVERAGED observed rainfall over the same window, from
+#               mrms_live.observed_rain() across that basin's mask cells.
+#   mrms_valid  surviving weight fraction behind mrms_in (1.0 = every mask cell
+#               reported). A basin averaged over half its cells must not look like a
+#               basin averaged over all of them.
+#
+# The pair is the point: one column is a point forecast, the other is a measured
+# area mean, and the difference between them accumulated over a season is the local
+# bias correction that MRMS needs here — radar ran 20-33% low against gauges in WNC
+# during Helene. See noah_basin_averaged_qpe_2026-08-12.md.
+#
+# EMPTY, never 0.0, whenever MRMS could not be read. A zero in a rainfall column is
+# a claim that it did not rain.
+QPE_COLUMNS = ["rain_in", "mrms_in", "mrms_valid"]
+
 CSV_COLUMNS = ["kind", "basin_id", "issued_utc", "valid_utc", "stage_ft", "q_cfs",
                "rp_yr", "level", "wetness", "cn", "condition", "trend", "age_min",
-               "fresh", "site_id", "source"] + OUTCOME_COLUMNS
+               "fresh", "site_id", "source"] + OUTCOME_COLUMNS + QPE_COLUMNS
+
+
+def mrms_observed(hours=1):
+    """{basin_id: {"in": float, "valid": float}} of area-averaged observed rain.
+
+    Returns {} on ANY failure — missing decoder, network, upstream outage, a basin
+    below the coverage floor. Never partial-credit zeros: mrms_live.observed_rain
+    omits a basin it cannot measure rather than reporting 0.0, and this preserves
+    that. The ledger job must not fail because a radar product was late.
+    """
+    try:
+        import mrms_live
+    except Exception as e:
+        print(f"mrms      decoder unavailable ({e}) — mrms_in left empty",
+              file=sys.stderr)
+        return {}
+    try:
+        got = mrms_live.observed_rain(hours=hours)
+    except Exception as e:
+        print(f"mrms      fetch failed ({e}) — mrms_in left empty", file=sys.stderr)
+        return {}
+    out = {}
+    for bid, v in (got.get("basins") or {}).items():
+        try:
+            out[bid] = {"in": round(float(v["in"]), 3),
+                        "valid": round(float(v["valid_frac"]), 3)}
+        except (KeyError, TypeError, ValueError):
+            continue
+    if out:
+        print(f"mrms      {got.get('product')} · {len(out)}/8 basins · "
+              f"latency ~{got.get('latency_min')} min")
+    return out
 
 
 def _migrate_csv_header(path):
@@ -209,7 +265,7 @@ def _migrate_csv_header(path):
     return f"migrated +{len(pad)} column(s), {len(rows)-1} row(s) padded"
 
 
-def _append_csv(path, obs_rows, mod_rows):
+def _append_csv(path, obs_rows, mod_rows, qpe=None):
     """Append-only decision log. One row per basin per run, plus the measured row.
 
     Append-only and plain text on purpose: it is diffable, it survives with no
@@ -238,11 +294,20 @@ def _append_csv(path, obs_rows, mod_rows):
                          "stage_ft": stage, "level": level, "condition": cond,
                          "trend": trend, "age_min": age, "fresh": fresh,
                          "site_id": site, "source": src})
+        qpe = qpe or {}
         for (bid, issued, valid, stage, q, rp, level, w, cn, src) in mod_rows:
-            wr.writerow({"kind": "model", "basin_id": bid, "issued_utc": issued,
-                         "valid_utc": valid, "stage_ft": stage, "q_cfs": q,
-                         "rp_yr": rp, "level": level, "wetness": w, "cn": cn,
-                         "source": src})
+            row = {"kind": "model", "basin_id": bid, "issued_utc": issued,
+                   "valid_utc": valid, "stage_ft": stage, "q_cfs": q,
+                   "rp_yr": rp, "level": level, "wetness": w, "cn": cn,
+                   "source": src}
+            f = qpe.get(bid) or {}
+            # Absent stays absent. DictWriter emits "" for keys we never set.
+            if f.get("rain_in") is not None:
+                row["rain_in"] = f["rain_in"]
+            if f.get("mrms_in") is not None:
+                row["mrms_in"] = f["mrms_in"]
+                row["mrms_valid"] = f.get("mrms_valid")
+            wr.writerow(row)
 
 
 def main():
@@ -269,9 +334,11 @@ def main():
     else:
         print("measured  unavailable")
 
+    qpe = {}
     try:
         import cwm_model
         hourly, w, issued = forcing()
+        mrms = mrms_observed(hours=1)
         for bid in cwm_model.ORDER:
             try:
                 r = cwm_model.assess_event(bid, hourly, w)
@@ -282,11 +349,24 @@ def main():
             mod_rows.append((bid, _iso(issued), _iso(valid), r["stage_ft"],
                              r["calib_q"], r["rp_yr"], r["posture"], w, r["CN"],
                              MODEL_SOURCE))
+            # Forcing side-channel. Deliberately NOT folded into mod_rows: that
+            # tuple is also consumed by ledger_db.insert_stage_model, and widening
+            # it would break the SQLite path for a column only the CSV needs.
+            f = {"rain_in": r.get("total_in")}
+            if bid in mrms:
+                f["mrms_in"] = mrms[bid]["in"]
+                f["mrms_valid"] = mrms[bid]["valid"]
+            qpe[bid] = f
             _st = "  --  " if r["stage_ft"] is None else f"{r['stage_ft']:6.2f}"
             print(f"modeled   {bid:<14} {_st} ft · {r['calib_q']:>6.0f} cfs · "
                   f"RP {r['rp_yr']:>5} yr · {r['posture']:<9} · peak +{r['peak_hr']} h")
         print(f"modeled   forcing: w={w} · {r['total_in']} in · ONE point "
               f"(single-cell — see module docstring)")
+        if mrms:
+            spread = [v["in"] for v in mrms.values()]
+            print(f"mrms      basin-averaged observed: {min(spread):.2f}-"
+                  f"{max(spread):.2f} in across {len(spread)} basins "
+                  f"(spread {max(spread) - min(spread):.2f} in)")
     except Exception as e:
         print(f"modeled   unavailable: {e}", file=sys.stderr)
 
@@ -298,7 +378,7 @@ def main():
         return 1
 
     if a.csv:
-        _append_csv(a.csv, obs_rows, mod_rows)
+        _append_csv(a.csv, obs_rows, mod_rows, qpe)
         print(f"appended {len(obs_rows) + len(mod_rows)} row(s) -> {a.csv}")
         if not a.db and not os.environ.get("QPF_LEDGER_DB"):
             return 0            # CSV-only run (e.g. CI); no database host expected

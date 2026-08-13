@@ -29,7 +29,7 @@ TYPE2 = [0.000,0.011,0.022,0.035,0.048,0.064,0.080,0.098,0.120,0.147,0.181,0.235
 # the deployed Speedwell WATCH sat 1.24 ft ABOVE the surveyed one. Kept in step with
 # basins.py by test_registry_engine_consistency.py.
 BASINS = {
- "CC-UP-503":   dict(DA=5.03, Tc=40,  CN2=63, calib=(1.449,0.815), rating="rectangular",
+ "CC-UP-503":   dict(DA=5.03, Tc=40,  CN2=63, calib=(1.524,0.815), rating="rectangular",
     sec=dict(w=29.7,n=0.045,s=0.0888), thr=(1.78,2.67,3.56), qb=10.1,
     reg_q={0.50:269,0.20:504,0.10:705,0.04:987,0.02:1250,0.01:1500,0.005:1780,0.002:2160}),
  "CC-MS-1100":  dict(DA=11.03,Tc=63,  CN2=63, calib=(2.777,0.760), rating="rectangular",
@@ -157,17 +157,26 @@ def rp_numeric(q, bid):
     return None
 
 
-def _cat_from_rp(T):
+# Flashiest lead-limited reaches drop WATCH to 1.5-yr to offset short Tc. Approved
+# 2026-07-15 and implemented in flood_rating.py the same day; this engine and
+# live.html took no basin argument, so for four weeks neither could express it --
+# on the two basins with the LEAST lead time in the watershed (Tc 29 and 36 min).
+# Mirrors flood_rating.WATCH_1_5YR; test_posture_rule_consistency.py keeps them equal.
+WATCH_1_5YR = {"CC-COX-097", "CC-LB-171"}
+
+
+def _cat_from_rp(T, bid=None):
     if T is None:
         return "N/A"
+    watch = 1.5 if bid in WATCH_1_5YR else 2
     return ("EMERGENCY" if T >= 100 else "WARNING" if T >= 10
-            else "WATCH" if T >= 2 else "NORMAL")
+            else "WATCH" if T >= watch else "NORMAL")
 
 
 def _posture_as_deployed(cq, stage, bid):
     if bid in STAGE_BASED:
         return posture(stage, bid)
-    return _cat_from_rp(rp_numeric(cq, bid))
+    return _cat_from_rp(rp_numeric(cq, bid), bid)
 
 
 def assess_event(bid, hourly_in, wetness):

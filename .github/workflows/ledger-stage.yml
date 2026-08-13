@@ -34,6 +34,15 @@ jobs:
         with:
           python-version: "3.11"
 
+      # MRMS leg only. continue-on-error because this job runs every 30 minutes and
+      # its whole purpose is to never miss a sample -- the correct-negative
+      # denominator only exists if collection is continuous, so a wheel that fails
+      # to build must not cost a row. Without the decoder, rain_in still populates
+      # and mrms_in stays empty with a reason on stderr: absent renders as absent.
+      - name: Install the GRIB decoder (optional)
+        continue-on-error: true
+        run: pip install eccodes
+
       - name: Append decision row for all eight basins
         run: python ledger/fetch_stage.py --csv ledger/decisions.csv
 

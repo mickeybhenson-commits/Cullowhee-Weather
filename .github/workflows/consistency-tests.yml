@@ -1,0 +1,145 @@
+# Consistency + safety-rule tests.
+#
+# Why this exists: this repo has five workflows and none of them runs any of the
+# eight test suites in the repo root. Two carry checks of their own —
+# landcover-watch.yml runs `noah_landcover_watch.py --selftest` monthly, and
+# publish-feed.yml sanity-checks the emitted feed JSON — but neither touches
+# warning behaviour. Every test invoked below was already written, already
+# correct, and had never once been run by CI. A test nobody runs is a comment.
+#
+# What that has cost, concretely:
+#
+#   2026-07-15  The 1.5-yr WATCH for Cox and Long Branch was approved and
+#               implemented in flood_rating.py. cwm_model._cat_from_rp() and
+#               live.html catFromRP() took no basin argument, so they could not
+#               express it at all. Four weeks, on the two basins with the least
+#               lead time in the watershed.
+#
+#   2026-08-03  Surveyed LiDAR threshold ladders committed to basins.py. Eight
+#               days before they reached cwm_model.py and live.html — eight days
+#               in which the registry and both engines disagreed about where
+#               WATCH, WARNING and EMERGENCY sit on five reaches.
+#               test_registry_engine_consistency.py would have caught it on day
+#               one. Nothing ran it.
+#
+#   2026-08-12  CC-UP-503's drainage area was corrected in two of three places,
+#               leaving the calibration anchored to the old area — a 4.9%
+#               under-read on the largest incremental area in the watershed.
+#               `calib` had no cross-engine check at all, and live.html's DA was
+#               checked by nothing.
+#
+#   2026-08-13  test_wired.py, added below, found two more finished-and-idle
+#               components on its first run against the full tree:
+#               confluence_status.py (the BACKWATER model for the mouth, where
+#               the houses are) and confluence_panel.py (its console card).
+#               basins.py and flood_rating.py both document a handoff to
+#               confluence_status in their comments. Nothing imports it, so the
+#               handoff has never happened. That makes seven.
+#
+# Every one of those was in the UNDER-warning direction. That is what this
+# workflow exists to stop recurring.
+#
+# What it will NOT catch: a working copy sitting behind its own HEAD. CI asserts
+# on what is committed; it cannot see anyone's disk. See
+# noah_h1_was_never_closed_2026-08-12.md.
+#
+# Every test here is hermetic — no network, no credentials, no external services
+# — so it can run on every push without flaking. Anything needing the network
+# belongs in a separate scheduled workflow, not this one.
+
+name: tests — engine consistency & posture rules
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 11 * * *"          # daily, catches drift landed without a push
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # --- the three that guard warning behaviour ------------------------------
+      # Run these FIRST and separately, so a failure here is unmistakable in the
+      # job list rather than buried in a loop's output.
+
+      - name: Registry vs engines — thresholds, drainage area, calibration, Tc
+        run: python test_registry_engine_consistency.py
+
+      - name: Posture classification rules across all three engines
+        run: python test_posture_rule_consistency.py
+
+      - name: Posture algebra — escalation, corroboration, the FloodNet veto bug
+        run: python test_posture_rules.py
+
+      # --- and the one that guards the boundary --------------------------------
+      # Every test above asks whether the code is CORRECT. This one asks whether
+      # it is CONNECTED. Seven components have now been found that were correct,
+      # careful and wired to nothing; four of them would have failed this check on
+      # the day they were written.
+
+      - name: Is every finished component connected to anything that runs
+        run: python test_wired.py
+
+      # --- the rest ------------------------------------------------------------
+
+      - name: Remaining suites
+        run: |
+          set -u
+          fails=0
+          for t in test_flood_network_upwind test_gov_gauges test_gov_sources \
+                   test_improvements; do
+            if [ ! -f "$t.py" ]; then
+              echo "::warning::$t.py not present — skipped"
+              continue
+            fi
+            echo "----- $t -----"
+            if python "$t.py"; then
+              echo "PASS $t"
+            else
+              echo "::error::$t FAILED"
+              fails=$((fails+1))
+            fi
+          done
+          echo "$fails suite(s) failed"
+          exit $fails
+
+      # --- surface the open gaps even on a green run ---------------------------
+      # Two of these suites exit 0 while real gaps are still open:
+      # test_posture_rule_consistency has declared divergences, and test_wired has
+      # declared orphans. Re-print both into the job summary so "all checks passed"
+      # does not quietly mean "nothing left to fix."
+
+      - name: Open, declared, not fixed
+        if: always()
+        run: |
+          {
+            echo "### Declared warning-rule gaps still open"
+            echo ""
+            echo '```'
+            python test_posture_rule_consistency.py 2>&1 \
+              | sed -n '/OPEN, DECLARED/,$p' || true
+            echo '```'
+            echo ""
+            echo "### Built and not connected"
+            echo ""
+            echo '```'
+            python test_wired.py 2>&1 \
+              | sed -n '/modules reachable/,$p' || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

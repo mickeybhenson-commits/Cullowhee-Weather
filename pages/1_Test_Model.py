@@ -78,9 +78,19 @@ for bid in routed_order():
     rec = BASINS[bid]
     me = bid == "CC-WCU-2260"
     bg = "background:#F1EFE8;" if me else ""
-    thr_ok = rec["thr_src"].startswith("VALIDATED")
-    thr = ("<span style='color:#1A7A52;'>validated</span>" if thr_ok
-           else "<span style='color:#C2410C;'>placeholder</span>")
+    # Four states, not two. Five reaches gained SURVEYED LiDAR ladders on
+    # 2026-08-03; labelling them 'placeholder' understates the evidence exactly
+    # as badly as labelling them 'validated' would overstate it. The mouth has
+    # no ladder at all, which is a third thing again.
+    src = rec["thr_src"]
+    if rec["thr_ft"] is None:
+        thr = "<span style='color:#8A97A4;'>out of scope</span>"
+    elif src.startswith("VALIDATED"):
+        thr = "<span style='color:#1A7A52;'>validated</span>"
+    elif src.startswith("SURVEYED"):
+        thr = "<span style='color:#2F6FB5;'>surveyed</span>"
+    else:
+        thr = "<span style='color:#C2410C;'>placeholder</span>"
     body += (
         f"<tr style='border-bottom:1px solid #E2E8ED;font-size:0.88rem;{bg}'>"
         f"<td style='padding:6px 10px;'>{rec['name']}</td>"
@@ -100,11 +110,14 @@ st.markdown(
 
 st.markdown("&nbsp;")
 st.warning(
-    "Only the campus threshold is receptor-validated (11 ft = water in road). The other "
-    "seven reaches show calibrated discharge and physical stage, but their WATCH/WARNING/"
-    "EMERGENCY thresholds are placeholders (bankfull-referenced) until surveyed receptors "
-    "exist \u2014 treat those postures as modeled, not a warning basis. The mouth is out of "
-    "scope (no rating, no stage).")
+    "Threshold provenance is not uniform, and the column above says which is which. "
+    "**Validated** \u2014 the campus only (11 ft = water in road, field-confirmed). "
+    "**Surveyed** \u2014 five reaches (Tilley, Mainstem, Speedwell, Cox, Long Branch) on "
+    "NC QL2 LiDAR pour-point pools, committed 2026-08-03: real terrain, but no receptor "
+    "has been tied to them. **Placeholder** \u2014 Upper Cullowhee only, still "
+    "bankfull\u00d7(1.0,1.5,2.0). **Out of scope** \u2014 the mouth, which is "
+    "backwater-controlled by the Tuckasegee and has no creek stage ladder at all. "
+    "Treat every non-campus posture as modeled, not a warning basis.")
 
 with st.expander("What this is"):
     st.markdown(

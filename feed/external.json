@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-13T11:21:19.513243+00:00",
+  "fetched_utc": "2026-08-13T12:09:38.062498+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ok",
+    "nwm": "ReadTimeout",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786616100,
+        1786619700,
         785.0
       ],
       "00065": [
-        1786616100,
+        1786619700,
         6.09
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,28 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786616100,
+        1786619700,
         501.0
       ],
       "00065": [
-        1786616100,
+        1786619700,
         3.73
       ]
     },
     "local_inflow_cfs": -284.0,
     "stage_series_up": [
-      [
-        1786599000,
-        4.87
-      ],
-      [
-        1786599900,
-        5.3
-      ],
-      [
-        1786600800,
-        5.79
-      ],
       [
         1786601700,
         5.99
@@ -121,21 +109,25 @@
       [
         1786616100,
         6.09
+      ],
+      [
+        1786617000,
+        6.09
+      ],
+      [
+        1786617900,
+        6.09
+      ],
+      [
+        1786618800,
+        6.09
+      ],
+      [
+        1786619700,
+        6.09
       ]
     ],
     "stage_series_down": [
-      [
-        1786599000,
-        3.41
-      ],
-      [
-        1786599900,
-        3.4
-      ],
-      [
-        1786600800,
-        3.4
-      ],
       [
         1786601700,
         3.4
@@ -203,6 +195,22 @@
       [
         1786616100,
         3.73
+      ],
+      [
+        1786617000,
+        3.73
+      ],
+      [
+        1786617900,
+        3.73
+      ],
+      [
+        1786618800,
+        3.73
+      ],
+      [
+        1786619700,
+        3.73
       ]
     ],
     "provenance": "MEASURED"
@@ -213,84 +221,7 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": {
-    "reach": 19730552,
-    "reach_is_cullowhee": false,
-    "series": [
-      [
-        1786608000,
-        689.0
-      ],
-      [
-        1786611600,
-        647.7
-      ],
-      [
-        1786615200,
-        597.9
-      ],
-      [
-        1786618800,
-        541.7
-      ],
-      [
-        1786622400,
-        484.2
-      ],
-      [
-        1786626000,
-        429.1
-      ],
-      [
-        1786629600,
-        360.2
-      ],
-      [
-        1786633200,
-        311.8
-      ],
-      [
-        1786636800,
-        282.5
-      ],
-      [
-        1786640400,
-        262.4
-      ],
-      [
-        1786644000,
-        249.3
-      ],
-      [
-        1786647600,
-        240.5
-      ],
-      [
-        1786651200,
-        234.5
-      ],
-      [
-        1786654800,
-        231.0
-      ],
-      [
-        1786658400,
-        228.5
-      ],
-      [
-        1786662000,
-        227.1
-      ],
-      [
-        1786665600,
-        226.0
-      ],
-      [
-        1786669200,
-        225.3
-      ]
-    ]
-  },
+  "nwm": null,
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
@@ -301,14 +232,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 78.4,
-    "fresh": false,
-    "last_updated_utc": "2026-08-13T10:03:00+00:00",
+    "age_min": 67.0,
+    "fresh": true,
+    "last_updated_utc": "2026-08-13T11:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 78.4 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -468,8 +399,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-13T11:21:22.603050+00:00",
+    "age_min": 20.0,
+    "valid_utc": "2026-08-13T11:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

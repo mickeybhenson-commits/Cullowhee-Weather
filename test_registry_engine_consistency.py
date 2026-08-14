@@ -15,12 +15,40 @@ This test exists so that gap cannot open again silently.
 """
 import os
 import re
+import sys
 
 import basins
 import cwm_model
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LIVE_HTML = os.path.join(HERE, "live.html")
+
+
+def engine_html():
+    """Every page at the repo root that carries its OWN copy of the BASINS literal.
+
+    Checking `live.html` by name was not enough. On 2026-08-13 `rain_to_trip.html` —
+    the page that answers "how much rain trips a WATCH here?" — was found still on
+    DA 5.35 / calib (1.449, 0.815) for CC-UP-503 and still on a flat 2-yr WATCH
+    cutoff, four weeks after the 1.5-yr WATCH was approved and hours after both were
+    fixed in live.html. It had never been checked by anything, because nothing
+    looked past the one filename.
+
+    So this DISCOVERS engine copies instead of naming them, and a sixth copy is
+    caught the day it appears rather than the day someone happens to look.
+    """
+    out = []
+    for fn in sorted(os.listdir(HERE)):
+        if not fn.endswith(".html"):
+            continue
+        path = os.path.join(HERE, fn)
+        try:
+            src = open(path, encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        if re.search(r'"CC-[A-Z]+-\d+"\s*:\s*\{[^}]*\bDA\s*:', src):
+            out.append((fn, src))
+    return out
 
 
 def test_thresholds_match_registry():
@@ -42,26 +70,34 @@ def test_thresholds_match_registry():
     )
 
 
-def test_live_html_thresholds_match_registry():
-    """The public map carries its own copy of the ladder. It drifts too."""
-    if not os.path.exists(LIVE_HTML):
-        return
-    html = open(LIVE_HTML, encoding="utf-8", errors="replace").read()
+def test_html_thresholds_match_registry():
+    """Every page carrying its own copy of the ladder. They drift too."""
     bad = []
-    for bid, reg in basins.BASINS.items():
-        if reg["thr_ft"] is None:
-            continue
-        m = re.search(r'"' + re.escape(bid) + r'":\s*\{.{0,400}?thr:\[([0-9.,\s]+)\]',
-                      html, re.S)
-        if not m:
-            bad.append(f"{bid}: no thr:[...] found in live.html")
-            continue
-        got = tuple(round(float(x), 3) for x in m.group(1).split(","))
-        want = tuple(round(float(x), 3) for x in reg["thr_ft"])
-        if got != want:
-            bad.append(f"{bid}: live.html {got} != registry {want}")
-    assert not bad, ("live.html thresholds disagree with the registry:\n  "
+    for fn, html in engine_html():
+        for bid, reg in basins.BASINS.items():
+            if reg["thr_ft"] is None:
+                continue
+            m = re.search(r'"' + re.escape(bid) + r'":\s*\{.{0,400}?thr:\[([0-9.,\s]+)\]',
+                          html, re.S)
+            if not m:
+                bad.append(f"{fn}: {bid}: no thr:[...] found")
+                continue
+            got = tuple(round(float(x), 3) for x in m.group(1).split(","))
+            want = tuple(round(float(x), 3) for x in reg["thr_ft"])
+            if got != want:
+                bad.append(f"{fn}: {bid}: {got} != registry {want}")
+    assert not bad, ("HTML thresholds disagree with the registry:\n  "
                      + "\n  ".join(bad))
+
+
+def test_at_least_one_engine_html_was_found():
+    """If the discovery regex stops matching, every HTML check above passes
+    vacuously and the drift they exist to catch becomes invisible."""
+    found = [fn for fn, _ in engine_html()]
+    assert "live.html" in found, (
+        f"engine_html() did not find live.html — it found {found}. The BASINS-literal "
+        "pattern has stopped matching, so every HTML check in this file is now "
+        "asserting nothing.")
 
 
 # EMPTY since 2026-08-13. The single entry here waived CC-UP-503, whose DA was
@@ -87,10 +123,7 @@ def _live_basin_field(html, bid, field, arity=1):
 def test_drainage_area_matches_registry():
     """Registry vs BOTH engines. live.html was unchecked until 2026-08-13, and it
     was the one place CC-UP-503 still carried the old 5.35."""
-    if os.path.exists(LIVE_HTML):
-        html = open(LIVE_HTML, encoding="utf-8", errors="replace").read()
-    else:
-        html = ""
+    pages = engine_html()
     bad = []
     for bid, eng in cwm_model.BASINS.items():
         reg = basins.BASINS[bid]
@@ -98,12 +131,12 @@ def test_drainage_area_matches_registry():
             continue
         if abs(reg["da_sqmi"] - eng["DA"]) > 0.05:
             bad.append(f"{bid}: registry {reg['da_sqmi']} != cwm_model {eng['DA']}")
-        if html:
+        for fn, html in pages:
             lv = _live_basin_field(html, bid, "DA")
             if lv is None:
-                bad.append(f"{bid}: no DA found in live.html")
+                bad.append(f"{fn}: {bid}: no DA found")
             elif abs(reg["da_sqmi"] - lv) > 0.05:
-                bad.append(f"{bid}: registry {reg['da_sqmi']} != live.html {lv}")
+                bad.append(f"{fn}: {bid}: registry {reg['da_sqmi']} != {lv}")
     assert not bad, ("Undeclared drainage-area divergence:\n  " + "\n  ".join(bad) +
                      "\nIf intentional, add it to DA_WAIVED with the reason -- and note "
                      "that changing DA without refitting calib is an under-read, not an edit.")
@@ -121,8 +154,7 @@ def test_calib_matches_across_engines():
     """calib had NO cross-engine check at all until 2026-08-13. It is the single
     number that converts model peak to the regression scale, so a drift here moves
     every posture on that reach without moving anything visibly wrong."""
-    html = (open(LIVE_HTML, encoding="utf-8", errors="replace").read()
-            if os.path.exists(LIVE_HTML) else "")
+    pages = engine_html()
     bad = []
     for bid, eng in cwm_model.BASINS.items():
         reg = basins.BASINS[bid].get("calib")
@@ -132,12 +164,12 @@ def test_calib_matches_across_engines():
             continue
         if tuple(round(x, 4) for x in reg) != tuple(round(x, 4) for x in e):
             bad.append(f"{bid}: registry {tuple(reg)} != cwm_model {tuple(e)}")
-        if html:
+        for fn, html in pages:
             lv = _live_basin_field(html, bid, "calib", arity=2)
             if lv is None:
-                bad.append(f"{bid}: no calib found in live.html")
+                bad.append(f"{fn}: {bid}: no calib found")
             elif tuple(round(x, 4) for x in reg) != tuple(round(x, 4) for x in lv):
-                bad.append(f"{bid}: registry {tuple(reg)} != live.html {lv}")
+                bad.append(f"{fn}: {bid}: registry {tuple(reg)} != {lv}")
     assert not bad, ("Calibration disagrees across engines:\n  " + "\n  ".join(bad) +
                      "\n\ncalib maps model peak onto the StreamStats frequency curve. "
                      "A divergence here silently rescales every posture on that reach.")
@@ -179,6 +211,62 @@ def test_tc_divergence_is_declared():
         "intentional, update the set and record why in the decision ledger — and note "
         "that resolving it is a model change that de-anchors calib for those basins."
     )
+
+
+def test_ledger_wetness_matches_wetness_py():
+    """`ledger/fetch_stage.py` carries its OWN copy of the API -> wetness transform.
+
+    That copy is deliberate, and the reason is written above it in that file: the
+    collector's one job is to never miss a sample, and an import of a repo-root
+    module that fails on a runner costs a row. `mrms_live` is imported lazily and
+    degrades to an empty column; wetness cannot degrade, because without it there
+    is no model row at all.
+
+    But a second copy of a safety-relevant number is exactly what cost this project
+    four weeks on the 1.5-yr WATCH and eight days on the LiDAR ladders. A copy is
+    only safe while something compares it. This is that something.
+
+    Wetness is the most load-bearing state variable in the chain: it sets CN, which
+    sets runoff, which sets the peak, which sets the posture. The ledger is the
+    record the system will be SCORED against, so a ledger whose wetness drifted
+    from the engines' would score the system against a model it never ran.
+
+    EXACT equality is demanded, not a tolerance. Both sides are the same closed
+    form on the same inputs; any difference at all is a divergence, not rounding.
+    """
+    sys.path.insert(0, os.path.join(HERE, "ledger"))
+    import wetness
+    import fetch_stage
+
+    assert wetness.API_5DAY_EQUIV == fetch_stage.API_5DAY_EQUIV, (
+        f"API_5DAY_EQUIV: wetness.py {wetness.API_5DAY_EQUIV!r} != "
+        f"ledger {fetch_stage.API_5DAY_EQUIV!r}")
+    assert (wetness.API_K == fetch_stage.API_K
+            and wetness.API_DAYS == fetch_stage.API_DAYS), (
+        f"decay constants differ: wetness.py ({wetness.API_K}, {wetness.API_DAYS}) "
+        f"!= ledger ({fetch_stage.API_K}, {fetch_stage.API_DAYS})")
+
+    series = [0.0, 0.31, 1.2, 0.0, 0.05, 2.4, 0.0, 0.9, 0.0, 0.0, 3.1]
+    assert wetness.api_from_daily(series) == fetch_stage.api_from_daily(series), (
+        f"api_from_daily diverged: wetness.py {wetness.api_from_daily(series)!r} "
+        f"!= ledger {fetch_stage.api_from_daily(series)!r}")
+
+    bad = []
+    for month in range(1, 13):          # both seasons, and both breakpoints
+        for i in range(0, 1201):        # API 0.00 .. 12.00 in, 0.01 steps
+            api = i / 100.0
+            a = wetness.wetness_from_api(api, month)
+            b = fetch_stage.wetness_from_api(api, month)
+            if a != b:
+                bad.append(f"month {month:>2}  API {api:5.2f} in  "
+                           f"wetness.py {a!r} != ledger {b!r}")
+    assert not bad, (
+        f"The ledger's wetness transform has drifted from wetness.py in "
+        f"{len(bad)} of 14412 sampled points:\n  " + "\n  ".join(bad[:8])
+        + ("\n  ... and more" if len(bad) > 8 else "")
+        + "\n\nEvery decision row logged since the drift carries a wetness the "
+          "engines would not have computed. Fix the copy in ledger/fetch_stage.py, "
+          "or delete it and accept the import risk — but do not leave them unequal.")
 
 
 def test_surveyed_reaches_stay_surveyed():

@@ -1,12 +1,33 @@
 """
 pages/1_Test_Model.py - Cullowhee Creek engine view (corrected design-storm postures).
 
-Renders test_model.run_case() through the calibrated engine (basins.py + flood_rating.py):
-per-basin regression bias correction, TVA rating at the campus, in-bank rectangle for the
-tributaries. Replaces the old synthetic path that over-predicted ~2x.
+Design-storm postures through the calibrated engine: cwm_model for the rainfall ->
+runoff -> unit-hydrograph chain, flood_rating.assess() for the operative posture.
 
-Requires test_model.py, basins.py, flood_rating.py at the repo root. The sys.path line
-below lets this page import them from inside pages/.
+2026-08-13: this page imported `test_model`, which moved to the private Cullowhee-Engine
+repo in 9c720eb. wetness.py, outlook_engine.py and live_rainfall.py were all re-sourced
+onto cwm_model at the time; this page was missed, so it had been raising
+ModuleNotFoundError the moment anyone opened it. It is now on the in-repo engine.
+
+Two deliberate changes made while re-sourcing:
+
+  * The named design-storm menu is gone. It came from test_model.DESIGN_DEPTH_IN, which
+    left with test_model, and inventing a depth table here would put unsourced numbers
+    in front of an operator. Rainfall is a direct input now. The two depths this project
+    does have on record are named in the control: 4.80 in and 7.50 in reproduce the
+    10-yr and 100-yr StreamStats anchors every basin's `calib` was fitted through.
+
+  * The ARC class (I/II/III) went with it. run_case returned an NRCS staircase class;
+    this engine uses a CONTINUOUS CN from a wetness index in [0,1] and has no staircase
+    to report. Reusing the old label for a different quantity is how a number quietly
+    stops meaning what it says, so the page shows wetness and CN instead. Same call was
+    made in live_rainfall.py on 2026-08-03.
+
+Posture comes from flood_rating.assess() - the authoritative engine - NOT from the
+stage ladder. For the seven non-campus reaches the ladder is a cross-check, not the call.
+
+Requires basins.py, cwm_model.py, flood_rating.py, wetness.py at the repo root. The
+sys.path line below lets this page import them from inside pages/.
 """
 
 import os
@@ -14,8 +35,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import streamlit as st
-import test_model as tm
+import cwm_model as cwm
 from basins import BASINS, routed_order
+from flood_rating import assess as fr_assess
+from wetness import resolve_wetness
 
 st.set_page_config(page_title="Engine - Test Model", layout="wide")
 
@@ -42,13 +65,24 @@ st.caption("Design-storm postures through the calibrated engine: per-basin regre
            "Corrected from the old synthetic path that over-predicted ~2\u00d7.")
 
 c1, c2 = st.columns(2)
-storm = c1.selectbox("Design storm (24-hr SCS Type II)", list(tm.DESIGN_DEPTH_IN.keys()), index=1)
+depth = c1.slider("Rainfall (in, 24-hr SCS Type II)", 0.5, 15.0, 4.80, 0.05,
+                  help="4.80 in reproduces the 10-yr StreamStats anchor that every "
+                       "basin's calibration was fitted through; 7.50 in the 100-yr.")
 ante_label = c2.radio("Antecedent soil moisture", list(ANTE.keys()), index=1, horizontal=True)
-depth = tm.DESIGN_DEPTH_IN[storm]
 p5 = ANTE[ante_label]
 
-arc, res = tm.run_case(depth, p5)
-arc_tag = {1: "ARC-I (dry)", 2: "ARC-II (normal)", 3: "ARC-III (wet)"}[arc]
+wet, wet_src = resolve_wetness(p5_in=p5)
+
+# Chain per basin: cwm_model for the physics, flood_rating.assess for the operative call.
+# fr_assess takes the RAW unit-hydrograph peak and applies its own calibration, so qp_raw
+# is what gets handed over - passing calib_q would apply the per-basin power law twice.
+res = {}
+for _bid in routed_order():
+    _m = cwm.assess(_bid, depth, wet)
+    _a = fr_assess(_m["qp_raw"], _bid)
+    res[_bid] = {"Q": _m["runoff_in"], "qp": _m["qp_raw"], "calib_q": _a["calib_q"],
+                 "stage": _m["stage"], "posture": _a["posture"],
+                 "CN": _m["CN"], "rp": _a.get("rp_best")}
 
 # --- campus headline ------------------------------------------------------
 cw = res["CC-WCU-2260"]
@@ -57,7 +91,8 @@ m1.metric("WCU campus posture", cw["posture"], help="Receptor-validated 7/9/11 l
 m2.metric("Campus stage", "n/a" if cw["stage"] is None else f"{cw['stage']:.1f} ft")
 m3.metric("Calibrated peak", f"{round(cw['calib_q']):,} cfs",
           help=f"raw model {round(cw['qp']):,} cfs (~2\u00d7 before correction)")
-st.caption(f"{storm} storm \u00b7 {depth}\" / 24 hr \u00b7 {arc_tag}")
+st.caption(f"{depth:.2f}\" / 24 hr \u00b7 wetness {wet:.2f} ({wet_src}) \u00b7 "
+           f"CN {cw['CN']:.1f} at the campus \u00b7 posture from flood_rating.assess()")
 
 # --- table (HTML, None-safe, colored postures) ----------------------------
 header = ("<tr style='text-align:left;border-bottom:2px solid #CBD3DA;color:#5B6B7A;"
@@ -121,7 +156,8 @@ st.warning(
 
 with st.expander("What this is"):
     st.markdown(
-        "- Runs `test_model.run_case(storm, antecedent)` through `basins.py` + `flood_rating.py`.\n"
+        "- Runs `cwm_model.assess(basin, rain, wetness)` for the physics, then "
+        "`flood_rating.assess()` for the operative posture.\n"
         "- **Model Q \u2192 Calib Q** is the per-basin regression bias correction (~1.9\u20132.8\u00d7), "
         "each basin its own factor.\n"
         "- Stage comes from the TVA rating (campus) or the in-bank rectangle (tributaries); "

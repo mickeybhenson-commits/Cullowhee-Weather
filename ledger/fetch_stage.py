@@ -96,6 +96,50 @@ def measured():
         return None
 
 
+# --- antecedent wetness ------------------------------------------------------
+# DELIBERATE DUPLICATE of wetness.api_from_daily / wetness.wetness_from_api.
+#
+# Why not just import them: this collector's one job is to never miss a sample —
+# the correct-negative denominator only exists if collection is continuous — and
+# an import of a repo-root module that fails on a runner costs a row. mrms_live is
+# imported lazily for exactly that reason and degrades to an empty column; wetness
+# cannot degrade, because without it there is no model row at all.
+#
+# So the copy stays, and the RISK OF THE COPY is handled where risk of a copy
+# always has to be handled in this repo: with a test that fails when the two
+# drift. See test_registry_engine_consistency.test_ledger_wetness_matches_wetness_py.
+# Four weeks of an unshippable 1.5-yr WATCH and eight days of stale LiDAR ladders
+# were both a second copy that nothing compared.
+#
+# Verified 2026-08-13: identical to wetness.py to 0.0 across 12 months x API 0-12 in.
+API_K = 0.90
+API_DAYS = 30
+API_5DAY_EQUIV = (1 - API_K ** API_DAYS) / (1 - API_K) / 5.0
+
+
+def api_from_daily(daily_in):
+    """Decayed antecedent precipitation index over a daily rainfall series."""
+    api = 0.0
+    for v in daily_in:
+        api = API_K * api + (v or 0.0)
+    return api
+
+
+def wetness_from_api(api_in, month):
+    """API -> wetness index in [0,1]. NRCS 5-day breakpoints (1.4/2.1 growing,
+    0.5/1.1 dormant) rescaled by API_5DAY_EQUIV, linear between and below."""
+    grow = 4 <= month <= 10
+    lo = (1.4 if grow else 0.5) * API_5DAY_EQUIV
+    hi = (2.1 if grow else 1.1) * API_5DAY_EQUIV
+    if api_in <= 0:
+        return 0.0
+    if api_in < lo:
+        return 0.5 * api_in / lo
+    if api_in <= hi:
+        return 0.5 + 0.5 * (api_in - lo) / (hi - lo)
+    return 1.0
+
+
 def forcing():
     """(hourly_in_from_now, wetness, issued_utc) for the Speedwell point.
 
@@ -119,21 +163,8 @@ def forcing():
     pr = j["daily"]["precipitation_sum"]
     ti = days.index(today) if today in days else max(len(days) - 3, 0)
 
-    # 30-day decayed antecedent index -> wetness, mirroring wetness.py
-    api_in = 0.0
-    for v in pr[max(0, ti - 30):ti]:
-        api_in = 0.90 * api_in + (v or 0.0)
-    equiv = (1 - 0.90 ** 30) / (1 - 0.90) / 5.0
-    grow = 4 <= now.month <= 10
-    lo, hi = (1.4 if grow else 0.5) * equiv, (2.1 if grow else 1.1) * equiv
-    if api_in <= 0:
-        w = 0.0
-    elif api_in < lo:
-        w = 0.5 * api_in / lo
-    elif api_in <= hi:
-        w = 0.5 + 0.5 * (api_in - lo) / (hi - lo)
-    else:
-        w = 1.0
+    api_in = api_from_daily(pr[max(0, ti - API_DAYS):ti])
+    w = wetness_from_api(api_in, now.month)
 
     # hourly rain from the current hour forward
     ht = j["hourly"]["time"]

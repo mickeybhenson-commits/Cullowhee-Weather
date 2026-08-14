@@ -82,6 +82,7 @@ Exit 0 = every module is reachable or declared. Exit 1 = something is orphaned.
 import ast
 import os
 import re
+import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PKG_DIRS = ["", "ledger"]
@@ -126,6 +127,26 @@ TOOLS = {
     "fetch_helene_forcing", "merge_subbasins", "bfe_to_thresholds",
     "cucn7_backfill", "noah_feed_check", "streamlit_app",
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
+}
+
+
+# Every non-stdlib package this repo imports from outside itself. This is a MANIFEST,
+# not a convenience: anything imported that is neither stdlib, nor a module in this repo,
+# nor named here is presumed to be a repo module THAT HAS GONE MISSING, and the test says
+# so. Adding a real dependency costs one line, which is the point — a new external
+# dependency should be a visible decision, not a silent one.
+#
+# It is deliberately wider than requirements.txt. requirements.txt is what the Streamlit
+# app needs to boot; the geospatial and GRIB names below belong to batch and analysis
+# tools that are expected to be absent on a bare runner and guard their own imports.
+THIRD_PARTY = {
+    # requirements.txt (the console)
+    "streamlit", "streamlit_autorefresh", "streamlit_folium", "folium",
+    "requests", "pandas", "numpy", "plotly", "pydeck",
+    "google",                       # google-cloud-firestore
+    # batch / analysis tools, optional by design
+    "geopandas", "rasterio", "shapely", "shapefile", "pyproj", "scipy", "xarray",
+    "eccodes", "pystac_client", "planetary_computer",
 }
 
 
@@ -271,6 +292,52 @@ def _test_only_reachable():
 
 
 # --------------------------------------------------------------------------- #
+def test_every_import_resolves():
+    """Does every import name actually exist — as stdlib, as a repo module, or as a
+    declared dependency?
+
+    WHY: `pages/1_Test_Model.py` imported `test_model`, which moved to the private
+    Cullowhee-Engine repo in 9c720eb. wetness.py, outlook_engine.py and live_rainfall.py
+    were all re-sourced onto cwm_model when that happened; the Streamlit page was missed,
+    and it raised ModuleNotFoundError the moment anyone opened it. Found 2026-08-13.
+
+    This file already asserted that a WORKFLOW naming a script gets a script that exists.
+    It never asserted the same of an IMPORT, which is the same defect through the other
+    door — and the reachability walk hid it, because an import that resolves to nothing
+    contributes no edge and so looks exactly like an import of a third-party package.
+
+    Scans pages/ as well as the governed modules: a page is an entry point, and a broken
+    entry point is a broken console tab.
+    """
+    mods = _modules()
+    by_short = _by_short(mods)
+    known = set(sys.stdlib_module_names) | THIRD_PARTY | {"__future__"}
+    missing = {}
+    dirs = [d for d in PKG_DIRS] + ["pages"]
+    for d in dirs:
+        root = os.path.join(HERE, d) if d else HERE
+        if not os.path.isdir(root):
+            continue
+        for fn in sorted(os.listdir(root)):
+            if not fn.endswith(".py"):
+                continue
+            path = os.path.join(root, fn)
+            rel = os.path.join(d, fn) if d else fn
+            for imp in _imports(path):
+                head = imp.split(".")[0]
+                if head in known or _resolve(imp, mods, by_short) or head in by_short:
+                    continue
+                missing.setdefault(imp, []).append(rel)
+    assert not missing, (
+        "these imports resolve to nothing — not stdlib, not a module in this repo, not a "
+        "declared dependency:\n  "
+        + "\n  ".join(f"{m}   imported by {', '.join(sorted(set(w)))}"
+                      for m, w in sorted(missing.items()))
+        + "\n\nEither the module left the repo and its importer was not re-sourced (this "
+          "is what happened to test_model), or it is a new external dependency that "
+          "belongs in THIRD_PARTY above and in the relevant requirements file.")
+
+
 def test_workflow_entrypoints_exist():
     """A workflow naming a script that is not there fails only when it next runs."""
     missing = [s for s in sorted(_workflow_entrypoints())

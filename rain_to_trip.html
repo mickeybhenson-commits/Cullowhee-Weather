@@ -163,13 +163,13 @@
 /* qb = baseflow discharge (cfs, MODELED 2.0 cfs/mi^2 - wetness.py); floor =
    observed clear-day stage (ft, rating extrapolation floor; campus only). */
 const BASINS = {
- "CC-UP-503":    {DA:5.35, Tc:40,  CN2:63, calib:[1.449,0.815], rating:"rectangular", sec:{w:29.7,n:0.045,s:0.0888}, thr:[1.78,2.67,3.56], qb:10.1},
- "CC-MS-1100":   {DA:11.03,Tc:63,  CN2:63, calib:[2.777,0.760], rating:"rectangular", sec:{w:45.7,n:0.045,s:0.0446}, thr:[2.32,3.48,4.64], qb:22.0},
- "CC-TIL-705":   {DA:7.05, Tc:62,  CN2:63, calib:[2.241,0.784], rating:"rectangular", sec:{w:38.4,n:0.050,s:0.0547}, thr:[2.02,3.03,4.04], qb:14.1},
- "CC-SPD-1830":  {DA:18.3, Tc:62,  CN2:63, calib:[3.404,0.739], rating:"rectangular", sec:{w:55.7,n:0.045,s:0.0425}, thr:[2.71,4.07,5.42], qb:36.6},
- "CC-COX-097":   {DA:0.97, Tc:29,  CN2:66, calib:[0.600,0.940], rating:"rectangular", sec:{w:15.0,n:0.045,s:0.1000}, thr:[1.11,1.67,2.22], qb:1.9},
- "CC-LB-171":    {DA:1.71, Tc:36,  CN2:65, calib:[0.677,0.921], rating:"rectangular", sec:{w:19.0,n:0.045,s:0.0753}, thr:[1.31,1.97,2.62], qb:3.4},
- "CC-WCU-2260":  {DA:22.6, Tc:127, CN2:64, calib:[4.222,0.744], rating:"tva", tva_wse:[[2580,2079.2],[5155,2081.5],[7305,2082.9]], bed:2070.5, thr:[7.0,9.0,11.0], qb:45.2, floor:4.0},
+ "CC-UP-503":    {DA:5.03, Tc:40,  CN2:63, calib:[1.524,0.815], rating:"rectangular", sec:{w:29.7,n:0.045,s:0.0888}, thr:[1.78,2.67,3.56], qb:10.1},
+ "CC-MS-1100":   {DA:11.03,Tc:63,  CN2:63, calib:[2.777,0.760], rating:"rectangular", sec:{w:45.7,n:0.045,s:0.0446}, thr:[1.65,2.79,4.82], qb:22.0},
+ "CC-TIL-705":   {DA:7.05, Tc:62,  CN2:63, calib:[2.241,0.784], rating:"rectangular", sec:{w:38.4,n:0.050,s:0.0547}, thr:[1.77,2.41,4.58], qb:14.1},
+ "CC-SPD-1830":  {DA:18.3, Tc:62,  CN2:63, calib:[3.404,0.739], rating:"rectangular", sec:{w:55.7,n:0.045,s:0.0425}, thr:[1.47,2.75,4.71], qb:36.6},
+ "CC-COX-097":   {DA:0.97, Tc:29,  CN2:66, calib:[0.600,0.940], rating:"rectangular", sec:{w:15.0,n:0.045,s:0.1000}, thr:[1.67,2,2.54], qb:1.9},
+ "CC-LB-171":    {DA:1.71, Tc:36,  CN2:65, calib:[0.677,0.921], rating:"rectangular", sec:{w:19.0,n:0.045,s:0.0753}, thr:[1.65,2.73,3.24], qb:3.4},
+ "CC-WCU-2260":  {DA:22.6, Tc:127, CN2:64, calib:[4.222,0.744], rating:"tva", tva_wse:[[2580,2079.2],[5155,2081.5],[7305,2082.9]], bed:2070.5, thr:[7,9,11], qb:45.2, floor:4.0},
  "CC-MOUTH-2340":{DA:23.4, Tc:147, CN2:64, calib:[4.610,0.742], rating:"none", thr:null, qb:null},
 };
 
@@ -200,15 +200,21 @@ function rpFromQ(q,bid){ const rq=REGQ[bid]; if(!rq)return null;
   for(let i=0;i<pts.length-1;i++){ const q0=pts[i][0],r0=pts[i][1],q1=pts[i+1][0],r1=pts[i+1][1];
     if(q>=q0&&q<=q1){ const f=(Math.log(q)-Math.log(q0))/(Math.log(q1)-Math.log(q0)); return r0+f*(r1-r0); } }
   return null; }
-function catFromRP(T){ if(T==null)return "N/A"; if(T>=100)return "EMERGENCY"; if(T>=10)return "WARNING"; if(T>=2)return "WATCH"; return "NORMAL"; }
-function freqPosture(cq,bid){ return catFromRP(rpFromQ(cq,bid)); }
+// Flashiest lead-limited reaches drop WATCH to 1.5-yr (approved 2026-07-15,
+// shipped to flood_rating/cwm_model/live.html 2026-08-13). This page is a FOURTH
+// copy of the engine and was still on the flat 2-yr cutoff, so it under-stated how
+// little rain trips a WATCH on the two basins with the least lead time in the
+// watershed. Kept equal to the others by test_posture_rule_consistency.py.
+const WATCH_1_5YR = ["CC-COX-097","CC-LB-171"];
+function catFromRP(T,bid){ if(T==null)return "N/A"; if(T>=100)return "EMERGENCY"; if(T>=10)return "WARNING"; if(T>=(WATCH_1_5YR.indexOf(bid)>=0?1.5:2))return "WATCH"; return "NORMAL"; }
+function freqPosture(cq,bid){ return catFromRP(rpFromQ(cq,bid),bid); }
 function freqInfo(cq,bid){ const rq=REGQ[bid],pi=REGPI[bid]; if(!rq||!pi)return null;
   const best=rpFromQ(cq,bid), T=best==null?10:best;
   const rlo10=pi[10][0]/rq[10],rhi10=pi[10][1]/rq[10],rlo01=pi[100][0]/rq[100],rhi01=pi[100][1]/rq[100];
   function sc(w){ if(T<=10)return w=="lo"?rlo10:rhi10;
     const f=Math.min(Math.max((Math.log(Math.max(T,10))-Math.log(10))/(Math.log(100)-Math.log(10)),0),1);
     const a=w=="lo"?rlo10:rhi10,c=w=="lo"?rlo01:rhi01; return a+f*(c-a); }
-  return {rp:best, cat:catFromRP(best), catLo:catFromRP(rpFromQ(cq/sc("hi"),bid)), catHi:catFromRP(rpFromQ(cq/sc("lo"),bid))}; }
+  return {rp:best, cat:catFromRP(best,bid), catLo:catFromRP(rpFromQ(cq/sc("hi"),bid),bid), catHi:catFromRP(rpFromQ(cq/sc("lo"),bid),bid)}; }
 const TYPE2=[0.000,0.011,0.022,0.035,0.048,0.064,0.080,0.098,0.120,0.147,0.181,0.235,
              0.663,0.772,0.820,0.854,0.880,0.902,0.921,0.938,0.953,0.967,0.984,1.000];
 function arcClass(p5,growing=true){

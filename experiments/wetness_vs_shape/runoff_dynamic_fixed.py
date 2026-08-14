@@ -1,6 +1,16 @@
 """
-runoff_dynamic_fixed.py — mass-consistent replacement for
-engine.py's incremental_runoff_dynamic.
+runoff_dynamic_fixed.py — the derivation record for engine.py's
+incremental_runoff_dynamic.
+
+APPLIED 2026-08-13. This file no longer carries its own implementation: engine.py
+now contains this form, and two copies of a numerical method is the failure mode
+this repo has spent a month removing. What survives here is WHY, which is worth
+keeping and is not worth duplicating.
+
+Re-verified against engine.py on 2026-08-13 before folding it in: the peak is
+monotone in beta across [0, 6] (the old form fell from 2,261 cfs at beta 2.00 to
+2,174 and plateaued), and beta = 0 matches incremental_runoff_static to 0.17% at
+the default sub=20 — the 0.04% quoted below is the sub=100 figure.
 
 THE BUG IN THE CURRENT VERSION
 ------------------------------
@@ -49,45 +59,6 @@ that depth permanently. That is correct SCS behaviour, not another bug — see
 noah_helene_ridge_is_frozen_wetness_2026-08-12.md.
 """
 
-def incremental_runoff_dynamic(hyeto, cn0, cn_sat, beta=1.0, drain_in_hr=0.0,
-                               dt_hr=0.25, sub=20):
-    """Within-event wetness accounting, mass-consistent.
-
-    hyeto   : per-interval rainfall, inches
-    cn0     : curve number at the storm's initial wetness
-    cn_sat  : ARC-III curve number (the saturation floor)
-    beta    : inches of retention storage consumed per inch infiltrated
-              beta = 0 -> the deployed static engine
-    sub     : sub-steps per interval; controls discretisation error only
-
-    Returns (incremental_runoff, S_trace) — same signature as the original.
-    """
-    from engine import s_from_cn                      # or inline the identity
-
-    S0 = s_from_cn(cn0)
-    S_min = s_from_cn(cn_sat)
-    S = S0
-    Ia = 0.2 * S0
-    P = 0.0
-    Pe = 0.0
-    Q = 0.0
-    out, strace = [], []
-    for p in hyeto:
-        q0 = Q
-        for _ in range(sub):
-            dp = p / sub
-            P += dp
-            newPe = max(0.0, P - Ia)
-            dPe = newPe - Pe
-            Pe = newPe
-            if dPe <= 0.0:
-                continue
-            frac = 1.0 - (S / (Pe + S)) ** 2 if (Pe + S) > 0 else 1.0
-            dQ = dPe * frac
-            dF = dPe - dQ
-            Q += dQ
-            S = min(S0, max(S_min, S - beta * dF + drain_in_hr * dt_hr / sub))
-        out.append(Q - q0)
-        strace.append(S)
-    return out, strace
-
+# The implementation lives in engine.py. Imported here so that anything already
+# depending on this module keeps working, and so there is exactly one copy.
+from engine import incremental_runoff_dynamic  # noqa: F401,E402

@@ -113,39 +113,76 @@ def incremental_runoff_static(hyeto, cn):
         out.append(Q - qprev); qprev = Q
     return out
 
-def incremental_runoff_dynamic(hyeto, cn0, cn_sat, beta=1.0, drain_in_hr=0.0, dt_hr=0.25):
-    """Within-event wetness accounting.
+def incremental_runoff_dynamic(hyeto, cn0, cn_sat, beta=1.0, drain_in_hr=0.0,
+                               dt_hr=0.25, sub=20):
+    """Within-event wetness accounting, mass-consistent.
 
-    State is S, the potential maximum retention (inches). Every inch of water
-    that infiltrates consumes beta inches of remaining storage; storage recovers
-    at drain_in_hr between bursts. S is floored at the basin's ARC-III storage,
-    i.e. the soil cannot get wetter than saturated.
+    State is S, the potential maximum retention (inches). Every inch that
+    infiltrates consumes beta inches of remaining storage; storage recovers at
+    drain_in_hr between bursts, and is floored at the basin's ARC-III storage --
+    the soil cannot get wetter than saturated.
 
-    beta = 0 reproduces incremental_runoff_static EXACTLY (verified in tests).
-    Ia is fixed at 0.2*S0 -- initial abstraction is a storm-onset quantity.
+    2026-08-13: replaced with the form derived in runoff_dynamic_fixed.py on
+    2026-08-12. The previous version re-evaluated the CUMULATIVE SCS closed form
+    F = S*Pe/(Pe+S) using the CURRENT S at every step. F increases with S, so
+    shrinking S retroactively restated infiltration that had already happened at
+    a drier soil state -- and with it, runoff that had already been routed through
+    the unit hydrograph. Three symptoms, all reproduced before this change:
+
+      * dF went negative and was silenced by a max(0, .) clamp
+      * cumulative runoff jumped when S dropped, injecting a spurious increment
+      * THE PEAK WAS NON-MONOTONE IN BETA. On the Helene case at w0 = 0.53 it rose
+        to a false maximum of 2,261 cfs at beta = 2.00, then fell to 2,174 and
+        plateaued. Bisecting on beta against that response returns values that do
+        not reproduce their target -- which happened, and the (w0, beta) "roots"
+        it produced were published before being caught.
+
+    THE FIX: integrate the SCS derivative instead of re-evaluating its integral.
+
+        dQ/dPe = 1 - (S/(Pe+S))^2       dF = dPe - dQ       S <- S - beta*dF
+
+    Runoff already banked is never revised, dF cannot be negative so no clamp is
+    needed, and mass is conserved by construction: dQ + dF == dPe exactly.
+
+    beta = 0 reproduces incremental_runoff_static to discretisation error only:
+    on the Helene case, 0.17% at the default sub=20, 0.03% at sub=100, 0.002% at
+    sub=2000. runoff_dynamic_fixed.py quotes 0.04% for this check, which is the
+    sub=100 figure rather than the default -- measured and corrected 2026-08-13.
+    Ia is fixed at 0.2*S0 -- initial abstraction is a storm-onset quantity, so a
+    storm starting on drier soil forfeits that depth permanently. That is correct
+    SCS behaviour and is why within-event wetting cannot beat the static saturated
+    bound; see noah_helene_ridge_is_frozen_wetness_2026-08-12.md.
+
+    sub controls discretisation only. Returns (incremental_runoff, S_trace).
     """
     S0 = s_from_cn(cn0)
     S_min = s_from_cn(cn_sat)
     S = S0
     Ia = 0.2 * S0
-    P = 0.0; qprev = 0.0; fprev = 0.0; out = []; strace = []
+    P = 0.0
+    Pe = 0.0
+    Q = 0.0
+    out, strace = [], []
     for p in hyeto:
-        P += p
-        Pe = max(0.0, P - Ia)
-        if Pe > 0:
-            F = S * Pe / (Pe + S)
-            Q = Pe - F
-        else:
-            F = 0.0; Q = 0.0
-        Q = max(Q, qprev)
-        out.append(Q - qprev); qprev = Q
-        dF = max(0.0, F - fprev); fprev = F
-        S = min(S0, max(S_min, S - beta*dF + drain_in_hr*dt_hr))
+        q0 = Q
+        for _ in range(sub):
+            dp = p / sub
+            P += dp
+            newPe = max(0.0, P - Ia)
+            dPe = newPe - Pe
+            Pe = newPe
+            if dPe <= 0.0:
+                continue
+            frac = 1.0 - (S / (Pe + S)) ** 2 if (Pe + S) > 0 else 1.0
+            dQ = dPe * frac
+            dF = dPe - dQ
+            Q += dQ
+            S = min(S0, max(S_min, S - beta * dF + drain_in_hr * dt_hr / sub))
+        out.append(Q - q0)
         strace.append(S)
     return out, strace
 
 
-# ---- 5. unit hydrograph + convolution ----------------------------------------
 def unit_hydrograph(DA, Tc_hr, PRF=484.0, dt_hr=0.25):
     Tp = 0.6*Tc_hr + dt_hr/2.0
     Tb = 2.67*Tp

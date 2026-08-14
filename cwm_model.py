@@ -240,6 +240,24 @@ def stage_total(cq, bid):
     return None if t is None else max(t, b.get("floor",0.0))
 
 def assess(bid, qpf, wetness):
+    """Design-storm front end (SCS Type II 24-h). Twin of assess_event(), which
+    takes a real hyetograph.
+
+    `posture` is the DEPLOYED posture — frequency for the seven non-campus reaches,
+    validated stage for the campus — via _posture_as_deployed. Until 2026-08-13 this
+    key carried posture(stage, bid), the STAGE-LADDER answer, for every basin. That
+    is the wrong call on seven of eight reaches: flood_rating says of the stage
+    ladder that for non-campus reaches it "rides the placeholder out-of-bank stage
+    and is retained as a CROSS-CHECK, not the call (see section 2)."
+
+    Nothing in the repo read the old field (backtest_helene, flood_ensemble and
+    test_improvements all take qp_raw or calib_q and re-classify through
+    flood_rating), so this corrects a trap rather than a live defect — but the trap
+    was real enough to catch a careful reader inside five minutes, because the
+    obvious key name gave the non-obvious answer.
+
+    The stage ladder is still returned, under the name that says what it is.
+    """
     b=BASINS[bid]; CN=cn_from_wetness(b["CN2"], wetness)
     hyeto=storm_hyetograph(qpf)
     incr, runoff_in, _ = incremental_runoff(hyeto, CN)
@@ -249,7 +267,8 @@ def assess(bid, qpf, wetness):
     return dict(bid=bid, CN=round(CN,1), qpf=qpf, wet=wetness,
                 runoff_in=round(runoff_in,2), runoff_ratio=round(runoff_in/qpf,2) if qpf else None,
                 qp_raw=round(qp), calib_q=round(cq), stage=round(stage,1) if stage is not None else None,
-                posture=posture(stage,bid))
+                posture=_posture_as_deployed(cq, stage, bid),
+                stage_posture=posture(stage, bid))
 
 def reg_return_period(q, bid):
     """Where does discharge q fall on the regression flood-frequency curve? (interpolated years)"""

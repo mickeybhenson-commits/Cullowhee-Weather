@@ -68,6 +68,11 @@ OUTCOME_OK = {"flood", "no_flood", "unknown", ""}
 # mark a correct warning as a false alarm.
 DEFAULT_WINDOW_MIN = 180
 
+# Cadence the collector is CONFIGURED for, from .github/workflows/ledger-stage.yml
+# (cron "*/30 * * * *"). This is the declared value, never an observed one — the
+# whole point of the sampling report below is that the two differ.
+NOMINAL_CADENCE_MIN = 30
+
 # Basins with a measured source today. Everything else cannot be verified at all.
 # Keep this in step with reality — an entry here that has no live feed is worse than
 # no entry, because it makes an unverifiable basin look verifiable.
@@ -136,6 +141,78 @@ def _fmt(v):
 
 
 # --------------------------------------------------------------------------- #
+def sampling(rows):
+    """How often did the collector ACTUALLY look?
+
+    WHY THIS IS NOT A DETAIL
+    ------------------------
+    Every correct negative in this ledger is one run where something looked and saw
+    nothing. So the correct-negative count is proportional to HOW OFTEN THE COLLECTOR
+    FIRED — and FAR and CSI both move with it, in the flattering direction, with no
+    change whatsoever in the warning system.
+
+    The module docstring already names that trap for unverified rows. This measures
+    the other half of it: a cadence that silently drifts is a denominator that
+    silently drifts. `--status` printing "span 19.9 h" invites a reader to assume
+    19.9 hours were observed. If the collector fired 18 times in those hours against
+    a 30-minute schedule, roughly half that span was never looked at.
+
+    GitHub Actions documents that scheduled runs are delayed or dropped under load,
+    so this is expected behaviour of the platform, not a bug to be fixed in code.
+    What is fixable is reporting it instead of assuming it away.
+    """
+    ts = sorted({t for t in (_t(r.get("issued_utc")) for r in rows
+                             if r.get("kind") == "model") if t})
+    if len(ts) < 2:
+        return {"n": len(ts), "gaps": [], "span_h": 0.0}
+    gaps = [(b - a).total_seconds() / 60.0 for a, b in zip(ts, ts[1:])]
+    gaps_sorted = sorted(gaps)
+    span_min = (ts[-1] - ts[0]).total_seconds() / 60.0
+    expected = span_min / NOMINAL_CADENCE_MIN + 1
+    # A sample "covers" one nominal cadence window. Anything beyond that, nobody saw.
+    unobserved = max(0.0, span_min - len(ts) * NOMINAL_CADENCE_MIN)
+    return {
+        "n": len(ts), "first": ts[0], "last": ts[-1], "span_h": span_min / 60.0,
+        "gaps": gaps,
+        "median_gap": gaps_sorted[len(gaps_sorted) // 2],
+        "max_gap": max(gaps),
+        "missed": sum(1 for g in gaps if g > 1.5 * NOMINAL_CADENCE_MIN),
+        "expected": expected,
+        "delivery": len(ts) / expected if expected else 0.0,
+        "unobserved_h": unobserved / 60.0,
+        "unobserved_frac": unobserved / span_min if span_min else 0.0,
+    }
+
+
+def print_sampling(rows):
+    """Printed BEFORE any score, per the contract in the module docstring."""
+    s = sampling(rows)
+    print("=" * 78)
+    print("SAMPLING CONTINUITY  — how often the collector actually looked")
+    print("=" * 78)
+    if s["n"] < 2:
+        print(f"  {s['n']} sample(s). Nothing to say about cadence yet.")
+        return s
+    print(f"  samples         : {s['n']} over {s['span_h']:.1f} h "
+          f"({s['first']:%Y-%m-%d %H:%M}Z .. {s['last']:%Y-%m-%d %H:%M}Z)")
+    print(f"  configured every: {NOMINAL_CADENCE_MIN} min  "
+          f"-> {s['expected']:.0f} expected")
+    print(f"  delivered       : {100*s['delivery']:.0f}% of scheduled fires")
+    print(f"  gap  median     : {s['median_gap']:.0f} min")
+    print(f"  gap  worst      : {s['max_gap']:.0f} min")
+    print(f"  gaps > {1.5*NOMINAL_CADENCE_MIN:.0f} min    : {s['missed']} of {len(s['gaps'])}")
+    print(f"  never looked at : {s['unobserved_h']:.1f} h "
+          f"({100*s['unobserved_frac']:.0f}% of the span)")
+    if s["delivery"] < 0.9:
+        print()
+        print("  READ THE SPAN WITH CARE. The span above is NOT the observed period.")
+        print("  Correct negatives are counted per run, so a cadence this far below")
+        print("  its schedule shrinks the denominator — and FAR and CSI both improve")
+        print("  when it does, with no change in the warning system. Compare skill")
+        print("  scores across periods only when this line is comparable too.")
+    return s
+
+
 def cmd_status(rows):
     basins = sorted({r["basin_id"] for r in rows if r.get("basin_id")})
     model = [r for r in rows if r.get("kind") == "model"]
@@ -172,6 +249,9 @@ def cmd_status(rows):
         print("\n  For the rest, POD / FAR / CSI are UNDEFINED — not low, not pending.")
         print("  Logging more rows does not change this. Sensors do.")
 
+    print()
+    print_sampling(rows)
+
     unv = sum(1 for r in model if (r.get("outcome") or "").strip() in ("", "unknown"))
     print("\n" + "=" * 78)
     print("OUTCOME COVERAGE")
@@ -187,6 +267,9 @@ def cmd_status(rows):
 
 def cmd_score(rows, min_sample):
     model = [r for r in rows if r.get("kind") == "model"]
+    # Coverage before scores. A number without its denominator is not evidence.
+    print_sampling(rows)
+    print()
     print("=" * 78)
     print("SKILL SCORES")
     print("=" * 78)
@@ -335,6 +418,40 @@ def selftest():
         contingency([R("EMERGENCY", "flood")], "WATCH")["hit"] == 1)
     chk("WATCH does not count as WARNING-or-above",
         contingency([R("WATCH", "flood")], "WARNING")["miss"] == 1)
+
+    print("\nsampling continuity")
+    def _series(minutes):
+        base = dt.datetime(2026, 8, 12, 0, 0, tzinfo=dt.timezone.utc)
+        return [{"kind": "model", "basin_id": "CC-SPD-1830", "level": "NORMAL",
+                 "outcome": "", "issued_utc": (base + dt.timedelta(minutes=m)
+                                               ).strftime("%Y-%m-%dT%H:%M:%SZ")}
+                for m in minutes]
+
+    on_time = sampling(_series(range(0, 60 * 12, NOMINAL_CADENCE_MIN)))
+    chk("a perfectly on-schedule series reports ~100% delivery",
+        0.95 <= on_time["delivery"] <= 1.05, f"{100*on_time['delivery']:.0f}%")
+    chk("...and no unobserved time",
+        on_time["unobserved_frac"] < 0.02, f"{100*on_time['unobserved_frac']:.1f}%")
+    chk("...and flags no missed fires", on_time["missed"] == 0)
+
+    half = sampling(_series(range(0, 60 * 12, NOMINAL_CADENCE_MIN * 2)))
+    chk("a half-rate series reports ~50% delivery",
+        0.45 <= half["delivery"] <= 0.60, f"{100*half['delivery']:.0f}%")
+    chk("...and flags every interval as a missed fire",
+        half["missed"] == len(half["gaps"]), f"{half['missed']}/{len(half['gaps'])}")
+    chk("...and reports ~half the span never looked at",
+        0.40 <= half["unobserved_frac"] <= 0.55, f"{100*half['unobserved_frac']:.0f}%")
+
+    # The one that matters: a long outage must not hide inside a clean median.
+    ragged = sampling(_series([0, 30, 60, 90, 570, 600, 630, 660]))
+    chk("a single long outage is visible in the worst gap even when the median is clean",
+        ragged["median_gap"] <= NOMINAL_CADENCE_MIN and ragged["max_gap"] > 400,
+        f"median {ragged['median_gap']:.0f} min, worst {ragged['max_gap']:.0f} min")
+    chk("...and that outage is counted as unobserved time",
+        ragged["unobserved_h"] > 4.0, f"{ragged['unobserved_h']:.1f} h")
+
+    chk("cadence comes from the declared schedule, never inferred from the data",
+        NOMINAL_CADENCE_MIN == 30)
 
     print("\nproposal safety")
     chk("only basins with a real source are proposable",

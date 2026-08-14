@@ -1,0 +1,43 @@
+# Line-ending policy. Added 2026-08-13.
+#
+# WHY THIS EXISTS
+# ---------------
+# core.autocrlf was `false` here with no attributes file, so git stored whatever
+# bytes happened to be on disk. The repo drifted to 37 files with LF and 20 with
+# CRLF, and any editor or tool that normalised a file silently rewrote every line
+# of it — burying the real change inside a whole-file diff.
+#
+# That happened to confluence_status.py in d8bcbd1: 7 lines actually changed,
+# 434 lines shown. `git blame` on that file now points at that commit for every
+# line instead of at whoever wrote them.
+#
+# In this repo an unreadable diff is a safety problem, not a style problem. The
+# 1.5-yr WATCH sat unshipped for four weeks, the surveyed ladders for eight days,
+# and CC-UP-503's calibration for a day — every one of them a divergence that was
+# sitting in plain sight and that nobody could see. Whole-file churn is one more
+# way for the next one to hide.
+#
+# LF because CI runs on ubuntu-latest and live.html is served as a web asset.
+# Windows checkouts get LF too; VS Code, PyCharm and modern Notepad handle it.
+
+* text=auto
+
+*.py       text eol=lf
+*.html     text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.csv      text eol=lf
+*.json     text eol=lf
+*.geojson  text eol=lf
+*.md       text eol=lf
+*.sql      text eol=lf
+*.txt      text eol=lf
+*.css      text eol=lf
+
+# Binary — git must never rewrite a byte of these.
+*.png      binary
+*.jpg      binary
+*.pdf      binary
+*.db       binary
+*.tif      binary
+*.zip      binary

@@ -287,6 +287,18 @@ def cmd_score(rows, min_sample):
         if n == 0:
             print("    -> nothing verified at this level. No score exists. This is not")
             print("       a score of zero; it is the absence of one.")
+        elif c["hit"] + c["miss"] + c["false"] == 0:
+            # The quiet-record trap. n is large, every row is verified, and every
+            # single one is a correct negative — so all three scores are undefined
+            # and STAY undefined however many more quiet rows arrive. Without this
+            # branch the output is three n/a's beside a healthy-looking "verified
+            # 35 / 296", and n >= min_sample so even the small-sample warning is
+            # silent. A reader could easily take that for progress toward a score.
+            print(f"    -> {c['correct_neg']} verified rows and NOTHING HAPPENED in any")
+            print("       of them. POD, FAR and CSI need an event; with no hits, misses")
+            print("       or false alarms there is no ratio to form. This does not")
+            print("       improve by logging longer — only by a flood, or by a warning")
+            print("       that turns out to be wrong. Quiet is not skill.")
         elif n < min_sample:
             print(f"    -> SAMPLE TOO SMALL (n={n} < {min_sample}). These numbers will")
             print("       move a lot on the next event. Do not quote them.")
@@ -370,6 +382,15 @@ def cmd_propose(rows, path_out, window_min):
                 == (RANK.get(p["predicted_level"], 0) >= RANK["WATCH"]))
     print(f"\n  {len(props)} proposal(s) -> {path_out}")
     print(f"  prediction and observation agree on {agree}/{len(props)}")
+    events = sum(1 for p in props
+                 if p.get("proposed_outcome") == "flood"
+                 or RANK.get(p.get("predicted_level", "NORMAL"), 0) > 0)
+    if props and events == 0:
+        print("  ...but all of them are QUIET periods: nothing was predicted above")
+        print("  NORMAL and nothing happened. Accepting all of them raises outcome")
+        print("  coverage without producing a single POD, FAR or CSI, because every")
+        print("  one becomes a correct negative. Worth accepting — the denominator is")
+        print("  real — but it is not progress toward a skill score.")
     print("\n  THIS FILE IS NOT THE LEDGER. Review each row, then copy accepted outcomes")
     print("  into decisions.csv yourself. A log that fills in its own outcomes is")
     print("  marking its own homework.")
@@ -452,6 +473,28 @@ def selftest():
 
     chk("cadence comes from the declared schedule, never inferred from the data",
         NOMINAL_CADENCE_MIN == 30)
+
+    print("\nthe quiet-record trap")
+    quiet = [R("NORMAL", "no_flood") for _ in range(35)]
+    c = contingency(quiet, "WATCH")
+    pod, far, csi = scores(c)
+    chk("35 quiet verified rows give 35 correct negatives and nothing else",
+        (c["hit"], c["miss"], c["false"], c["correct_neg"]) == (0, 0, 0, 35))
+    chk("...so all three scores are undefined, not zero",
+        pod is None and far is None and csi is None)
+    import io as _io, contextlib as _cl
+    _b = _io.StringIO()
+    with _cl.redirect_stdout(_b):
+        cmd_score(quiet, 20)
+    txt = _b.getvalue()
+    chk("...and --score says so out loud rather than printing three bare n/a's",
+        "NOTHING HAPPENED" in txt and "Quiet is not skill" in txt)
+    chk("...even though n=35 clears the small-sample floor and would otherwise "
+        "print no caveat at all", "SAMPLE TOO SMALL" not in txt)
+    _b = _io.StringIO()
+    with _cl.redirect_stdout(_b):
+        cmd_score(quiet + [R("WATCH", "flood")], 20)
+    chk("one real event removes the warning", "Quiet is not skill" not in _b.getvalue())
 
     print("\nproposal safety")
     chk("only basins with a real source are proposable",

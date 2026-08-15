@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-15T04:28:57.244770+00:00",
+  "fetched_utc": "2026-08-15T04:58:46.500703+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786763700,
-        282.0
+        1786767300,
+        273.0
       ],
       "00065": [
-        1786763700,
-        4.85
+        1786767300,
+        4.82
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786763700,
-        323.0
+        1786767300,
+        319.0
       ],
       "00065": [
-        1786763700,
-        3.37
+        1786767300,
+        3.36
       ]
     },
-    "local_inflow_cfs": 41.0,
+    "local_inflow_cfs": 46.0,
     "stage_series_up": [
-      [
-        1786746600,
-        4.03
-      ],
-      [
-        1786747500,
-        4.03
-      ],
       [
         1786748400,
         4.06
@@ -121,17 +113,25 @@
       [
         1786763700,
         4.85
+      ],
+      [
+        1786764600,
+        4.84
+      ],
+      [
+        1786765500,
+        4.83
+      ],
+      [
+        1786766400,
+        4.82
+      ],
+      [
+        1786767300,
+        4.82
       ]
     ],
     "stage_series_down": [
-      [
-        1786746600,
-        3.63
-      ],
-      [
-        1786747500,
-        3.61
-      ],
       [
         1786748400,
         3.59
@@ -203,6 +203,22 @@
       [
         1786763700,
         3.37
+      ],
+      [
+        1786764600,
+        3.36
+      ],
+      [
+        1786765500,
+        3.36
+      ],
+      [
+        1786766400,
+        3.36
+      ],
+      [
+        1786767300,
+        3.36
       ]
     ],
     "provenance": "MEASURED"
@@ -295,15 +311,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.52,
+    "stage_ft": 2.5,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 56.0,
+    "age_min": 55.8,
     "fresh": true,
-    "last_updated_utc": "2026-08-15T03:33:00+00:00",
+    "last_updated_utc": "2026-08-15T04:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -468,8 +484,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-15T04:29:02.302479+00:00",
+    "age_min": 8.9,
+    "valid_utc": "2026-08-15T04:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

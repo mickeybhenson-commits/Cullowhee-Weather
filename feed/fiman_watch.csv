@@ -729,3 +729,5 @@ observed_utc,site_id,name,last_updated_raw,last_updated_utc,age_min,intervals_mi
 2026-08-15T12:34:15+00:00,25380,Cullowhee Creek,Aug 15 2026  7:33AM,2026-08-15T11:33:00+00:00,61.3,2,1,Normal,2.48,,,0.5,5,,Constant,1,,,-0.01,,60.0,49.1,,0.0,0.0,,
 2026-08-15T13:29:10+00:00,03508050,"Tuckasegee River at SR 1172, Cullowhee",Aug 15 2026  7:15AM,2026-08-15T11:15:00+00:00,134.2,4,1,Normal,6.09,,,0.5,2,JD,Constant,1,,,,,,,,,,,
 2026-08-15T13:29:10+00:00,25380,Cullowhee Creek,Aug 15 2026  8:33AM,2026-08-15T12:33:00+00:00,56.2,1,1,Normal,2.48,,,0.5,5,,Constant,1,,,0.0,,60.0,54.9,,0.0,0.0,,
+2026-08-15T13:54:19+00:00,03508050,"Tuckasegee River at SR 1172, Cullowhee",Aug 15 2026  8:15AM,2026-08-15T12:15:00+00:00,99.3,3,1,Normal,6.03,,,0.5,2,JD,Falling,1,,,,,,,,,,,
+2026-08-15T13:54:19+00:00,25380,Cullowhee Creek,Aug 15 2026  8:33AM,2026-08-15T12:33:00+00:00,81.3,2,1,Normal,2.48,,,0.5,5,,Constant,1,,,0.0,,60.0,80.1,,0.0,0.0,,

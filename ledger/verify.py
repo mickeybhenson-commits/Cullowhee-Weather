@@ -73,6 +73,14 @@ DEFAULT_WINDOW_MIN = 180
 # whole point of the sampling report below is that the two differ.
 NOMINAL_CADENCE_MIN = 30
 
+# Operational lead requirement, from basins.LEAD_REQ_MIN. A reach whose time of
+# concentration is below this cannot make actionable lead on observation alone.
+LEAD_REQ_MIN = 120
+# The number the whole project is aimed at: ~90 minutes of warning cuts flood
+# fatalities by more than 90%. Cited everywhere in this repo and, until now,
+# measured nowhere.
+LEAD_BENCHMARK_MIN = 90
+
 # Basins with a measured source today. Everything else cannot be verified at all.
 # Keep this in step with reality — an entry here that has no live feed is worse than
 # no entry, because it makes an unverifiable basin look verifiable.
@@ -184,6 +192,78 @@ def sampling(rows):
     }
 
 
+def lead(rows):
+    """Nominal lead per model row: valid_utc - issued_utc.
+
+    fetch_stage stamps `valid = issued + peak_hr`, so this is the modelled
+    time-to-peak of the forcing the decision was made on. It is the honest
+    horizon the system had, and it is NOT delivered warning time — see the
+    caveat printed with it.
+
+    Rows where the model produced no peak are EXCLUDED, not counted as zero
+    lead. A dry hour has no lead to report, and averaging its zero into the
+    distribution would drag the statistic toward zero in exactly the weather
+    where lead does not matter. The count of them is reported instead.
+    """
+    per, dry = {}, 0
+    for r in rows:
+        if r.get("kind") != "model":
+            continue
+        a, b = _t(r.get("issued_utc")), _t(r.get("valid_utc"))
+        if not a or not b:
+            continue
+        mins = (b - a).total_seconds() / 60.0
+        q = r.get("q_cfs")
+        try:
+            no_peak = float(q) <= 0 if q not in (None, "") else True
+        except ValueError:
+            no_peak = True
+        if mins <= 0 or no_peak:
+            dry += 1
+            continue
+        per.setdefault(r.get("basin_id"), []).append(mins)
+    return per, dry
+
+
+def print_lead(rows):
+    """Printed with the coverage block, for the same reason: a skill score
+    without its lead is a claim about being right, not about being useful."""
+    per, dry = lead(rows)
+    print()
+    print("=" * 78)
+    print("LEAD  — how much warning the system actually had")
+    print("=" * 78)
+    total = sum(len(v) for v in per.values())
+    if not total:
+        print(f"  no model row carries a nonzero lead yet ({dry} rows had no modelled")
+        print("  peak, which is the correct reading of dry weather, not zero lead).")
+        print()
+        print("  This stays empty until it rains hard enough for the engine to produce a")
+        print("  peak. It is not a fault, and it is not evidence of anything either.")
+        return per
+    print(f"  {'basin':<16}{'n':>5}{'min':>8}{'median':>9}{'max':>8}   vs 120-min requirement")
+    print("  " + "-" * 62)
+    for bid in sorted(per):
+        v = sorted(per[bid])
+        med = v[len(v) // 2]
+        short = sum(1 for x in v if x < LEAD_REQ_MIN)
+        print(f"  {bid:<16}{len(v):>5}{min(v):>8.0f}{med:>9.0f}{max(v):>8.0f}"
+              f"   {short} of {len(v)} below")
+    allv = sorted(x for v in per.values() for x in v)
+    under_bench = sum(1 for x in allv if x < LEAD_BENCHMARK_MIN)
+    print("  " + "-" * 62)
+    print(f"  {dry} row(s) excluded: no modelled peak, so no lead to report.")
+    print(f"  {under_bench} of {total} decisions carried less than the {LEAD_BENCHMARK_MIN}-min")
+    print(f"  benchmark at which warning stops changing outcomes.")
+    print()
+    print("  READ THIS AS A HORIZON, NOT AS DELIVERED WARNING. It is the modelled")
+    print("  time-to-peak of the forcing, which is the most lead the system COULD have")
+    print("  offered. Delivered lead is the gap between the first WATCH and the water")
+    print("  arriving, and it cannot be computed until an event happens on a basin that")
+    print("  has an observation source. Seven of eight do not.")
+    return per
+
+
 def print_sampling(rows):
     """Printed BEFORE any score, per the contract in the module docstring."""
     s = sampling(rows)
@@ -251,6 +331,7 @@ def cmd_status(rows):
 
     print()
     print_sampling(rows)
+    print_lead(rows)
 
     unv = sum(1 for r in model if (r.get("outcome") or "").strip() in ("", "unknown"))
     print("\n" + "=" * 78)
@@ -269,6 +350,7 @@ def cmd_score(rows, min_sample):
     model = [r for r in rows if r.get("kind") == "model"]
     # Coverage before scores. A number without its denominator is not evidence.
     print_sampling(rows)
+    print_lead(rows)
     print()
     print("=" * 78)
     print("SKILL SCORES")
@@ -439,6 +521,46 @@ def selftest():
         contingency([R("EMERGENCY", "flood")], "WATCH")["hit"] == 1)
     chk("WATCH does not count as WARNING-or-above",
         contingency([R("WATCH", "flood")], "WARNING")["miss"] == 1)
+
+    print("\nlead")
+    def _row(bid, iss, val, q):
+        return {"kind": "model", "basin_id": bid, "issued_utc": iss,
+                "valid_utc": val, "q_cfs": q}
+    T0 = "2026-08-15T00:00:00Z"
+
+    dry = [_row("CC-COX-097", T0, T0, "0.0") for _ in range(50)]
+    per, n_dry = lead(dry)
+    chk("50 dry rows produce NO lead statistic at all",
+        per == {} and n_dry == 50, f"per={per} dry={n_dry}")
+    chk("...because a dry hour has no lead, and averaging its zero in would drag "
+        "the median toward zero exactly where lead does not matter", per == {})
+
+    wet = [_row("CC-COX-097", T0, "2026-08-15T00:45:00Z", "410"),
+           _row("CC-COX-097", T0, "2026-08-15T03:00:00Z", "520"),
+           _row("CC-WCU-2260", T0, "2026-08-15T06:00:00Z", "2200")]
+    per, n_dry = lead(dry + wet)
+    chk("wet rows are counted and dry ones excluded",
+        sorted(per) == ["CC-COX-097", "CC-WCU-2260"] and n_dry == 50, f"{per} {n_dry}")
+    chk("lead is minutes from issued to valid",
+        sorted(per["CC-COX-097"]) == [45.0, 180.0], per["CC-COX-097"])
+
+    # a positive lead with a zero peak is still dry: q_cfs is what decides.
+    per, n_dry = lead([_row("CC-COX-097", T0, "2026-08-15T05:00:00Z", "0")])
+    chk("a long horizon with NO modelled peak is still not lead", per == {} and n_dry == 1)
+
+    per, n_dry = lead([_row("CC-COX-097", T0, "2026-08-15T05:00:00Z", "")])
+    chk("a missing q_cfs is treated as no peak, not as lead", per == {} and n_dry == 1)
+
+    import io as _io2, contextlib as _cl2
+    _b2 = _io2.StringIO()
+    with _cl2.redirect_stdout(_b2):
+        print_lead(dry + wet)
+    txt2 = _b2.getvalue()
+    chk("the report refuses to be read as delivered warning time",
+        "NOT AS DELIVERED WARNING" in txt2 and "Seven of eight do not" in txt2)
+    chk("...and counts decisions below the 90-min benchmark",
+        f"{LEAD_BENCHMARK_MIN}-min" in txt2 and " of 3 decisions carried less" in txt2
+        or "1 of 3" in txt2, txt2.splitlines()[-6:])
 
     print("\nsampling continuity")
     def _series(minutes):

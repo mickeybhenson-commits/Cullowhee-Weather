@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-15T22:47:22.365114+00:00",
+  "fetched_utc": "2026-08-15T22:57:25.047940+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -321,7 +321,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 44.6,
+    "age_min": 54.5,
     "fresh": true,
     "last_updated_utc": "2026-08-15T22:03:00+00:00",
     "datum_verified": false,
@@ -488,8 +488,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-15T22:47:36.471733+00:00",
+    "age_min": 7.5,
+    "valid_utc": "2026-08-15T22:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

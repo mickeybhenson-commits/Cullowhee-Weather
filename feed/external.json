@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-15T16:21:55.950568+00:00",
+  "fetched_utc": "2026-08-15T16:50:16.150278+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786806900,
-        113.0
+        1786810500,
+        92.8
       ],
       "00065": [
-        1786806900,
-        4.25
+        1786810500,
+        4.16
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786806900,
-        913.0
+        1786810500,
+        920.0
       ],
       "00065": [
-        1786806900,
-        4.35
+        1786810500,
+        4.36
       ]
     },
-    "local_inflow_cfs": 800.0,
+    "local_inflow_cfs": 827.2,
     "stage_series_up": [
-      [
-        1786789800,
-        6.09
-      ],
-      [
-        1786790700,
-        6.09
-      ],
       [
         1786791600,
         6.09
@@ -121,17 +113,25 @@
       [
         1786806900,
         4.25
+      ],
+      [
+        1786807800,
+        4.22
+      ],
+      [
+        1786808700,
+        4.19
+      ],
+      [
+        1786809600,
+        4.17
+      ],
+      [
+        1786810500,
+        4.16
       ]
     ],
     "stage_series_down": [
-      [
-        1786789800,
-        3.69
-      ],
-      [
-        1786790700,
-        3.71
-      ],
       [
         1786791600,
         3.71
@@ -203,6 +203,22 @@
       [
         1786806900,
         4.35
+      ],
+      [
+        1786807800,
+        4.35
+      ],
+      [
+        1786808700,
+        4.36
+      ],
+      [
+        1786809600,
+        4.36
+      ],
+      [
+        1786810500,
+        4.36
       ]
     ],
     "provenance": "MEASURED"
@@ -301,14 +317,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 49.0,
-    "fresh": true,
+    "age_min": 77.3,
+    "fresh": false,
     "last_updated_utc": "2026-08-15T15:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 77.3 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -468,8 +484,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-15T16:21:59.818569+00:00",
+    "age_min": 0.3,
+    "valid_utc": "2026-08-15T16:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

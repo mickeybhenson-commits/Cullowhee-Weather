@@ -25,6 +25,9 @@
   .note{font-size:11.5px;color:var(--dim);line-height:1.5;margin-top:8px}
   a{color:var(--acc)}
   #empty{color:var(--dim);padding:26px;text-align:center}
+  #empty b{color:var(--txt);font-weight:600;display:block;margin-bottom:6px}
+  #empty .why{font-size:12px;display:block;max-width:560px;margin:0 auto}
+  #empty.unread b{color:var(--warn)}
 </style></head><body><div class="wrap">
 <h1>QPF verification — the bias ledger</h1>
 <p class="sub">Every forecast source NOAH consumes, scored against MRMS radar
@@ -32,35 +35,65 @@ truth over paired wet 6-hour windows. <b>bias&nbsp;&lt;&nbsp;1 means the source
 under-calls Cullowhee rain</b> — the orographic failure mode this system's
 shadow-mode caveat exists for. This page is the evidence trail for retiring
 that caveat. <a href="live.html">&larr; live map</a></p>
-<div id="report"><div id="empty">No verification report published yet.<br>
-<span style="font-size:12px">The report generates on the ledger host
-(<code>ledger/bias_report.py</code>) once forecast archives and MRMS
-observations overlap a storm. Until then there is honestly nothing to
-score.</span></div></div>
+<div id="report"><div id="empty"><b>Reading the verification report&hellip;</b>
+<span class="why">If this message does not change, this page's script did not
+run.<noscript> JavaScript is disabled, so the report cannot be
+loaded.</noscript></span></div></div>
 <script>
+/* THREE OUTCOMES, THREE MESSAGES.
+   This page used to render one empty state — "there is honestly nothing to
+   score" — for every failure: a missing file, an unreadable file, a published
+   report with no rows, and a published report missing its `filters` key (which
+   threw inside the render and was swallowed by the same catch).
+   Those are not the same state. "I cannot see the report" is not "the report
+   says there is nothing yet", and only the second one is a statement this page
+   is entitled to make. noah_feed_check.py was written to correct exactly this
+   conflation on the console side; the same rule applies to a public page.
+   As of 2026-08-15 the deployed unit (deploy/qpf-bias-report.service) writes to
+   /var/lib/noah/bias_report.json and nothing copies it to feed/, so the honest
+   answer here is the FIRST one — and the page could not say it. */
+var EMPTY = document.getElementById("empty");
+function state(cls, head, why){
+  EMPTY.className = cls;
+  EMPTY.innerHTML = "<b>" + head + "</b><span class='why'>" + why + "</span>";
+}
 function cls(b){ if(b==null) return "ins";
   return b<0.85?"b-under":(b<=1.15?"b-near":"b-over"); }
 function fmt(b){ return b==null?"—":b.toFixed(2); }
+
 fetch("feed/bias_report.json?t="+Date.now(),{cache:"no-store"})
- .then(function(r){ if(!r.ok) throw 0; return r.json(); })
+ .then(function(r){
+   if(r.status===404) throw {k:"absent"};
+   if(!r.ok) throw {k:"http", s:r.status};
+   return r.json().then(null, function(){ throw {k:"parse"}; });
+ })
  .then(function(j){
-   var srcs=j.sources||{}; var names=Object.keys(srcs); if(!names.length) return;
+   var srcs=(j&&j.sources)||{}, names=Object.keys(srcs);
+   if(!names.length){
+     state("", "No paired windows to score yet.",
+       "The report was generated" + (j&&j.generated_utc ? " at " + j.generated_utc : "") +
+       " and contains no source rows. Forecast archives and MRMS observations have "+
+       "not yet overlapped a storm by enough to publish a cell. This is the ledger "+
+       "working and waiting, not a fault.");
+     return;
+   }
    var LBL={"om-best":"Open-Meteo (operational input)",
             "nws-ndfd":"NWS gridded forecast (GSP)",
             "wn2-mean":"WeatherNext 2 ensemble mean",
             "wn2-p50":"WeatherNext 2 median member",
             "wn2-p90":"WeatherNext 2 90th-pct member",
             "wn2-p10":"WeatherNext 2 10th-pct member"};
+   var buckets=(j.buckets||[]);
    var html="";
    names.sort().forEach(function(s){
-     var basins=srcs[s], all=(basins.ALL||{}).ALL||{};
+     var basins=srcs[s];
      html+="<div class='card'><h2>"+(LBL[s]||s)+"</h2>";
      html+="<table><tr><th>basin</th>";
-     (j.buckets||[]).forEach(function(b){ html+="<th>"+b+"</th>"; });
+     buckets.forEach(function(b){ html+="<th>"+b+"</th>"; });
      html+="</tr>";
      Object.keys(basins).sort().forEach(function(bid){
        html+="<tr><td>"+(bid==="ALL"?"<b>all basins</b>":bid)+"</td>";
-       (j.buckets||[]).forEach(function(b){
+       buckets.forEach(function(b){
          var c=(basins[bid]||{})[b];
          html+= c ? "<td class='"+cls(c.bias)+"' title='n="+c.n+
                     (c.suggest_mult?" · suggested mult ×"+c.suggest_mult:"")+
@@ -69,12 +102,42 @@ fetch("feed/bias_report.json?t="+Date.now(),{cache:"no-store"})
        html+="</tr>"; });
      html+="</table></div>";
    });
-   html+="<p class='note'>"+(j.note||"")+" Filters: wet windows &ge; "+
-     j.filters.wet_mm+" mm/6h, MRMS valid fraction &ge; "+j.filters.min_valid_frac+
-     ", minimum "+j.filters.min_n+" windows per published cell. Generated "+
-     j.generated_utc+".</p>";
+   /* `filters` was dereferenced unconditionally here. A report published without
+      it threw, and the throw rendered as "nothing to score" — a published report
+      reported as an empty one. Degrade the footnote, never the table. */
+   var f=j.filters;
+   html+="<p class='note'>"+(j.note||"")+" "+
+     (f ? "Filters: wet windows &ge; "+f.wet_mm+" mm/6h, MRMS valid fraction &ge; "+
+          f.min_valid_frac+", minimum "+f.min_n+" windows per published cell."
+        : "<i>(this report carries no filters block, so the thresholds behind these "+
+          "numbers are unstated — treat them as unqualified.)</i>")+
+     " Generated "+(j.generated_utc||"(no timestamp)")+".</p>";
    document.getElementById("report").innerHTML=html;
  })
- .catch(function(){ /* empty state stays */ });
+ .then(null, function(e){
+   var k = e && e.k;
+   if(k==="absent"){
+     state("unread", "No report file is published at this address.",
+       "This page reads <code>feed/bias_report.json</code>. Nothing writes that file. "+
+       "The report is generated on the ledger host by <code>ledger/bias_report.py</code> "+
+       "into a local path (<code>/var/lib/noah/bias_report.json</code> per "+
+       "<code>deploy/qpf-bias-report.service</code>); copying it here is a separate step "+
+       "that has not been wired. <b>This is not a statement about the ledger's contents "+
+       "— the ledger may be full or empty and this page cannot tell.</b>");
+   } else if(k==="http"){
+     state("unread", "The report could not be read (HTTP "+e.s+").",
+       "The file may exist. This page could not fetch it, so it can say nothing about "+
+       "what it contains.");
+   } else if(k==="parse"){
+     state("unread", "A report file is published but could not be parsed.",
+       "<code>feed/bias_report.json</code> was fetched and is not valid JSON. Something "+
+       "wrote it partially or wrote the wrong thing.");
+   } else {
+     state("unread", "The report could not be fetched.",
+       "The request itself failed — no network, blocked, or this page was opened from "+
+       "the filesystem rather than served over http. No conclusion about the ledger "+
+       "follows from this.");
+   }
+ });
 </script>
 </div></body></html>

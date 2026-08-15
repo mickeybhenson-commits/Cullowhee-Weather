@@ -26,6 +26,13 @@ separate components were found that were correct, careful, and **wired to nothin
               03508050/TKRN7"; nothing imported either one, so that handoff had never
               happened. WIRED 2026-08-13 — streamlit_app.py renders the card, and both
               declarations were deleted because this test demanded it.
+  2026-08-15  bias.html — a published page fetching feed/bias_report.json, which nothing
+              in this repo writes. The deployed unit generates the report to a path on
+              the ledger host (/var/lib/noah/bias_report.json) and no step copies it into
+              feed/. Found by walking page assets, because this test only ever walked
+              PYTHON imports: an orphan wearing a different file extension was outside
+              its boundary. That is the same blind spot this file exists to close, in the
+              file type this project publishes to the public.
 
 None of those were sloppy. Each has good internal discipline: bias_report refuses to
 print a statistic with fewer than 8 paired windows, mrms_live omits a basin it cannot
@@ -45,6 +52,14 @@ WHAT IT CHECKS
    rather than quietly outliving its cause.
 4. Every workflow's python invocations name files that exist.
 5. TOOLS and DECLARED name modules that still exist.
+6. Every feed/ asset a published page fetches actually exists in the repo. A page is
+   an entry point too, and a page whose data file nobody writes is the same defect as
+   an orphaned module — the page just fails silently in a visitor's browser instead of
+   raising in CI.
+7. Every test_*.py is named by a workflow. consistency-tests.yml lists its suites by
+   hand, so a new test file runs nowhere — and this file cannot notice on its own,
+   because it seeds its own closure from every test_*.py and a new suite therefore
+   makes ITSELF look connected.
 
 WHAT IT DOES NOT CHECK
 ----------------------
@@ -89,6 +104,10 @@ PKG_DIRS = ["", "ledger"]
 WORKFLOWS = os.path.join(HERE, ".github", "workflows")
 PAGES = os.path.join(HERE, "pages")
 
+# feed/ is committed (it is not in .gitignore — only feed_demo/ is), so a fresh
+# checkout carries these files and "does it exist" is a valid question in CI.
+FEED_ASSET_RE = re.compile(r"feed/[A-Za-z0-9_][A-Za-z0-9_.-]*\.[A-Za-z0-9]+")
+
 # --------------------------------------------------------------------------- #
 # Declared orphans. Each entry needs WHY it is not wired and WHAT WOULD CLOSE IT.
 # An entry here does not mean "acceptable" — it means known and tracked. Delete it
@@ -112,6 +131,22 @@ DECLARED = {
         "of the pipeline nobody runs. "
         "CLOSES WHEN: something imports it, or it is deleted and the two comments in "
         "merge_subbasins.py go with it."),
+}
+
+# Declared missing page assets. Same contract as DECLARED: a reason and a closing
+# condition, and the test fails once the asset appears so the waiver gets deleted.
+SITE_ASSETS_DECLARED = {
+    "feed/bias_report.json": (
+        "bias.html fetches it. Nothing in this repo writes it. ledger/bias_report.py "
+        "generates the report on the ledger host and deploy/qpf-bias-report.service "
+        "sends it to /var/lib/noah/bias_report.json — a path GitHub Pages cannot serve "
+        "— so the daily timer can run forever with no visible effect. This is the "
+        "publish half of the same gap as DECLARED['ledger.bias_report']: that entry "
+        "says the ledger has no host, this one says the report has no route to the "
+        "page even once it does. "
+        "CLOSES WHEN: the ledger has a persistent home AND the report lands in feed/ "
+        "(--out into a checkout that a workflow commits, or an rsync into the served "
+        "tree). See noah_bias_ledger_never_ran_2026-08-12.md."),
 }
 
 # Modules that are entry points by nature: a human runs them, or they are one-shot
@@ -231,6 +266,52 @@ def _by_short(mods):
     for name in mods:
         d.setdefault(name.split(".")[-1], []).append(name)
     return d
+
+
+def _workflow_text():
+    """Every workflow YAML concatenated, for NAME-presence questions only.
+
+    Deliberately not _workflow_entrypoints(): that parses `python foo.py`, and
+    consistency-tests.yml runs half its suites through a shell loop —
+    `for t in test_a test_b ...; do python "$t.py"; done` — which no such regex
+    can see. Asking "is this suite named anywhere in CI" is answerable; asking
+    "is it invoked" would need a shell interpreter.
+    """
+    if not os.path.isdir(WORKFLOWS):
+        return ""
+    out = []
+    for fn in sorted(os.listdir(WORKFLOWS)):
+        if fn.endswith((".yml", ".yaml")):
+            with open(os.path.join(WORKFLOWS, fn), encoding="utf-8",
+                      errors="replace") as f:
+                out.append(f.read())
+    return "\n".join(out)
+
+
+def _page_assets():
+    """{feed asset: [pages naming it]} across every published page at the repo root.
+
+    Discovered, not listed. Naming the pages by hand is how bias.html came to fetch a
+    file nothing writes without anything noticing.
+
+    Matches the literal string anywhere in the file rather than parsing href/src, which
+    would miss every asset a page builds in JavaScript — and all four of these are
+    fetched from JS, none from markup. The direction of that looseness is the safe one
+    here: a page that merely MENTIONS feed/x.json in a comment gets x.json checked for
+    existence, which is a harmless extra assertion, not a missed orphan.
+    """
+    out = {}
+    for fn in sorted(os.listdir(HERE)):
+        if not fn.endswith(".html"):
+            continue
+        try:
+            with open(os.path.join(HERE, fn), encoding="utf-8", errors="replace") as f:
+                src = f.read()
+        except OSError:
+            continue
+        for m in FEED_ASSET_RE.findall(src):
+            out.setdefault(m, []).append(fn)
+    return out
 
 
 def _closure(mods, by_short, seed):
@@ -378,6 +459,86 @@ def test_declared_orphans_still_exist():
                       + "\n  ".join(gone) + "\n\nDelete these entries.")
 
 
+def test_every_test_file_is_named_by_a_workflow():
+    """A suite nothing runs is the same defect as a module nothing imports.
+
+    consistency-tests.yml names its remaining suites BY HAND —
+    `for t in test_flood_network_upwind test_gov_gauges ...` — not by glob. So a
+    test file added to this repo runs nowhere, and nothing notices: this file
+    seeds its reachability closure from every test_*.py, which means a new test
+    file makes ITSELF look connected while running in no CI job at all.
+
+    That is the hand-written-list trap that `engine_html()` and `_page_assets()`
+    both avoid by discovering instead of naming. The workflow cannot discover
+    (it is protected against remote edits and a glob there is its own risk), so
+    the list stays hand-written and this makes it self-policing: add a suite,
+    CI goes red until the suite is wired.
+    """
+    tests = sorted(n.split(".")[-1] for n in _modules()
+                   if n.split(".")[-1].startswith("test_"))
+    text = _workflow_text()
+    assert text, (
+        f"no workflow files found under {os.path.relpath(WORKFLOWS, HERE)} — this "
+        "check cannot answer whether the suites run, so it is failing rather than "
+        "passing vacuously.")
+    missing = [t for t in tests if t not in text]
+    assert not missing, (
+        "these test suites are named by no workflow, so they run nowhere:\n  "
+        + "\n  ".join(missing)
+        + "\n\nAdd each to the `for t in ...` list in consistency-tests.yml (or give "
+          "it its own step). A test that never runs is worse than no test: it reads "
+          "as coverage.")
+
+
+def test_every_page_asset_exists():
+    """A published page fetching a file nobody writes fails only in a visitor's browser.
+
+    And it fails QUIETLY: bias.html caught its own 404 and rendered "there is honestly
+    nothing to score" — a confident claim about the ledger's contents made by a page
+    that could not read the ledger at all. That is the conflation noah_feed_check.py
+    was written to correct on the console side ("did we FAIL TO READ IT, or did we read
+    it and find NOTHING THERE? Those are opposite states"). Nothing was enforcing the
+    same rule on the public site.
+    """
+    assets = _page_assets()
+    missing = {a: p for a, p in assets.items()
+               if a not in SITE_ASSETS_DECLARED
+               and not os.path.exists(os.path.join(HERE, a))}
+    assert not missing, (
+        "published pages fetch feed assets that do not exist:\n  "
+        + "\n  ".join(f"{a}   fetched by {', '.join(sorted(set(p)))}"
+                      for a, p in sorted(missing.items()))
+        + "\n\nEither wire a producer, or add a SITE_ASSETS_DECLARED entry with a "
+          "closing condition. And check what the page RENDERS when the fetch fails: a "
+          "missing file must not be reported as an empty result. Those are opposite "
+          "states and only one of them is a claim the page is entitled to make.")
+
+
+def test_declared_page_assets_are_still_missing():
+    """A waiver that outlives its cause reads as reviewed while guarding nothing."""
+    live = sorted(a for a in SITE_ASSETS_DECLARED
+                  if os.path.exists(os.path.join(HERE, a)))
+    assert not live, (
+        "these assets are SITE_ASSETS_DECLARED as unproduced but now exist — the "
+        "publish step shipped:\n  " + "\n  ".join(live)
+        + "\n\nDelete them from SITE_ASSETS_DECLARED so the test starts guarding the "
+          "wiring instead of excusing it.")
+
+
+def test_page_assets_were_actually_scanned():
+    """If the scan finds nothing, this check is silently a no-op and every page asset
+    is unguarded while the suite still reports green. Fail loudly instead."""
+    assets = _page_assets()
+    pages = [f for f in os.listdir(HERE) if f.endswith(".html")]
+    assert pages, "no .html at the repo root — the page scan has nothing to walk."
+    assert assets, (
+        f"scanned {len(pages)} page(s) and found no feed/ asset references at all. "
+        "Pages fetched feed/external.json, feed/outlook.json, feed/fiman_watch.csv and "
+        "feed/bias_report.json on 2026-08-15, so this means the pattern has stopped "
+        "matching and this check now guards nothing. Fix FEED_ASSET_RE; do not delete "
+        "this test.")
+
+
 def test_tools_still_exist():
     """Same discipline for TOOLS: a stale name silently widens the waiver, because
     any future module that happens to take the dead name inherits its exemption."""
@@ -418,9 +579,22 @@ if __name__ == "__main__":
         for n in only_test:
             print(f"  * {n}")
 
+    assets = _page_assets()
+    print(f"{len(assets)} feed asset(s) fetched by published pages · "
+          f"{len(SITE_ASSETS_DECLARED)} declared unproduced")
+    for a in sorted(assets):
+        ok = os.path.exists(os.path.join(HERE, a))
+        mark = "ok" if ok else "MISSING"
+        print(f"  {mark:<8}{a:<28} <- {', '.join(sorted(set(assets[a])))}")
+
     if not fails and DECLARED:
         print("\nBUILT AND NOT CONNECTED — declared, not fixed:")
         for n in sorted(DECLARED):
             print(f"  * {n}\n      {DECLARED[n]}")
+
+    if not fails and SITE_ASSETS_DECLARED:
+        print("\nPUBLISHED AND NOT PRODUCED — declared, not fixed:")
+        for a in sorted(SITE_ASSETS_DECLARED):
+            print(f"  * {a}\n      {SITE_ASSETS_DECLARED[a]}")
 
     raise SystemExit(1 if fails else 0)

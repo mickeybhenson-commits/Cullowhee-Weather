@@ -162,10 +162,12 @@ TOOLS = {
     "fetch_helene_forcing", "merge_subbasins", "bfe_to_thresholds",
     "cucn7_backfill", "noah_feed_check", "streamlit_app",
     "verify_surveyed_thresholds",   # reconciles basins.py's SURVEYED ladders against
-                                    # the 3DEP cut they claim to come from. Workstation
-                                    # -only for now: its evidence, scripts/xs_out/
-                                    # summary.csv, is UNTRACKED, so it cannot be a CI
-                                    # suite until that file is committed.
+                                    # the 3DEP cut they claim to come from. Its evidence
+                                    # (scripts/xs_out/summary.csv) was committed in
+                                    # fe01cdf, so this RUNS ON A RUNNER now. It is a TOOL
+                                    # rather than a suite only because it needs no test
+                                    # harness — not because it cannot run in CI. It exits
+                                    # 1 on a mismatch, so it drops straight into a step.
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
 }
 

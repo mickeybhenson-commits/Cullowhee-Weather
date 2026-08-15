@@ -161,6 +161,13 @@ TOOLS = {
     "backtest_helene", "helene_mrms_reconstruct", "helene_solve_wetness",
     "fetch_helene_forcing", "merge_subbasins", "bfe_to_thresholds",
     "cucn7_backfill", "noah_feed_check", "streamlit_app",
+    "sync_engine_html",             # argparse CLI: reports basins.py-vs-engine-HTML drift,
+                                    # --write fixes it. Report-only by default and it edits
+                                    # a 713 KB deployed page, so it is deliberately NOT
+                                    # wired to a workflow — a human reads the diff first.
+                                    # It landed 2026-08-15 without this entry and left CI
+                                    # red until 5603ceb+1; the omission was caught by this
+                                    # very test, which is the mechanism working.
     "verify_surveyed_thresholds",   # reconciles basins.py's SURVEYED ladders against
                                     # the 3DEP cut they claim to come from. Its evidence
                                     # (scripts/xs_out/summary.csv) was committed in

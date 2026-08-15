@@ -161,6 +161,11 @@ TOOLS = {
     "backtest_helene", "helene_mrms_reconstruct", "helene_solve_wetness",
     "fetch_helene_forcing", "merge_subbasins", "bfe_to_thresholds",
     "cucn7_backfill", "noah_feed_check", "streamlit_app",
+    "verify_surveyed_thresholds",   # reconciles basins.py's SURVEYED ladders against
+                                    # the 3DEP cut they claim to come from. Workstation
+                                    # -only for now: its evidence, scripts/xs_out/
+                                    # summary.csv, is UNTRACKED, so it cannot be a CI
+                                    # suite until that file is committed.
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
 }
 

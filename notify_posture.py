@@ -19,9 +19,27 @@ WHAT TRIGGERS A PUSH
      pattern persists. Silent until WeatherNext access is live.
 
 WHAT NEVER TRIGGERS A PUSH
-  A no-change cycle, a stale/unavailable source (that is feed_meta's job to
-  surface), or any exception in here — this module follows fiman_watch's
-  contract: it NEVER raises, so it cannot take down the publish job.
+  A no-change cycle, or any exception in here — this module follows
+  fiman_watch's contract: it NEVER raises, so it cannot take down the publish
+  job.
+
+  3. BLINDNESS (added 2026-08-15). The line above used to read "a stale or
+     unavailable source (that is feed_meta's job to surface)". feed_meta does
+     surface it — into feed_meta.json, which was read by nothing. So when every
+     source went stale the posture stopped changing, trigger 1 stopped firing,
+     and the system went quiet. Silence is what this notifier emits when all is
+     well, so a dead watershed and a calm one looked identical on the phone.
+
+     This fires when the feed can no longer see the creek, and again when sight
+     returns. The wording is deliberately not flood wording: being blind is not
+     a warning and is not an all-clear, and a push that blurred the two would be
+     worse than no push.
+
+     LIMIT, stated plainly: this runs inside publish-feed. It catches dead
+     SOURCES. It cannot catch a dead WORKFLOW — on 2026-08-14 the job itself
+     failed four consecutive times and any check living inside it died with it.
+     A dead-man's switch cannot live inside the thing it monitors; that needs an
+     external heartbeat. See noah_blind_notifier_2026-08-15.md.
 
 STATE
   feed/notify_state.json — last notified level + last outlook alert time,
@@ -55,6 +73,7 @@ from pathlib import Path
 FEED = Path("feed")
 STATE_IN = FEED / "state.json"
 OUTLOOK_IN = FEED / "outlook.json"
+META_IN = FEED / "feed_meta.json"
 NOTIFY_STATE = FEED / "notify_state.json"
 
 ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
@@ -160,6 +179,65 @@ def check_outlook(outlook, prev, topic, now):
     return now.isoformat()
 
 
+def check_blind(meta, prev, topic, now):
+    """Every site in the feed stale -> the system cannot see the creek.
+
+    Returns (blind_now, alert_ts) where alert_ts is a new timestamp if a push
+    was sent, else the previous one. Never raises.
+
+    Fires on the transition into blindness and again on recovery, with a
+    cooldown in between so a long outage does not push every 30 minutes. Both
+    messages avoid posture vocabulary: a blind system is neither warning nor
+    all-clear, and saying otherwise on a phone at 3am is the failure this exists
+    to prevent.
+    """
+    try:
+        n_sites = int(meta.get("site_count") or 0)
+        stale = list(meta.get("stale_sites") or [])
+        # blind = there are sites, and every one of them is stale. site_count 0
+        # is a different fault (nothing published at all) and publish_feed's own
+        # sanity step already refuses to publish an empty feed.
+        blind = n_sites > 0 and len(stale) >= n_sites
+        was = bool((prev or {}).get("blind"))
+        last_ts = (prev or {}).get("blind_alert_utc")
+        cooldown_hr = float(os.getenv("BLIND_COOLDOWN_HR", "6"))
+
+        if blind and not was:
+            _post(topic, "NOAH is blind — no live source",
+                  (f"All {n_sites} site(s) in the feed are stale: "
+                   f"{', '.join(stale)}. The system cannot see the creek.\n\n"
+                   f"This is NOT a flood warning and NOT an all-clear. It means "
+                   f"the posture on the map is not backed by current data. "
+                   f"Feed generated {meta.get('generated_utc', '?')}."),
+                  "4", "see_no_evil")
+            return True, now.isoformat()
+
+        if was and not blind:
+            _post(topic, "NOAH can see again",
+                  (f"A live source is reporting. {n_sites - len(stale)} of "
+                   f"{n_sites} site(s) fresh. The map is backed by current data "
+                   f"again."),
+                  "2", "eyes")
+            return False, now.isoformat()
+
+        if blind and was and last_ts:                 # still blind: re-nag slowly
+            try:
+                age_hr = (now - datetime.fromisoformat(last_ts)).total_seconds() / 3600
+            except ValueError:
+                return True, last_ts
+            if age_hr >= cooldown_hr:
+                _post(topic, "NOAH still blind",
+                      (f"Still no live source after {age_hr:.0f} h. "
+                       f"{len(stale)} of {n_sites} site(s) stale. Not a warning, "
+                       f"not an all-clear — the map is running without current data."),
+                      "4", "see_no_evil")
+                return True, now.isoformat()
+        return blind, last_ts
+    except Exception as e:                            # noqa: BLE001
+        print(f"notify: blindness check failed ({type(e).__name__}: {e})")
+        return bool((prev or {}).get("blind")), (prev or {}).get("blind_alert_utc")
+
+
 def main():
     topic = os.getenv("NTFY_TOPIC")
     if not topic and not os.getenv("NTFY_DRY"):
@@ -170,10 +248,12 @@ def main():
     now = datetime.now(timezone.utc)
     state = _load(STATE_IN, {})
     outlook = _load(OUTLOOK_IN, {})
+    meta = _load(META_IN, {})
     prev = _load(NOTIFY_STATE, {})
 
     notified_lvl = check_operative(state, prev, topic)
     outlook_ts = check_outlook(outlook, prev, topic, now)
+    blind, blind_ts = check_blind(meta, prev, topic, now)
 
     cur_p = (((outlook.get("basins") or {}).get("CC-WCU-2260") or {})
              .get("p_exceed") or {}).get("WATCH") if outlook.get("status") == "ok" else None
@@ -181,15 +261,20 @@ def main():
         "level": notified_lvl or prev.get("level") or state.get("level"),
         "outlook_p": cur_p if cur_p is not None else prev.get("outlook_p"),
         "outlook_alert_utc": outlook_ts or prev.get("outlook_alert_utc"),
+        "blind": blind,
+        "blind_alert_utc": blind_ts,
         "checked_utc": now.isoformat(),
     }
     try:
         NOTIFY_STATE.write_text(json.dumps(new_state, indent=2))
     except OSError as e:
         print(f"notify: could not persist state ({e})")
-    sent = bool(notified_lvl or outlook_ts)
+    sent = bool(notified_lvl or outlook_ts
+                or blind != bool(prev.get("blind"))
+                or (blind_ts and blind_ts != prev.get("blind_alert_utc")))
     print(f"notify: level={state.get('level')} "
           f"P(WATCH)={cur_p if cur_p is not None else 'n/a'} "
+          f"blind={blind} "
           f"-> {'sent' if sent else 'no change, nothing sent'}")
     return 0
 
@@ -199,18 +284,31 @@ def main():
 # ---------------------------------------------------------------------------
 def _selftest():
     import tempfile
-    global FEED, STATE_IN, OUTLOOK_IN, NOTIFY_STATE
+    global FEED, STATE_IN, OUTLOOK_IN, META_IN, NOTIFY_STATE
     os.environ["NTFY_DRY"] = "1"
     FEED = Path(tempfile.mkdtemp())
     STATE_IN, OUTLOOK_IN = FEED / "state.json", FEED / "outlook.json"
+    META_IN = FEED / "feed_meta.json"
     NOTIFY_STATE = FEED / "notify_state.json"
 
-    def run(state, outlook=None):
+    def run(state, outlook=None, meta=None):
         STATE_IN.write_text(json.dumps(state))
         if outlook is not None:
             OUTLOOK_IN.write_text(json.dumps(outlook))
+        if meta is not None:
+            META_IN.write_text(json.dumps(meta))
         main()
         return _load(NOTIFY_STATE, {})
+
+    def run_capture(*a, **kw):
+        """Run and return (state, printed output) so a test can assert on what
+        was actually pushed, not merely on the state that resulted."""
+        import io
+        from contextlib import redirect_stdout
+        b = io.StringIO()
+        with redirect_stdout(b):
+            st = run(*a, **kw)
+        return st, b.getvalue()
 
     print("-- first run, NORMAL: must not notify (no baseline jump)")
     import io
@@ -250,6 +348,47 @@ def _selftest():
     print("-- unavailable outlook: silence")
     s = run({"level": "NORMAL", "source_tier": "measured"},
             {"status": "unavailable: x"})
+
+    print("-- blindness: every site stale -> one push, and it is NOT flood wording")
+    FRESH = {"site_count": 2, "stale_sites": [], "generated_utc": "2026-08-15T14:00:00Z"}
+    BLIND = {"site_count": 2, "stale_sites": ["A", "B"], "generated_utc": "2026-08-15T14:00:00Z"}
+    s2, out = run_capture({"level": "NORMAL", "source_tier": "measured"}, meta=FRESH)
+    assert not s2.get("blind"), "fresh feed must not read as blind"
+    s2, out = run_capture({"level": "NORMAL", "source_tier": "measured"}, meta=BLIND)
+    assert s2["blind"] is True and s2["blind_alert_utc"], "going blind must push"
+    assert "blind" in out.lower(), out
+    low = out.lower()
+    assert "not a flood warning" in low and "not an all-clear" in low, (
+        "the blindness push must refuse both readings explicitly:\n" + out)
+    for word in ("watch", "warning issued", "emergency"):
+        assert f"title: {word}" not in low
+    first = s2["blind_alert_utc"]
+
+    print("-- still blind next cycle: cooldown, silence")
+    s2, out = run_capture({"level": "NORMAL", "source_tier": "measured"}, meta=BLIND)
+    assert s2["blind"] is True and s2["blind_alert_utc"] == first, "must not re-nag"
+    assert "[dry]" not in out, "second blind cycle must be silent"
+
+    print("-- sight returns: recovery push, and blind clears")
+    s2, out = run_capture({"level": "NORMAL", "source_tier": "measured"}, meta=FRESH)
+    assert s2["blind"] is False, "recovery must clear the blind flag"
+    assert "see again" in out.lower(), out
+
+    print("-- partial staleness is NOT blindness")
+    PARTIAL = {"site_count": 2, "stale_sites": ["A"], "generated_utc": "x"}
+    s2, out = run_capture({"level": "NORMAL", "source_tier": "measured"}, meta=PARTIAL)
+    assert s2["blind"] is False and "[dry]" not in out
+
+    print("-- malformed feed_meta must not raise and must not push")
+    s2, out = run_capture({"level": "NORMAL", "source_tier": "measured"},
+                          meta={"site_count": "banana", "stale_sites": None})
+    assert s2["blind"] is False, "a broken meta must not be read as blindness"
+
+    print("-- a blind system that also escalates still sends BOTH")
+    run_capture({"level": "NORMAL", "source_tier": "measured"}, meta=FRESH)
+    s2, out = run_capture({"level": "WARNING", "source_tier": "measured"}, meta=BLIND)
+    assert s2["blind"] is True and s2["level"] == "WARNING", s2
+    assert out.lower().count("[dry]") >= 2, "escalation and blindness are separate facts:\n" + out
 
     print("all notify_posture self-tests passed")
 

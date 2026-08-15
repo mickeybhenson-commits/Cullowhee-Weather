@@ -2,5 +2,7 @@
   "level": "NORMAL",
   "outlook_p": null,
   "outlook_alert_utc": null,
-  "checked_utc": "2026-08-15T14:49:14.820282+00:00"
+  "blind": true,
+  "blind_alert_utc": "2026-08-15T14:53:11.884664+00:00",
+  "checked_utc": "2026-08-15T14:53:11.884664+00:00"
 }

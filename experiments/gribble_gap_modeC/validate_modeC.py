@@ -35,6 +35,48 @@ THE TWO REASONS
    So the model's worst behaviour sits exactly where its input is least
    trustworthy, and this dataset cannot separate the two.
 
+VERIFIED AGAINST THE RAW RECORD, 2026-08-16 — AND ONE HALF DID NOT SURVIVE
+---------------------------------------------------------------------------
+Everything below was computed from the DERIVED inventory. On 2026-08-16 those derived
+columns were finally checked against the flume record they came from
+(wchrs_public/GribbleGap_Q_T_ALL_CLEAN_NOV19.csv, 221,697 rows, never previously read
+by anything in this repo) using scripts/check_gribble_observed.py:
+
+  peak_cfs   CONFIRMED, 38 of 38, exactly. The raw `disch` column is in LITRES PER
+             SECOND — undocumented anywhere, recovered from the data — and
+             round(raw_max / 28.3168, 2) equals peak_cfs for every event. Part 2 below
+             therefore rests on numbers that reproduce.
+
+  runoff_in  NOT internally consistent. Against the raw record, on well-sampled events:
+                 before ~2016-08   ratio 2.020   (7 events)
+                 after  ~2016-08   ratio 1.007   (10 events)
+             After the break, runoff_in is total hydrograph volume over DA=0.166 sq mi
+             across this table's own start->end window, to within 1% — which pins the
+             method exactly, and shows runoff_in is NOT baseflow-separated. Before the
+             break it is exactly twice that. A factor landing on 2.00-2.04 across seven
+             events of very different size and shape is a constant, not a window-shape
+             artifact. A halved drainage area would do it; that is a hypothesis. The
+             STEP is established, its cause is not.
+
+So Part 1 no longer reports a single median. It reports the two cohorts separately, and
+then tries to reconcile them by removing the measured step — AND FAILS TO. The cohorts
+differ by ~0.09x; removing the 2.02x step leaves ~0.17x. So the scaling break is real but
+is NOT what makes the two halves disagree: the cohorts are small (5 and 13 events with
+non-zero modelled runoff) and are simply different storm populations. The honest output
+is therefore not a corrected median but the statement that no median from this column is
+worth quoting — pooled, split, or corrected. That failed reconciliation is a stronger
+result than the split it replaced.
+
+Part 1's ZERO-runoff count is unaffected either way: it depends only on P, CN and Ia,
+and never touches runoff_in.
+
+ALSO NEW, AND IT QUALIFIES PART 2: the record's median sample interval is 10.0 minutes
+and this catchment's Kirpich Tc is 9.7 minutes. It samples at its own response
+timescale, so a true peak can rise and fall between samples. peak_cfs is a LOWER BOUND,
+and the shortfall is worst on exactly the short intense events where k is smallest — so
+k is biased low by an amount this data cannot quantify. That reinforces the conclusion
+and means the k SPREAD below should not be quoted as a measurement.
+
 WHAT IT DOES NOT CLAIM
 ----------------------
 That the model is wrong. It may be; the inputs may be; most likely both, in
@@ -62,6 +104,16 @@ import cwm_model as cwm                                     # noqa: E402
 from wetness import resolve_wetness                         # noqa: E402
 
 DT_HR = 0.0625          # 3.75 min — finer than both the 9.7-min Tc and the 10-min record
+
+# runoff_in changes its relationship to the raw record by a factor of 2 somewhere in
+# here. The break is BRACKETED, not located: the last clean early event is 2016-02-24
+# (ratio 2.004, 292 samples) and the first clean late one is 2017-04-23 (ratio 1.015,
+# 42 samples). This midpoint classifies all 38 events consistently with their measured
+# ratios, including the two poorly-sampled ones either side of it.
+RUNOFF_BREAK = "2016-08-25"
+# The measured size of the step, from scripts/check_gribble_observed.py: well-sampled
+# events read 2.020x before the break and 1.007x after, against the raw record.
+RUNOFF_STEP = 2.02
 
 
 def load():
@@ -118,6 +170,7 @@ def main():
     print("1. RUNOFF DEPTH  —  shape-free: Q = (P-0.2S)^2/(P+0.8S) needs no hyetograph")
     print("=" * 78)
     zero, ratios, tot_m, tot_o, cns = [], [], 0.0, 0.0, []
+    cohort = {"early": [], "late": []}          # (model_in, observed_in) per event
     for r in usable:
         P, p5, obs = (float(r["storm_rain_in"]), float(r["antecedent_5d_in"]),
                       float(r["runoff_in"]))
@@ -128,6 +181,8 @@ def main():
         cns.append(round(CN, 1))
         tot_m += Q
         tot_o += obs
+        which = "early" if r["peak_time"][:10] < RUNOFF_BREAK else "late"
+        cohort[which].append((Q, obs))
         (zero if Q == 0 else ratios).append((r["peak_time"][:10], P, p5, CN, 0.2 * S, Q, obs))
     print(f"  model predicts ZERO runoff on {len(zero)} of {len(usable)} events "
           f"({100*len(zero)/len(usable):.0f}%) — every one measurably produced runoff")
@@ -135,11 +190,40 @@ def main():
         print(f"      their storm rain spans {min(z[1] for z in zero):.2f}–{max(z[1] for z in zero):.2f} in, "
               f"so it is not that the storms were small")
         print(f"      their 5-day antecedent: {sum(1 for z in zero if z[2] == 0.0)} rows read EXACTLY 0.00 in")
-    if ratios:
-        rr = sorted(q / o for _, _, _, _, _, q, o in ratios if o > 0)
-        print(f"  where it does predict runoff: model/observed median {st.median(rr):.2f}, max {max(rr):.1f}")
-    print(f"  TOTAL: model {tot_m:.2f} in vs observed {tot_o:.2f} in "
-          f"= {100*tot_m/tot_o:.0f}% of measured runoff")
+    # NOT a pooled median. runoff_in relates to the raw record differently either side
+    # of RUNOFF_BREAK (see the header), so one number over both cohorts averages two
+    # different observed columns together and reports a quantity that does not exist.
+    print()
+    print(f"  where it does predict runoff, SPLIT at the {RUNOFF_BREAK} break in runoff_in:")
+    print(f"      {'cohort':<22}{'n':>4}{'model/obs median':>19}{'model in':>11}{'obs in':>9}")
+    meds = {}
+    for name, label in (("early", f"before {RUNOFF_BREAK}"), ("late", f"after  {RUNOFF_BREAK}")):
+        pairs = [(q, o) for q, o in cohort[name] if q > 0 and o > 0]
+        if not pairs:
+            print(f"      {label:<22}{0:>4}{'—':>19}")
+            continue
+        m = st.median(q / o for q, o in pairs)
+        meds[name] = m
+        print(f"      {label:<22}{len(pairs):>4}{m:>19.2f}"
+              f"{sum(q for q, _ in pairs):>11.2f}{sum(o for _, o in pairs):>9.2f}")
+    # An earlier draft of this block asserted that the cohort disagreement and the
+    # measured 2.02x step in runoff_in were "the same fact". They are not, and the
+    # numbers say so: removing the step does not reconcile the cohorts, so most of the
+    # difference is storm composition, not scaling. Left here because the failed
+    # reconciliation is more informative than the split was.
+    if len(meds) == 2 and meds["late"]:
+        raw = meds["early"] / meds["late"]
+        corr = (meds["early"] * RUNOFF_STEP) / meds["late"]
+        print(f"      -> cohorts disagree by {raw:.2f}x. Removing the {RUNOFF_STEP:.2f}x step "
+              f"measured against the")
+        print(f"         raw record leaves {corr:.2f}x — so the step does NOT explain the gap, "
+              f"and these two")
+        print(f"         cohorts are not comparable populations (n={len(cohort['early'])} vs "
+              f"{len(cohort['late'])}, different storms).")
+        print(f"      -> conclusion: no median from runoff_in is a quantity to quote — pooled, "
+              f"split, or corrected.")
+    print(f"  TOTAL (both cohorts, and therefore NOT a quantity to quote): "
+          f"model {tot_m:.2f} in vs observed {tot_o:.2f} in")
     top = sorted(set(cns), key=cns.count, reverse=True)[:2]
     print(f"  cn_from_wetness SATURATES: {cns.count(top[0])+cns.count(top[1])} of {len(cns)} events land on "
           f"just CN {top[0]} or CN {top[1]}")
@@ -178,6 +262,12 @@ def main():
         print("  k is a function of DURATION, which the dataset does not constrain: it carries")
         print("  event totals, not hyetographs. On a Tc ~10 min catchment the assumed shape")
         print("  dominates the peak, so a single k_event_raw is not identifiable from totals.")
+        print()
+        print("  AND the observed side is a lower bound: the raw record samples every 10.0 min")
+        print("  against a 9.7-min Tc, so a true peak can rise and fall between samples. The")
+        print("  shortfall is worst on the short intense events where k is smallest, so k is")
+        print("  biased LOW by an amount this data cannot quantify. Treat the span as an")
+        print("  argument, not a measurement.")
 
     print()
     print("=" * 78)
@@ -189,6 +279,12 @@ def main():
     print()
     print("  This does NOT show the model is wrong. It shows the experiment cannot")
     print("  currently distinguish a wrong model from wrong inputs.")
+    print()
+    print("  A THIRD reason was added 2026-08-16, and it is neither model nor input: the")
+    print("  observed runoff column does not have one consistent relationship to the record")
+    print("  it was derived from. That is a PROVENANCE problem, and it only surfaced when")
+    print("  somebody finally opened the raw file. See the header, and")
+    print("  claude/noah_gribble_observed_verified_2026-08-16.md.")
     print()
     print("  The pre-registration already names the fix — 'pending WCHRS 15-min gauges'.")
     print("  In-catchment rainfall at 15 minutes resolves both reasons at once: it gives")

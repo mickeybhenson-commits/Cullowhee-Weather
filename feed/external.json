@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-16T01:05:08.114702+00:00",
+  "fetched_utc": "2026-08-16T01:13:06.631220+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ReadTimeout",
+    "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -221,7 +221,84 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": null,
+  "nwm": {
+    "reach": 19730552,
+    "reach_is_cullowhee": false,
+    "series": [
+      [
+        1786838400,
+        84.4
+      ],
+      [
+        1786842000,
+        98.9
+      ],
+      [
+        1786845600,
+        116.9
+      ],
+      [
+        1786849200,
+        137.4
+      ],
+      [
+        1786852800,
+        157.9
+      ],
+      [
+        1786856400,
+        176.2
+      ],
+      [
+        1786860000,
+        191.1
+      ],
+      [
+        1786863600,
+        202.0
+      ],
+      [
+        1786867200,
+        209.8
+      ],
+      [
+        1786870800,
+        215.1
+      ],
+      [
+        1786874400,
+        218.6
+      ],
+      [
+        1786878000,
+        220.7
+      ],
+      [
+        1786881600,
+        222.1
+      ],
+      [
+        1786885200,
+        222.8
+      ],
+      [
+        1786888800,
+        223.5
+      ],
+      [
+        1786892400,
+        223.5
+      ],
+      [
+        1786896000,
+        223.9
+      ],
+      [
+        1786899600,
+        223.9
+      ]
+    ]
+  },
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
@@ -232,9 +309,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 62.5,
+    "age_min": 40.2,
     "fresh": true,
-    "last_updated_utc": "2026-08-16T00:03:00+00:00",
+    "last_updated_utc": "2026-08-16T00:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -399,7 +476,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 15.5,
+    "age_min": 23.2,
     "valid_utc": "2026-08-16T00:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

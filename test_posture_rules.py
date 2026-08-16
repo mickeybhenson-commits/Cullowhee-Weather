@@ -6,6 +6,22 @@ of levels and presence flags, because the failure mode being guarded against is 
 the corner nobody thought to write an example for.
 
     python test_posture_rules.py          # no pytest needed
+
+APPLIED TO A DEPLOYED ENGINE, 2026-08-16
+----------------------------------------
+Everything above the "deployed engine" section below tests posture_rules against itself
+or against a toy function. That was the whole suite until today, and it left the module
+100% self-tested and 0% APPLIED: posture_rules states the single most important safety
+rule in this system — "absent corroboration must never downgrade a posture" — and no
+engine imported it, so nothing checked that any engine obeyed it. test_wired.py has been
+printing posture_rules under TEST-ONLY REACHABLE for exactly this reason.
+
+check_monotone() was built to be pointed at a real rule. Pointing it at flood_engine —
+the engine behind the published feed, and therefore behind the phone notification —
+found that the LEVEL is clean (it never depended on the corroborators at all) and that
+the PROBABILITY was not: absent inputs were coerced to zero, so losing a soil probe
+scored as bone-dry ground and losing a rain gauge scored as no rain. Both weights are
+positive. See early_warning_probability()'s docstring for the numbers.
 """
 import itertools
 
@@ -114,6 +130,78 @@ def test_check_monotone_respects_primary_declaration():
     except PostureRuleViolation:
         return
     raise AssertionError("undeclared primary should have been flagged")
+
+
+# =====================================================================
+# APPLIED TO THE DEPLOYED ENGINE
+# The tests above prove the RULE is sound. These prove an ENGINE obeys it.
+# =====================================================================
+def test_the_deployed_level_survives_losing_its_corroborators():
+    """flood_engine.assess() is what feed_runner publishes and what the phone push
+    reads. Point check_monotone at it directly.
+
+    `stage` is declared primary — losing the stage series legitimately lowers the
+    posture, because that is the evidence itself. Soil and rain are corroborators, and
+    a corroborator that can lower the result is a veto. This passes, and it should:
+    classify_stage() takes only stage and prev_level, so the corroborators cannot reach
+    the level at all. That is worth ASSERTING rather than assuming — it is one edit
+    away from not being true.
+    """
+    import flood_engine
+
+    def deployed_level(inp):
+        stage = inp["stage"]
+        series = [(0, stage - 0.5), (900, stage - 0.25), (1800, stage)]
+        return flood_engine.assess(series, prev_level="NORMAL",
+                                   soil_moisture_pct=inp.get("soil"),
+                                   storm_rain_in=inp.get("rain")).level
+
+    for stage in (5.0, 6.9, 7.1, 9.5, 11.5):
+        check_monotone(deployed_level,
+                       {"stage": stage, "soil": 88.0, "rain": 2.4},
+                       primary=("stage",),
+                       name=f"flood_engine.assess at {stage} ft")
+
+
+def test_the_deployed_engine_refuses_to_score_what_it_cannot_measure():
+    """An absent leading indicator must produce NO probability — never a lower one.
+
+    THE BUG THIS GUARDS, which was live until 2026-08-16: `(soil_pct or 0.0)` and
+    `(storm_rain_in or 0.0)` mapped None to the most reassuring value each term can
+    take. On a creek at 6.5 ft rising 0.5 ft/hr with saturated ground and 2 inches
+    down, losing both sensors moved the published FX_WARN_PROBABILITY from 97.0% to
+    55.1% — the storm that kills a gauge making the system look calmer, which is the
+    FloodNet failure this whole module exists to prevent.
+    """
+    import flood_engine
+    series = [(0, 6.0), (900, 6.25), (1800, 6.5)]
+
+    full = flood_engine.assess(series, soil_moisture_pct=85.0, storm_rain_in=2.0)
+    assert full.ew_probability is not None, "both sensors present must yield a number"
+
+    for label, kw in (
+            ("soil probe offline", dict(soil_moisture_pct=None, storm_rain_in=2.0)),
+            ("rain gauge offline", dict(soil_moisture_pct=85.0, storm_rain_in=None)),
+            ("both offline", dict(soil_moisture_pct=None, storm_rain_in=None))):
+        a = flood_engine.assess(series, **kw)
+        assert a.ew_probability is None, (
+            f"{label}: published P(warn)={a.ew_probability} instead of null. A blend "
+            f"calibrated on four terms is not the same quantity with one pinned at "
+            f"zero, and a low number is believed where a null is handled.")
+        assert a.level == full.level, (
+            f"{label}: the LEVEL moved {full.level} -> {a.level} when a corroborating "
+            f"sensor went offline. That is the veto bug in the deployed engine.")
+
+
+def test_absent_soil_gives_the_neutral_curve_number_not_the_dry_one():
+    """dynamic_cn() already had this right, in the same file as the bug above — absent
+    soil returns AMC-II, not the dry AMC-I. Pin it so it cannot drift into its
+    sibling's mistake."""
+    import flood_engine
+    assert flood_engine.dynamic_cn(None) == flood_engine.CN_NORMAL, (
+        "absent soil moisture must read as the NEUTRAL curve number")
+    assert flood_engine.dynamic_cn(0.0) < flood_engine.CN_NORMAL, (
+        "control: an actual reading of 0% really is drier than neutral")
 
 
 if __name__ == "__main__":

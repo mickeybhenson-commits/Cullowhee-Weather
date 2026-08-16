@@ -221,11 +221,45 @@ def tr55_peak_discharge_cfs(precip_in, soil_moisture_pct=None):
 # 5. LOGISTIC EARLY-WARNING PROBABILITY
 # =====================================================================
 def early_warning_probability(stage_ft, rate_ft_hr, soil_pct, storm_rain_in):
-    """Weighted logistic blend of the leading indicators -> [0,1]."""
+    """Weighted logistic blend of the leading indicators -> [0,1], or None.
+
+    RETURNS None WHEN A LEADING INDICATOR IS ABSENT, and that is the point.
+
+    Until 2026-08-16 the two normalisation lines below read `(soil_pct or 0.0)` and
+    `(storm_rain_in or 0.0)`. A missing soil probe therefore scored identically to
+    bone-dry ground, and a missing rain total identically to no rain at all — the
+    two most reassuring values either term can take. Both weights are positive, so
+    ABSENCE PUSHED THE PROBABILITY DOWN:
+
+        creek at 6.5 ft rising 0.5 ft/hr, soil 85%, 2.0 in down   -> 97.0%
+        same creek, both sensors offline                          -> 55.1%
+
+    The storm that takes out a gauge would have made the system look calmer. That is
+    the FloodNet veto bug in probability form, and posture_rules.py is in this repo
+    specifically to forbid it — "an offline sensor is silent, not reassuring". Note
+    that dynamic_cn(), forty lines above, already gets this right: it returns the
+    neutral CN2 for a missing soil reading rather than the dry CN1. Same file, same
+    author, opposite treatment.
+
+    Why None rather than a neutral default: there is no neutral storm rainfall the
+    way CN2 is neutral for soil. A blend calibrated on four terms is not the same
+    quantity with two of them pinned at zero, and pretending otherwise publishes a
+    number that looks like a probability and is not one. So absent renders as
+    absent — the feed emits FX_WARN_PROBABILITY: null, which a consumer can see and
+    handle, instead of a low number, which a consumer would believe.
+
+    This matters more than the current consumer count suggests. Nothing reads the
+    field today (live.html has no reference to it), but it ships in a feed whose
+    stated purpose is external consumption, and state.json carries neither key, so
+    every value published so far has had two of its four terms silently pinned at
+    their calmest.
+    """
+    if soil_pct is None or storm_rain_in is None:
+        return None
     stage_norm = stage_ft / THRESH["EMERGENCY"]
     rate_norm = (rate_ft_hr / RATE_REF_FT_HR) if rate_ft_hr > 0 else 0.0
-    soil_norm = (soil_pct or 0.0) / 100.0
-    rain_norm = (storm_rain_in or 0.0) / RAIN_REF_IN
+    soil_norm = soil_pct / 100.0
+    rain_norm = storm_rain_in / RAIN_REF_IN
     z = (LOGIT["bias"]
          + LOGIT["stage"] * stage_norm
          + LOGIT["rate"]  * rate_norm
@@ -245,7 +279,10 @@ class FloodAssessment:
     rate_ft_hr: float
     time_to_next_hr: float = None
     next_level: str = None
-    ew_probability: float = 0.0
+    # None = a leading indicator was absent, so no probability was computed.
+    # NOT 0.0: that is a claim of near-certain calm, which is the one thing an
+    # unmeasured watershed must never assert. See early_warning_probability().
+    ew_probability: float = None
     tr55_peak_cfs: float = None
     runoff_in: float = None
     cn_used: float = None
@@ -274,7 +311,8 @@ def assess(stage_series, prev_level="NORMAL",
     a = FloodAssessment(stage_ft=round(stage, 2), level=level,
                         discharge_cfs=round(discharge, 1), rate_ft_hr=round(rate, 3),
                         time_to_next_hr=(round(ttn, 2) if ttn is not None else None),
-                        next_level=next_level, ew_probability=round(p, 3))
+                        next_level=next_level,
+                        ew_probability=(round(p, 3) if p is not None else None))
     if storm_rain_in is not None:
         qp, Q, cn = tr55_peak_discharge_cfs(storm_rain_in, soil_moisture_pct)
         a.tr55_peak_cfs, a.runoff_in, a.cn_used = round(qp, 1), round(Q, 3), round(cn, 1)
@@ -284,6 +322,13 @@ def assess(stage_series, prev_level="NORMAL",
 # =====================================================================
 # SELF-TEST  —  synthetic hydrograph (no live sensors needed)
 # =====================================================================
+def _p(v):
+    """Format a probability that may legitimately be absent. 'n/a' is not a
+    cosmetic choice: printing 0.0 for 'not computed' is the same conflation the
+    function itself was just fixed to stop making."""
+    return "n/a" if v is None else f"{v}"
+
+
 def _synthetic_hydrograph(dt_min=5):
     """
     Build a baseflow -> rising-limb -> peak -> recession stage series,
@@ -336,7 +381,7 @@ def _run_self_test():
             nxt = a.next_level or "--"
             flag = "  <== STATE CHANGE" if change else ""
             print(f"{t_min:>6} {a.stage_ft:>6} {a.rate_ft_hr:>8} {a.discharge_cfs:>9} "
-                  f"{a.level:>10} {a.ew_probability:>8} {nxt:>5}/{ttn:<4}{flag}")
+                  f"{a.level:>10} {_p(a.ew_probability):>8} {nxt:>5}/{ttn:<4}{flag}")
             last_printed_level = a.level
     # final TR-55 readout
     fa = assess(series, soil_moisture_pct=82.0, storm_rain_in=2.4)

@@ -320,6 +320,53 @@ def test_a_probability_that_could_not_be_computed_does_not_crash_its_consumers()
         "absent level contributes nothing to combine().")
 
 
+def test_forecast_evidence_alone_can_never_exceed_watch():
+    """The two-tier rule, asserted on the module that implements it.
+
+    flood_network's header: forecast/soil may raise an OUTLOOK to WATCH; WARNING and
+    EMERGENCY require CONFIRMATION from a stream level. This is the single most
+    consequential rule in the system — it is what stops a model from issuing an
+    EMERGENCY — and nothing asserted it until 2026-08-16.
+
+    It holds by construction: outlook_level is a binary WATCH/NORMAL, so the outlook
+    tier has no representation for anything higher. Worth pinning precisely BECAUSE it
+    is structural — a later refactor that gave outlook_level a real ladder would break
+    it silently, and the failure mode is a forecast issuing an EMERGENCY.
+
+    What this does NOT assert, because it is not true: that a confirming level was
+    MEASURED. flood_network never imports sources.py and cannot tell. See its header.
+    """
+    import flood_network
+    rw = flood_network.routed_assessment("belk", {})        # no stream input anywhere
+    for i in range(0, 301):                                 # risk 0.00 .. 3.00
+        risk = i / 100.0
+        tp = flood_network.tiered_posture(rw, "belk", upwind={
+            "risk": risk, "level": "EMERGENCY", "lead_min": 30,
+            "contributors": [], "note": ""})
+        assert not tp.stream_confirmed, "no stream input, yet the tier confirmed"
+        assert _PR[tp.headline] <= _PR["WATCH"], (
+            f"outlook risk {risk:g} produced headline {tp.headline} with NO stream "
+            f"confirmation. Forecast evidence has escaped the WATCH ceiling — a model "
+            f"can now issue a warning the creek has not earned.")
+
+
+def test_a_stream_level_is_what_lifts_the_ceiling():
+    """Control for the test above: prove the ceiling is real, not vacuous.
+
+    If tiered_posture could never exceed WATCH under ANY input, the test above would
+    pass while asserting nothing. A stream level must actually get through.
+    """
+    import flood_network
+    series = [(i * 300, 4.0 + 1.4 * i) for i in range(8)]    # a hard, sustained rise
+    rw = flood_network.routed_assessment(
+        "belk", {"double_springs": {"stage_series": series}})
+    tp = flood_network.tiered_posture(rw, "belk")
+    assert tp.stream_confirmed, "a stage series must confirm"
+    assert _PR[tp.stream_level] >= _PR["WATCH"], (
+        f"a 4.0 -> 13.8 ft rise produced stream_level {tp.stream_level}; the ceiling "
+        f"test above is passing vacuously because nothing can lift it.")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):

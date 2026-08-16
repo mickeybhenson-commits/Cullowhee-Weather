@@ -242,6 +242,31 @@ def routed_assessment(warning_id, inputs_by_site, prev_level="NORMAL",
 # confidence, false-alarm prone). WARNING / EMERGENCY require CONFIRMATION
 # from a measured headwater stage rise. The gauged downstream mainstem is a
 # validation reference and is intentionally NOT an input to either tier.
+#
+# WHAT "MEASURED" ACTUALLY MEANS HERE — read this before hardening it (2026-08-16).
+# This module never imports sources.py and has no idea where a level came from.
+# stream_confirmed is set because a LEVEL OBJECT EXISTS, not because that level was
+# measured. The invariant holds today only because both live callers supply real
+# telemetry: streamlit_app.py builds inputs from Firestore stage documents and from
+# FIMAN gauge 25380. Provenance is the CALLER's responsibility and is not checked.
+#
+# The exposure is not hypothetical. feed_runner.py builds a stage history through
+# sources.resolve(), which falls back to a MODELED value when no sensor is fresh, and it
+# already carries stage_series_up / stage_series_down in its vocabulary — this module's
+# language. Those two paths are one wiring change from converging, and posture_rules.py's
+# corollary ("a MODELED value must never populate the Confirmation tier") would then be
+# violated silently.
+#
+# IF YOU ADD A PROVENANCE GATE, GET ITS FAIL DIRECTION RIGHT. The instinct is to require
+# proof of measurement and refuse to confirm without it. That is BACKWARDS here: metadata
+# missing -> cannot confirm -> no WARNING or EMERGENCY even with a real gauge rising. A
+# missed escalation costs more than a false one in this system. The gate must be "confirm
+# UNLESS explicitly modeled", never "confirm ONLY IF explicitly measured".
+#
+# What IS structurally guaranteed, and is now asserted in test_posture_rules.py: the
+# outlook tier cannot exceed WATCH. outlook_level is a binary WATCH/NORMAL, so no amount
+# of forecast or soil evidence reaches WARNING without a stream level. The cap is sound;
+# only the word "measured" was aspirational.
 WATCH_OUTLOOK_THRESHOLD = 0.45   # relative priming index that trips an Outlook [tunable]
 
 
@@ -280,7 +305,8 @@ def tiered_posture(rw, warning_id="belk", upwind=None):
     proxy, not a confirmed creek rise."""
     tp = TieredPosture(lead_hr=rw.lead_time_hr)
 
-    # ---- Confirmation tier: measured stage only --------------------------
+    # ---- Confirmation tier: any stage level, from wherever the caller got it --
+    # Was labelled "measured stage only". Not enforced — see the header.
     stream_levels = []
     if rw.local is not None:
         tp.stream_confirmed = True

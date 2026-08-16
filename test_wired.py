@@ -168,6 +168,14 @@ TOOLS = {
                                     # It landed 2026-08-15 without this entry and left CI
                                     # red until 5603ceb+1; the omission was caught by this
                                     # very test, which is the mechanism working.
+    "verify_browser_engines",       # loads live.html and rain_to_trip.html in headless
+                                    # Chromium and runs THEIR assessBasin. Until 2026-08-16
+                                    # nothing in this repo had ever executed either JS
+                                    # engine: the registry test compares their embedded
+                                    # NUMBERS, and the 4,977-storm agreement test compares
+                                    # two PYTHON engines. Needs Chromium, so it is a
+                                    # workstation tool rather than a CI suite. RUN IT AFTER
+                                    # sync_engine_html.py --write, which edits those files.
     "verify_surveyed_thresholds",   # reconciles basins.py's SURVEYED ladders against
                                     # the 3DEP cut they claim to come from. Its evidence
                                     # (scripts/xs_out/summary.csv) was committed in

@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-16T11:44:46.750458+00:00",
+  "fetched_utc": "2026-08-16T12:36:23.497762+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ok",
+    "nwm": "ReadTimeout",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786878900,
+        1786882500,
         351.0
       ],
       "00065": [
-        1786878900,
+        1786882500,
         5.05
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,32 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786878900,
-        298.0
+        1786882500,
+        302.0
       ],
       "00065": [
-        1786878900,
-        3.31
+        1786882500,
+        3.32
       ]
     },
-    "local_inflow_cfs": -53.0,
+    "local_inflow_cfs": -49.0,
     "stage_series_up": [
-      [
-        1786859100,
-        4.95
-      ],
-      [
-        1786860000,
-        5.0
-      ],
-      [
-        1786860900,
-        5.02
-      ],
-      [
-        1786861800,
-        5.03
-      ],
       [
         1786862700,
         5.04
@@ -132,27 +116,27 @@
       ],
       [
         1786878900,
+        5.05
+      ],
+      [
+        1786879800,
+        5.05
+      ],
+      [
+        1786880700,
+        5.05
+      ],
+      [
+        1786881600,
+        5.05
+      ],
+      [
+        1786882500,
         5.05
       ]
     ],
     "stage_series_down": [
       [
-        1786859100,
-        3.34
-      ],
-      [
-        1786860000,
-        3.33
-      ],
-      [
-        1786860900,
-        3.33
-      ],
-      [
-        1786861800,
-        3.32
-      ],
-      [
         1786862700,
         3.32
       ],
@@ -227,103 +211,33 @@
       [
         1786878900,
         3.31
+      ],
+      [
+        1786879800,
+        3.31
+      ],
+      [
+        1786880700,
+        3.31
+      ],
+      [
+        1786881600,
+        3.31
+      ],
+      [
+        1786882500,
+        3.32
       ]
     ],
     "provenance": "MEASURED"
   },
-  "alerts": [
-    {
-      "event": "Special Weather Statement",
-      "severity": "Moderate",
-      "onset": "2026-08-16T04:59:00-04:00",
-      "ends": null,
-      "headline": "Special Weather Statement issued August 16 at 4:59AM EDT by NWS Greenville-Spartanburg SC",
-      "id": "urn:oid:2.49.0.1.840.0.2131ed8889bc37966e81a12d2c99b8815b0ab36d.001.1"
-    }
-  ],
+  "alerts": [],
   "ffg_in": {
     "ffg1h": null,
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": {
-    "reach": 19730552,
-    "reach_is_cullowhee": false,
-    "series": [
-      [
-        1786870800,
-        334.8
-      ],
-      [
-        1786874400,
-        323.8
-      ],
-      [
-        1786878000,
-        310.4
-      ],
-      [
-        1786881600,
-        295.2
-      ],
-      [
-        1786885200,
-        280.4
-      ],
-      [
-        1786888800,
-        266.6
-      ],
-      [
-        1786892400,
-        255.0
-      ],
-      [
-        1786896000,
-        246.1
-      ],
-      [
-        1786899600,
-        239.1
-      ],
-      [
-        1786903200,
-        233.8
-      ],
-      [
-        1786906800,
-        230.2
-      ],
-      [
-        1786910400,
-        228.1
-      ],
-      [
-        1786914000,
-        226.7
-      ],
-      [
-        1786917600,
-        225.3
-      ],
-      [
-        1786921200,
-        224.9
-      ],
-      [
-        1786924800,
-        224.6
-      ],
-      [
-        1786928400,
-        224.2
-      ],
-      [
-        1786932000,
-        224.2
-      ]
-    ]
-  },
+  "nwm": null,
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
@@ -334,9 +248,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 41.8,
+    "age_min": 63.8,
     "fresh": true,
-    "last_updated_utc": "2026-08-16T11:03:00+00:00",
+    "last_updated_utc": "2026-08-16T11:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -382,7 +296,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260816_1100.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260816_1200.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -451,7 +365,7 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 1.0,
-        "soil_sat_pct": 48.0,
+        "soil_sat_pct": 47.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -476,7 +390,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 21.1,
+        "streamflow_m3s": 19.4,
         "soil_sat_pct": 47.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -502,7 +416,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-16T11:44:49.111743+00:00",
+    "valid_utc": "2026-08-16T12:36:46.471224+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

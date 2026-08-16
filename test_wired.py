@@ -204,6 +204,12 @@ THIRD_PARTY = {
     # batch / analysis tools, optional by design
     "geopandas", "rasterio", "shapely", "shapefile", "pyproj", "scipy", "xarray",
     "eccodes", "pystac_client", "planetary_computer",
+    # verify_browser_engines.py drives headless Chromium. Deliberately NOT in
+    # requirements.txt: the console never needs a browser, and adding one would put a
+    # ~150 MB download in front of every Streamlit boot. It is the same shape as the
+    # GRIB and geospatial names above — a batch/analysis tool that guards its own
+    # import and exits with install instructions rather than assuming the package.
+    "playwright",
 }
 
 

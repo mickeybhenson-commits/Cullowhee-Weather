@@ -284,6 +284,42 @@ def test_the_posture_never_falls_as_the_ground_gets_wetter():
                      _lin(0.0, 1.0, 0.005), f"cwm_model {bid} @ wetness (P=5.0)")
 
 
+def test_a_probability_that_could_not_be_computed_does_not_crash_its_consumers():
+    """The absent-probability fix has a downstream half, and it was missed on the day.
+
+    flood_engine.early_warning_probability began returning None on 2026-08-16 (correct:
+    a blend calibrated on four terms is not the same quantity with two pinned at zero).
+    But flood_network._noisy_or multiplied straight through `probs`, and
+    streamlit_app.py builds its site inputs with `stage_series` ONLY — no soil_pct, no
+    storm_rain_in. So every real Firestore stage series produced ew_probability=None and
+    routed_assessment() raised TypeError.
+
+    Nothing caught it: the flood_engine tests call assess() directly and never through a
+    consumer. It was latent only because no sensor reports yet — it would have fired on
+    the day the watershed got its first gauge, which is the day it is supposed to start
+    working.
+
+    Two assertions, because "does not crash" is not enough:
+      * the call survives, and
+      * the site still CONFIRMS. Losing an uncomputable probability must not cost the
+        measured level, which is what actually drives the posture.
+    """
+    import flood_network
+    series = [(i * 300, 4.0 + 0.5 * i) for i in range(8)]     # rising, plausible
+    rw = flood_network.routed_assessment(
+        "belk", {"double_springs": {"stage_series": series}})   # exactly line 384's shape
+    tp = flood_network.tiered_posture(rw, "belk")
+
+    assert rw.combined_probability is not None
+    assert tp.stream_confirmed is True, (
+        "a site with a measured stage series stopped confirming — the absent PROBABILITY "
+        "cost us the measured LEVEL, which is the half that drives postures.")
+    assert flood_network._noisy_or([None, None]) == 0.0
+    assert flood_network._noisy_or([0.5, None]) == flood_network._noisy_or([0.5]), (
+        "an absent probability must contribute nothing to the combine, exactly as an "
+        "absent level contributes nothing to combine().")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):

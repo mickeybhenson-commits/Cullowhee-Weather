@@ -126,8 +126,28 @@ def priming_index(inputs):
 
 
 def _noisy_or(probs):
+    """Independent-source combine. A None contributes NOTHING and is skipped.
+
+    Not defensive tidying: flood_engine.early_warning_probability returns None when a
+    leading indicator is absent (2026-08-16), and streamlit_app.py builds its site
+    inputs with `stage_series` ONLY — no soil_pct, no storm_rain_in. So every real
+    Firestore stage series now yields ew_probability=None, and this loop raised
+    TypeError on the first sensor to report. Caught before any sensor existed; the
+    crash would have arrived on the day the watershed got its first gauge.
+
+    This is the SINGLE choke point: every probability reaches the combine through here,
+    so guarding it once covers the two existing append sites and any future one. Adding
+    per-site `is not None` checks as well would be lines no test can fail on.
+
+    Skipping is the same rule posture_rules.combine applies to levels: absent evidence
+    contributes nothing. Note what is NOT lost — a site with a stage series still
+    contributes its measured LEVEL to the Confirmation tier, which is what drives the
+    posture. Only its share of this summary probability goes away.
+    """
     acc = 1.0
     for p in probs:
+        if p is None:
+            continue
         acc *= (1.0 - max(0.0, min(1.0, p)))
     return round(1.0 - acc, 3)
 

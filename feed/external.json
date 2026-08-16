@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-16T20:47:36.649880+00:00",
+  "fetched_utc": "2026-08-16T21:18:37.090807+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 466.8,
     "stage_series_up": [
-      [
-        1786892400,
-        4.24
-      ],
-      [
-        1786893300,
-        4.21
-      ],
       [
         1786894200,
         4.19
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1786892400,
-        3.78
-      ],
-      [
-        1786893300,
-        3.8
-      ],
       [
         1786894200,
         3.8
@@ -240,14 +224,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 75.0,
-    "fresh": true,
-    "last_updated_utc": "2026-08-16T19:33:00+00:00",
+    "age_min": 76.0,
+    "fresh": false,
+    "last_updated_utc": "2026-08-16T20:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 76.0 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -288,7 +272,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260816_2000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260816_2100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -331,7 +315,7 @@
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.1,
-        "soil_sat_pct": 38.0,
+        "soil_sat_pct": 37.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -382,7 +366,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 13.2,
+        "streamflow_m3s": 12.6,
         "soil_sat_pct": 46.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -408,7 +392,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-16T20:47:59.390657+00:00",
+    "valid_utc": "2026-08-16T21:18:59.143281+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

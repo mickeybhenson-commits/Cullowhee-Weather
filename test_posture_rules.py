@@ -204,6 +204,86 @@ def test_absent_soil_gives_the_neutral_curve_number_not_the_dry_one():
         "control: an actual reading of 0% really is drier than neutral")
 
 
+# =====================================================================
+# MONOTONICITY IN THE HAZARD ITSELF
+# The rule above is about ABSENT evidence. This is its twin for PRESENT
+# evidence: more hazard must never produce less warning. Nothing asserted
+# it before 2026-08-16, on any engine, in any variable.
+# =====================================================================
+_POST_ORDER = ["N/A", "NORMAL", "WATCH", "WARNING", "EMERGENCY"]
+_PR = {k: i for i, k in enumerate(_POST_ORDER)}
+
+
+def _no_reversal(fn, xs, label):
+    """fn(x) -> posture, over an ascending sweep. Report the FIRST reversal with
+    both sides of it, because a bare 'not monotone' is not actionable.
+
+    'N/A' ranks BELOW 'NORMAL' deliberately: losing the ability to assess as the
+    hazard rises is a defect of the same kind as downgrading, not an exemption.
+    """
+    prev = None
+    for x in xs:
+        got = fn(x)
+        if prev is not None and _PR.get(got, 0) < _PR.get(prev[1], 0):
+            raise AssertionError(
+                f"{label}: {prev[0]:g} -> {prev[1]}, but {x:g} -> {got}. "
+                f"More hazard produced LESS warning.")
+        prev = (x, got)
+
+
+def _geom(lo, hi, mult):
+    x = lo
+    while x < hi:
+        yield x
+        x *= mult
+
+
+def _lin(lo, hi, step):
+    x, n = lo, 0
+    while x <= hi + 1e-9:
+        yield x
+        n += 1
+        x = lo + n * step
+
+
+def test_the_authoritative_posture_never_falls_as_discharge_rises():
+    """flood_rating.assess() is the authoritative engine. Its posture comes from a
+    return period, which comes from a regression, which carries a 90% PI band — three
+    transforms, each a place a fold could hide. Swept 1 -> 60,000 cfs on all eight
+    reaches.
+
+    check_monotone() cannot be used here: assess() takes only a discharge and a basin
+    id, so it has no CORROBORATING input to drop. That is worth stating rather than
+    leaving as a silent gap — the FloodNet veto bug is impossible in this engine by
+    construction, and this is the invariant that IS at risk instead.
+    """
+    import flood_rating, basins
+    for bid in basins.BASINS:
+        _no_reversal(lambda q, b=bid: flood_rating.assess(q, b)["posture"],
+                     _geom(1.0, 60000.0, 1.02), f"flood_rating {bid} @ Q")
+
+
+def test_the_posture_never_falls_as_rainfall_rises():
+    """The end-to-end chain operators actually read: rain -> CN -> runoff -> unit
+    hydrograph -> per-basin calibration -> return period -> posture. Swept 0.1 -> 12.0
+    in at 0.05 in on all eight reaches, wetness held at the CN2 anchor."""
+    import cwm_model, basins
+    for bid in basins.BASINS:
+        _no_reversal(lambda P, b=bid: cwm_model.assess(b, P, 0.5)["posture"],
+                     _lin(0.1, 12.0, 0.05), f"cwm_model {bid} @ P (w=0.5)")
+
+
+def test_the_posture_never_falls_as_the_ground_gets_wetter():
+    """Wetness is the other monotone input, and a riskier one: cn_from_wetness is
+    PIECEWISE, anchored at CN2 at w=0.5 with a different slope either side. A sign
+    error or a mis-joined segment would show up here and nowhere else. Swept 0 -> 1 at
+    0.005 on all eight reaches at a 5 in storm."""
+    import cwm_model, basins
+    for bid in basins.BASINS:
+        _no_reversal(lambda w, b=bid: cwm_model.assess(b, 5.0, w)["posture"],
+                     _lin(0.0, 1.0, 0.005), f"cwm_model {bid} @ wetness (P=5.0)")
+
+
 if __name__ == "__main__":
     fails = 0
     for name, fn in sorted(globals().items()):

@@ -47,25 +47,27 @@ by anything in this repo) using scripts/check_gribble_observed.py:
              round(raw_max / 28.3168, 2) equals peak_cfs for every event. Part 2 below
              therefore rests on numbers that reproduce.
 
-  runoff_in  NOT internally consistent. Against the raw record, on well-sampled events:
+  runoff_in  WAS NOT internally consistent — cause found, and correctable. Against the
+             raw record, on well-sampled events:
                  before ~2016-08   ratio 2.020   (7 events)
                  after  ~2016-08   ratio 1.007   (10 events)
              After the break, runoff_in is total hydrograph volume over DA=0.166 sq mi
              across this table's own start->end window, to within 1% — which pins the
              method exactly, and shows runoff_in is NOT baseflow-separated. Before the
-             break it is exactly twice that. A factor landing on 2.00-2.04 across seven
-             events of very different size and shape is a constant, not a window-shape
-             artifact. A halved drainage area would do it; that is a hypothesis. The
-             STEP is established, its cause is not.
+             break it is exactly twice that.
 
-So Part 1 no longer reports a single median. It reports the two cohorts separately, and
-then tries to reconcile them by removing the measured step — AND FAILS TO. The cohorts
-differ by ~0.09x; removing the 2.02x step leaves ~0.17x. So the scaling break is real but
-is NOT what makes the two halves disagree: the cohorts are small (5 and 13 events with
-non-zero modelled runoff) and are simply different storm populations. The honest output
-is therefore not a corrected median but the statement that no median from this column is
-worth quoting — pooled, split, or corrected. That failed reconciliation is a stronger
-result than the split it replaced.
+             THE CAUSE: the raw record samples every 5.0 min until 2016-04 and every
+             10.0 min from 2016-05. A derivation assuming a FIXED 10-min step
+             double-counted the 5-min half by exactly 10/5 = 2. The best-sampled early
+             events read 2.021/2.002/2.004/2.004 — exactly 2 — and the step change falls
+             in an event gap inside the measured break bracket. So the early rows are
+             CORRECTABLE by an exact factor, not merely suspect, and Part 1 now reports
+             a corrected pooled median as the quotable result.
+
+Part 1 therefore shows both cohorts, notes that correcting the bug does NOT reconcile
+them (they are small and simply different storm populations, so the cohort split is not
+itself informative), and then reports the CORRECTED POOLED median over all events, which
+is the number to quote.
 
 Part 1's ZERO-runoff count is unaffected either way: it depends only on P, CN and Ia,
 and never touches runoff_in.
@@ -105,15 +107,20 @@ from wetness import resolve_wetness                         # noqa: E402
 
 DT_HR = 0.0625          # 3.75 min — finer than both the 9.7-min Tc and the 10-min record
 
-# runoff_in changes its relationship to the raw record by a factor of 2 somewhere in
-# here. The break is BRACKETED, not located: the last clean early event is 2016-02-24
-# (ratio 2.004, 292 samples) and the first clean late one is 2017-04-23 (ratio 1.015,
-# 42 samples). This midpoint classifies all 38 events consistently with their measured
-# ratios, including the two poorly-sampled ones either side of it.
-RUNOFF_BREAK = "2016-08-25"
+# CAUSE FOUND 2026-08-16, and it is exact. The raw record samples every 5.0 min from
+# 2015-08 to 2016-04 and every 10.0 min from 2016-05 on. A derivation that assumed a
+# FIXED 10-min step therefore computed sum(Q * 10min) over data spaced 5 min apart, and
+# double-counted the volume by exactly 10/5 = 2. Three facts agree: the best-sampled
+# early events read 2.021/2.002/2.004/2.004 (exactly 2, not approximately); the record's
+# step ratio is exactly 2; and the step change falls in an event gap inside the measured
+# break bracket [2016-02-24 .. 2016-08-31]. An earlier draft put the break at 2016-08-25,
+# which wrongly classified the 2016-08-19 event as early.
+RUNOFF_BREAK = "2016-05-01"
 # The measured size of the step, from scripts/check_gribble_observed.py: well-sampled
 # events read 2.020x before the break and 1.007x after, against the raw record.
-RUNOFF_STEP = 2.02
+# 10 min assumed / 5 min actual. Exact by construction, not fitted to the residual —
+# the 2.02 measured against the raw record is this number plus window truncation.
+RUNOFF_FIX = 2.0
 
 
 def load():
@@ -213,17 +220,35 @@ def main():
     # reconciliation is more informative than the split was.
     if len(meds) == 2 and meds["late"]:
         raw = meds["early"] / meds["late"]
-        corr = (meds["early"] * RUNOFF_STEP) / meds["late"]
-        print(f"      -> cohorts disagree by {raw:.2f}x. Removing the {RUNOFF_STEP:.2f}x step "
-              f"measured against the")
-        print(f"         raw record leaves {corr:.2f}x — so the step does NOT explain the gap, "
-              f"and these two")
+        corr = (meds["early"] * RUNOFF_FIX) / meds["late"]
+        print(f"      -> cohorts disagree by {raw:.2f}x. Removing the {RUNOFF_FIX:.1f}x "
+              f"fixed-step error leaves")
+        print(f"         {corr:.2f}x — so the bug does NOT explain the gap, and these two")
         print(f"         cohorts are not comparable populations (n={len(cohort['early'])} vs "
               f"{len(cohort['late'])}, different storms).")
-        print(f"      -> conclusion: no median from runoff_in is a quantity to quote — pooled, "
-              f"split, or corrected.")
-    print(f"  TOTAL (both cohorts, and therefore NOT a quantity to quote): "
-          f"model {tot_m:.2f} in vs observed {tot_o:.2f} in")
+        print(f"      -> so the SPLIT is not the informative view. The correction below is.")
+    # With the cause diagnosed and the factor exact, the early rows can be CORRECTED and
+    # a pooled statistic becomes meaningful again. This is the one number to quote.
+    fixed = [(q, o * (1.0 / RUNOFF_FIX)) for q, o in cohort["early"] if q > 0 and o > 0] \
+          + [(q, o) for q, o in cohort["late"] if q > 0 and o > 0]
+    if fixed:
+        fm = st.median(q / o for q, o in fixed)
+        fmod, fobs = sum(q for q, _ in fixed), sum(o for _, o in fixed)
+        print()
+        print(f"  CORRECTED — early runoff_in divided by the exact {RUNOFF_FIX:.1f}x "
+              f"fixed-step error.")
+        print(f"  This is the quotable view; the columns above are shown only to expose "
+              f"the bug.")
+        print(f"      events                : {len(fixed)} with non-zero modelled runoff")
+        print(f"      model/observed median : {fm:.2f}")
+        print(f"      totals                : model {fmod:.2f} in vs observed {fobs:.2f} in"
+              f"  = {100*fmod/fobs:.0f}% of measured runoff")
+        print(f"      (before the correction the totals read {tot_o:.2f} in observed, "
+              f"{100*tot_m/tot_o:.0f}% — the")
+        print(f"       median barely moves because the corrected events sit below it "
+              f"either way, but the")
+        print(f"       aggregate over-prediction rises from {100*tot_m/tot_o:.0f}% to "
+              f"{100*fmod/fobs:.0f}%.)")
     top = sorted(set(cns), key=cns.count, reverse=True)[:2]
     print(f"  cn_from_wetness SATURATES: {cns.count(top[0])+cns.count(top[1])} of {len(cns)} events land on "
           f"just CN {top[0]} or CN {top[1]}")

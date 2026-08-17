@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-17T22:22:58.048813+00:00",
+  "fetched_utc": "2026-08-17T22:50:31.300675+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787001300,
+        1787004900,
         61.5
       ],
       "00065": [
-        1787001300,
+        1787004900,
         3.99
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787001300,
-        274.0
+        1787005800,
+        270.0
       ],
       "00065": [
-        1787001300,
-        3.25
+        1787005800,
+        3.24
       ]
     },
-    "local_inflow_cfs": 212.5,
+    "local_inflow_cfs": 208.5,
     "stage_series_up": [
-      [
-        1786984200,
-        3.99
-      ],
-      [
-        1786985100,
-        3.99
-      ],
       [
         1786986000,
         3.99
@@ -121,17 +113,25 @@
       [
         1787001300,
         3.99
+      ],
+      [
+        1787002200,
+        3.99
+      ],
+      [
+        1787003100,
+        3.99
+      ],
+      [
+        1787004000,
+        3.99
+      ],
+      [
+        1787004900,
+        3.99
       ]
     ],
     "stage_series_down": [
-      [
-        1786984200,
-        3.33
-      ],
-      [
-        1786985100,
-        3.33
-      ],
       [
         1786986000,
         3.32
@@ -203,11 +203,39 @@
       [
         1787001300,
         3.25
+      ],
+      [
+        1787002200,
+        3.25
+      ],
+      [
+        1787003100,
+        3.24
+      ],
+      [
+        1787004000,
+        3.24
+      ],
+      [
+        1787004900,
+        3.24
+      ],
+      [
+        1787005800,
+        3.24
       ]
     ],
     "provenance": "MEASURED"
   },
   "alerts": [
+    {
+      "event": "Severe Thunderstorm Warning",
+      "severity": "Severe",
+      "onset": "2026-08-17T18:37:00-04:00",
+      "ends": "2026-08-17T19:30:00-04:00",
+      "headline": "Severe Thunderstorm Warning issued August 17 at 6:37PM EDT until August 17 at 7:30PM EDT by NWS Greenville-Spartanburg SC",
+      "id": "urn:oid:2.49.0.1.840.0.fbc4cf5fb47f6689686fd48d1c09945f70a17d0c.001.1"
+    },
     {
       "event": "Severe Thunderstorm Watch",
       "severity": "Severe",
@@ -304,20 +332,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.44,
+    "stage_ft": 2.43,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 80.0,
+    "age_min": 77.6,
     "fresh": false,
-    "last_updated_utc": "2026-08-17T21:03:00+00:00",
+    "last_updated_utc": "2026-08-17T21:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 80.0 min, limit 75)"
+    "note": "NOT driving posture: stale/invalid (age 77.6 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -477,8 +505,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-17T22:23:03.204890+00:00",
+    "age_min": 0.6,
+    "valid_utc": "2026-08-17T22:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

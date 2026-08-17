@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-17T18:38:32.044316+00:00",
+  "fetched_utc": "2026-08-17T19:26:42.479090+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ReadTimeout",
+    "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,18 +42,6 @@
     },
     "local_inflow_cfs": 228.5,
     "stage_series_up": [
-      [
-        1786970700,
-        4.0
-      ],
-      [
-        1786971600,
-        4.0
-      ],
-      [
-        1786972500,
-        4.0
-      ],
       [
         1786973400,
         4.0
@@ -137,18 +125,6 @@
     ],
     "stage_series_down": [
       [
-        1786970700,
-        3.53
-      ],
-      [
-        1786971600,
-        3.51
-      ],
-      [
-        1786972500,
-        3.49
-      ],
-      [
         1786973400,
         3.48
       ],
@@ -231,26 +207,112 @@
     ],
     "provenance": "MEASURED"
   },
-  "alerts": [],
+  "alerts": [
+    {
+      "event": "Severe Thunderstorm Watch",
+      "severity": "Severe",
+      "onset": "2026-08-17T14:38:00-04:00",
+      "ends": "2026-08-17T22:00:00-04:00",
+      "headline": "Severe Thunderstorm Watch issued August 17 at 2:38PM EDT until August 17 at 10:00PM EDT by NWS Greenville-Spartanburg SC",
+      "id": "urn:oid:2.49.0.1.840.0.122f7795a02a8748b2ce2b08ed7b7abc0c532caa.001.1"
+    }
+  ],
   "ffg_in": {
     "ffg1h": null,
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": null,
+  "nwm": {
+    "reach": 19730552,
+    "reach_is_cullowhee": false,
+    "series": [
+      [
+        1786986000,
+        78.0
+      ],
+      [
+        1786989600,
+        92.9
+      ],
+      [
+        1786993200,
+        111.9
+      ],
+      [
+        1786996800,
+        133.1
+      ],
+      [
+        1787000400,
+        154.7
+      ],
+      [
+        1787004000,
+        173.8
+      ],
+      [
+        1787007600,
+        189.3
+      ],
+      [
+        1787011200,
+        200.9
+      ],
+      [
+        1787014800,
+        209.1
+      ],
+      [
+        1787018400,
+        214.4
+      ],
+      [
+        1787022000,
+        217.9
+      ],
+      [
+        1787025600,
+        220.4
+      ],
+      [
+        1787029200,
+        221.8
+      ],
+      [
+        1787032800,
+        222.5
+      ],
+      [
+        1787036400,
+        223.2
+      ],
+      [
+        1787040000,
+        223.5
+      ],
+      [
+        1787043600,
+        223.5
+      ],
+      [
+        1787047200,
+        223.5
+      ]
+    ]
+  },
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.44,
+    "stage_ft": 2.45,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Falling",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 65.9,
+    "age_min": 53.7,
     "fresh": true,
-    "last_updated_utc": "2026-08-17T17:33:00+00:00",
+    "last_updated_utc": "2026-08-17T18:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -312,8 +374,8 @@
         "name": "Mountain",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.2,
-        "soil_sat_pct": 49.0,
+        "streamflow_m3s": null,
+        "soil_sat_pct": null,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -415,8 +477,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-17T18:38:54.670737+00:00",
+    "age_min": 36.7,
+    "valid_utc": "2026-08-17T18:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

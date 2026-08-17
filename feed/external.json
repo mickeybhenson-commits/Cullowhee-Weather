@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-17T01:09:53.826568+00:00",
+  "fetched_utc": "2026-08-17T02:40:48.890937+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1786925700,
-        266.0
+        1786932900,
+        263.0
       ],
       "00065": [
-        1786925700,
-        4.8
+        1786932900,
+        4.79
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,40 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1786925700,
-        382.0
+        1786932900,
+        328.0
       ],
       "00065": [
-        1786925700,
-        3.5
+        1786932900,
+        3.38
       ]
     },
-    "local_inflow_cfs": 116.0,
+    "local_inflow_cfs": 65.0,
     "stage_series_up": [
-      [
-        1786907700,
-        4.05
-      ],
-      [
-        1786908600,
-        4.04
-      ],
-      [
-        1786909500,
-        4.04
-      ],
-      [
-        1786910400,
-        4.04
-      ],
-      [
-        1786911300,
-        4.03
-      ],
-      [
-        1786912200,
-        4.03
-      ],
       [
         1786913100,
         4.03
@@ -125,33 +101,41 @@
       [
         1786925700,
         4.8
+      ],
+      [
+        1786926600,
+        4.8
+      ],
+      [
+        1786927500,
+        4.8
+      ],
+      [
+        1786928400,
+        4.8
+      ],
+      [
+        1786929300,
+        4.8
+      ],
+      [
+        1786930200,
+        4.8
+      ],
+      [
+        1786931100,
+        4.8
+      ],
+      [
+        1786932000,
+        4.8
+      ],
+      [
+        1786932900,
+        4.79
       ]
     ],
     "stage_series_down": [
-      [
-        1786907700,
-        3.82
-      ],
-      [
-        1786908600,
-        3.81
-      ],
-      [
-        1786909500,
-        3.81
-      ],
-      [
-        1786910400,
-        3.8
-      ],
-      [
-        1786911300,
-        3.79
-      ],
-      [
-        1786912200,
-        3.78
-      ],
       [
         1786913100,
         3.76
@@ -211,6 +195,38 @@
       [
         1786925700,
         3.5
+      ],
+      [
+        1786926600,
+        3.48
+      ],
+      [
+        1786927500,
+        3.47
+      ],
+      [
+        1786928400,
+        3.45
+      ],
+      [
+        1786929300,
+        3.43
+      ],
+      [
+        1786930200,
+        3.42
+      ],
+      [
+        1786931100,
+        3.4
+      ],
+      [
+        1786932000,
+        3.39
+      ],
+      [
+        1786932900,
+        3.38
       ]
     ],
     "provenance": "MEASURED"
@@ -226,15 +242,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.44,
+    "stage_ft": 2.43,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Constant",
+    "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 67.3,
+    "age_min": 68.2,
     "fresh": true,
-    "last_updated_utc": "2026-08-17T00:03:00+00:00",
+    "last_updated_utc": "2026-08-17T01:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -280,7 +296,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260817_0100.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260817_0200.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -310,7 +326,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.3,
-        "soil_sat_pct": 35.0,
+        "soil_sat_pct": 34.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -374,7 +390,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 11.0,
+        "streamflow_m3s": 10.5,
         "soil_sat_pct": 45.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -400,7 +416,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-17T01:10:16.092537+00:00",
+    "valid_utc": "2026-08-17T02:41:10.730721+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

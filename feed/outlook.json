@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-17T02:40:48.890937+00:00",
+  "fetched_utc": "2026-08-17T03:48:48.771675+00:00",
   "status": "unavailable: no source configured (set WN_FIXTURE or WN_BQ_TABLE)",
   "tier": "outlook",
   "cap": "WATCH",
@@ -8,7 +8,7 @@
   "n_members": 0,
   "nws_qpf24_in": {
     "CC-UP-503": 0.01,
-    "CC-MS-1100": 0.02,
+    "CC-MS-1100": 0.03,
     "CC-TIL-705": 0.03,
     "CC-SPD-1830": 0.03,
     "CC-COX-097": 0.03,

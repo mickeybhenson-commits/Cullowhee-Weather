@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-18T20:49:58.397419+00:00",
+  "fetched_utc": "2026-08-18T21:22:23.347880+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 581.7,
     "stage_series_up": [
-      [
-        1787065200,
-        4.29
-      ],
-      [
-        1787066100,
-        4.26
-      ],
       [
         1787067000,
         4.24
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787065200,
-        4.42
-      ],
-      [
-        1787066100,
-        4.42
-      ],
       [
         1787067000,
         4.42
@@ -244,14 +228,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 77.0,
+    "age_min": 79.4,
     "fresh": false,
-    "last_updated_utc": "2026-08-18T19:33:00+00:00",
+    "last_updated_utc": "2026-08-18T20:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 77.0 min, limit 75)"
+    "note": "NOT driving posture: stale/invalid (age 79.4 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -292,7 +276,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260818_2000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260818_2100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -386,7 +370,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 18.8,
+        "streamflow_m3s": 17.9,
         "soil_sat_pct": 45.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -412,7 +396,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-18T20:50:00+00:00",
+    "valid_utc": "2026-08-18T21:22:26.184629+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-18T21:47:55.854812+00:00",
+  "fetched_utc": "2026-08-18T22:21:08.769544+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ok",
+    "nwm": "empty",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 488.8,
     "stage_series_up": [
-      [
-        1787068800,
-        4.2
-      ],
-      [
-        1787069700,
-        4.19
-      ],
       [
         1787070600,
         4.18
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787068800,
-        4.41
-      ],
-      [
-        1787069700,
-        4.41
-      ],
       [
         1787070600,
         4.4
@@ -232,80 +216,7 @@
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
-    "series": [
-      [
-        1787083200,
-        91.5
-      ],
-      [
-        1787086800,
-        101.0
-      ],
-      [
-        1787090400,
-        114.1
-      ],
-      [
-        1787094000,
-        130.0
-      ],
-      [
-        1787097600,
-        148.0
-      ],
-      [
-        1787101200,
-        165.6
-      ],
-      [
-        1787104800,
-        181.5
-      ],
-      [
-        1787108400,
-        194.6
-      ],
-      [
-        1787112000,
-        204.1
-      ],
-      [
-        1787115600,
-        211.2
-      ],
-      [
-        1787119200,
-        215.8
-      ],
-      [
-        1787122800,
-        218.6
-      ],
-      [
-        1787126400,
-        220.7
-      ],
-      [
-        1787130000,
-        221.8
-      ],
-      [
-        1787133600,
-        222.5
-      ],
-      [
-        1787137200,
-        222.8
-      ],
-      [
-        1787140800,
-        223.2
-      ],
-      [
-        1787144400,
-        223.2
-      ]
-    ]
+    "series": []
   },
   "cucn7": {
     "site_id": "25380",
@@ -317,14 +228,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 45.0,
-    "fresh": true,
+    "age_min": 78.2,
+    "fresh": false,
     "last_updated_utc": "2026-08-18T21:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 78.2 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -365,7 +276,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260818_2100.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260818_2200.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -394,7 +305,7 @@
         "name": "Mtn. Lower",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.8,
+        "streamflow_m3s": 0.7,
         "soil_sat_pct": 37.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -459,7 +370,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 17.9,
+        "streamflow_m3s": 17.1,
         "soil_sat_pct": 45.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -473,7 +384,7 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 48.0,
+        "soil_sat_pct": 47.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -485,7 +396,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-18T21:47:57.855668+00:00",
+    "valid_utc": "2026-08-18T22:21:11.071987+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

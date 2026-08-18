@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-18T08:34:52.645765+00:00",
+  "fetched_utc": "2026-08-18T09:31:19.858293+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787037300,
-        813.0
+        1787040900,
+        804.0
       ],
       "00065": [
-        1787037300,
-        6.15
+        1787040900,
+        6.13
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,32 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787037300,
-        392.0
+        1787040900,
+        382.0
       ],
       "00065": [
-        1787037300,
-        3.52
+        1787040900,
+        3.5
       ]
     },
-    "local_inflow_cfs": -421.0,
+    "local_inflow_cfs": -422.0,
     "stage_series_up": [
-      [
-        1787021100,
-        4.86
-      ],
-      [
-        1787022000,
-        4.86
-      ],
-      [
-        1787022900,
-        4.86
-      ],
-      [
-        1787023800,
-        4.87
-      ],
       [
         1787024700,
         4.88
@@ -117,25 +101,25 @@
       [
         1787037300,
         6.15
+      ],
+      [
+        1787038200,
+        6.15
+      ],
+      [
+        1787039100,
+        6.14
+      ],
+      [
+        1787040000,
+        6.14
+      ],
+      [
+        1787040900,
+        6.13
       ]
     ],
     "stage_series_down": [
-      [
-        1787021100,
-        3.48
-      ],
-      [
-        1787022000,
-        3.46
-      ],
-      [
-        1787022900,
-        3.45
-      ],
-      [
-        1787023800,
-        3.44
-      ],
       [
         1787024700,
         3.46
@@ -195,6 +179,22 @@
       [
         1787037300,
         3.52
+      ],
+      [
+        1787038200,
+        3.51
+      ],
+      [
+        1787039100,
+        3.51
+      ],
+      [
+        1787040000,
+        3.51
+      ],
+      [
+        1787040900,
+        3.5
       ]
     ],
     "provenance": "MEASURED"
@@ -210,15 +210,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.57,
+    "stage_ft": 2.56,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 62.2,
+    "age_min": 58.7,
     "fresh": true,
-    "last_updated_utc": "2026-08-18T07:33:00+00:00",
+    "last_updated_utc": "2026-08-18T08:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -264,7 +264,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260818_0800.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260818_0900.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -280,8 +280,8 @@
         "name": "Mountain",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.3,
-        "soil_sat_pct": 58.0,
+        "streamflow_m3s": 0.2,
+        "soil_sat_pct": 57.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -293,7 +293,7 @@
         "name": "Mtn. Lower",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 2.6,
+        "streamflow_m3s": 2.3,
         "soil_sat_pct": 38.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -358,7 +358,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 45.5,
+        "streamflow_m3s": 41.1,
         "soil_sat_pct": 46.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -384,7 +384,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-18T08:35:15.244969+00:00",
+    "valid_utc": "2026-08-18T09:31:41.678877+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-18T10:56:26.245986+00:00",
+  "fetched_utc": "2026-08-18T11:26:04.314198+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ReadTimeout",
+    "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": -234.0,
     "stage_series_up": [
-      [
-        1787029200,
-        4.97
-      ],
-      [
-        1787030100,
-        4.98
-      ],
       [
         1787031000,
         5.09
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787029200,
-        3.6
-      ],
-      [
-        1787030100,
-        3.61
-      ],
       [
         1787031000,
         3.61
@@ -229,20 +213,97 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": null,
+  "nwm": {
+    "reach": 19730552,
+    "reach_is_cullowhee": false,
+    "series": [
+      [
+        1787040000,
+        735.2
+      ],
+      [
+        1787043600,
+        689.3
+      ],
+      [
+        1787047200,
+        633.5
+      ],
+      [
+        1787050800,
+        571.7
+      ],
+      [
+        1787054400,
+        508.2
+      ],
+      [
+        1787058000,
+        447.4
+      ],
+      [
+        1787061600,
+        384.6
+      ],
+      [
+        1787065200,
+        321.7
+      ],
+      [
+        1787068800,
+        287.8
+      ],
+      [
+        1787072400,
+        265.6
+      ],
+      [
+        1787076000,
+        251.1
+      ],
+      [
+        1787079600,
+        241.5
+      ],
+      [
+        1787083200,
+        234.8
+      ],
+      [
+        1787086800,
+        230.6
+      ],
+      [
+        1787090400,
+        228.1
+      ],
+      [
+        1787094000,
+        226.4
+      ],
+      [
+        1787097600,
+        224.9
+      ],
+      [
+        1787101200,
+        224.6
+      ]
+    ]
+  },
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.54,
+    "stage_ft": 2.53,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 53.8,
+    "age_min": 53.1,
     "fresh": true,
-    "last_updated_utc": "2026-08-18T10:03:00+00:00",
+    "last_updated_utc": "2026-08-18T10:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -288,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260818_1000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260818_1100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -317,7 +378,7 @@
         "name": "Mtn. Lower",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 2.1,
+        "streamflow_m3s": 1.8,
         "soil_sat_pct": 38.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -382,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 37.9,
+        "streamflow_m3s": 34.6,
         "soil_sat_pct": 46.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -407,8 +468,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 6.8,
-    "valid_utc": "2026-08-18T10:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-18T11:26:06.663272+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

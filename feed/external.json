@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-19T17:50:29.387810+00:00",
+  "fetched_utc": "2026-08-19T18:33:18.198327+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,18 +42,6 @@
     },
     "local_inflow_cfs": 448.6,
     "stage_series_up": [
-      [
-        1787140800,
-        5.05
-      ],
-      [
-        1787141700,
-        5.05
-      ],
-      [
-        1787142600,
-        5.0
-      ],
       [
         1787143500,
         4.91
@@ -132,18 +120,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787140800,
-        3.67
-      ],
-      [
-        1787141700,
-        3.67
-      ],
-      [
-        1787142600,
-        3.67
-      ],
       [
         1787143500,
         3.67
@@ -234,75 +210,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787155200,
-        108.8
-      ],
-      [
         1787158800,
-        117.2
+        93.6
       ],
       [
         1787162400,
-        128.6
+        103.1
       ],
       [
         1787166000,
-        142.7
+        115.8
       ],
       [
         1787169600,
-        158.2
+        131.4
       ],
       [
         1787173200,
-        173.4
+        149.0
       ],
       [
         1787176800,
-        187.2
+        166.7
       ],
       [
         1787180400,
-        198.5
+        182.2
       ],
       [
         1787184000,
-        206.6
+        194.9
       ],
       [
         1787187600,
-        212.6
+        204.5
       ],
       [
         1787191200,
-        216.5
+        211.2
       ],
       [
         1787194800,
-        219.3
+        215.8
       ],
       [
         1787198400,
-        220.7
+        218.6
       ],
       [
         1787202000,
-        221.8
+        220.4
       ],
       [
         1787205600,
-        222.5
+        221.8
       ],
       [
         1787209200,
-        222.8
+        222.5
       ],
       [
         1787212800,
-        223.2
+        222.8
       ],
       [
         1787216400,
+        223.2
+      ],
+      [
+        1787220000,
         223.2
       ]
     ]
@@ -311,20 +287,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.46,
+    "stage_ft": 2.48,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Falling",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 77.5,
-    "fresh": false,
-    "last_updated_utc": "2026-08-19T16:33:00+00:00",
+    "age_min": 60.3,
+    "fresh": true,
+    "last_updated_utc": "2026-08-19T17:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 77.5 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -365,7 +341,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260819_1700.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260819_1800.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -459,7 +435,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 9.4,
+        "streamflow_m3s": 9.2,
         "soil_sat_pct": 43.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -473,7 +449,7 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 46.0,
+        "soil_sat_pct": 45.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -484,8 +460,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.5,
-    "valid_utc": "2026-08-19T17:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-19T18:33:21.361599+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

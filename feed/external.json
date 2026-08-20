@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-20T18:46:15.360726+00:00",
+  "fetched_utc": "2026-08-20T19:29:49.819733+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 780.4,
     "stage_series_up": [
-      [
-        1787230800,
-        5.25
-      ],
-      [
-        1787231700,
-        5.0
-      ],
       [
         1787232600,
         4.8
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787230800,
-        4.2
-      ],
-      [
-        1787231700,
-        4.25
-      ],
       [
         1787232600,
         4.27
@@ -234,75 +218,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787245200,
-        97.8
-      ],
-      [
         1787248800,
-        107.0
+        89.3
       ],
       [
         1787252400,
-        119.4
+        99.2
       ],
       [
         1787256000,
-        134.6
+        112.3
       ],
       [
         1787259600,
-        151.5
+        128.6
       ],
       [
         1787263200,
-        168.4
+        146.6
       ],
       [
         1787266800,
-        183.6
+        164.6
       ],
       [
         1787270400,
-        195.6
+        180.8
       ],
       [
         1787274000,
-        204.8
+        193.9
       ],
       [
         1787277600,
-        211.5
+        203.8
       ],
       [
         1787281200,
-        215.8
+        210.8
       ],
       [
         1787284800,
-        218.6
+        215.4
       ],
       [
         1787288400,
-        220.4
+        218.2
       ],
       [
         1787292000,
-        221.4
+        220.4
       ],
       [
         1787295600,
-        222.1
+        221.4
       ],
       [
         1787299200,
-        222.8
+        222.1
       ],
       [
         1787302800,
-        222.8
+        222.5
       ],
       [
         1787306400,
+        222.8
+      ],
+      [
+        1787310000,
         223.2
       ]
     ]
@@ -311,15 +295,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.46,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 73.3,
+    "age_min": 56.9,
     "fresh": true,
-    "last_updated_utc": "2026-08-20T17:33:00+00:00",
+    "last_updated_utc": "2026-08-20T18:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -365,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260820_1800.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260820_1900.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -459,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 6.5,
+        "streamflow_m3s": 6.4,
         "soil_sat_pct": 41.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -485,7 +469,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-20T18:46:21.511995+00:00",
+    "valid_utc": "2026-08-20T19:29:53.274611+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

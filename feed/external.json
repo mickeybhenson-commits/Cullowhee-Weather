@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-20T04:35:16.390173+00:00",
+  "fetched_utc": "2026-08-20T05:29:17.036867+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -32,28 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787195700,
-        306.0
+        1787199300,
+        286.0
       ],
       "00065": [
-        1787195700,
-        3.33
+        1787199300,
+        3.28
       ]
     },
-    "local_inflow_cfs": 37.0,
+    "local_inflow_cfs": 17.0,
     "stage_series_up": [
-      [
-        1787179500,
-        4.03
-      ],
-      [
-        1787180400,
-        4.03
-      ],
-      [
-        1787181300,
-        4.16
-      ],
       [
         1787182200,
         4.57
@@ -137,18 +125,6 @@
     ],
     "stage_series_down": [
       [
-        1787179500,
-        3.58
-      ],
-      [
-        1787180400,
-        3.56
-      ],
-      [
-        1787181300,
-        3.54
-      ],
-      [
         1787182200,
         3.52
       ],
@@ -211,6 +187,22 @@
       [
         1787195700,
         3.33
+      ],
+      [
+        1787196600,
+        3.31
+      ],
+      [
+        1787197500,
+        3.3
+      ],
+      [
+        1787198400,
+        3.29
+      ],
+      [
+        1787199300,
+        3.28
       ]
     ],
     "provenance": "MEASURED"
@@ -309,9 +301,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 62.3,
+    "age_min": 56.3,
     "fresh": true,
-    "last_updated_utc": "2026-08-20T03:33:00+00:00",
+    "last_updated_utc": "2026-08-20T04:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -357,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260820_0400.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260820_0500.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -451,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 7.7,
+        "streamflow_m3s": 7.6,
         "soil_sat_pct": 42.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -477,7 +469,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-20T04:35:19.156868+00:00",
+    "valid_utc": "2026-08-20T05:29:20.088791+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

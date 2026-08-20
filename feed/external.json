@@ -1,9 +1,9 @@
 {
-  "fetched_utc": "2026-08-20T05:59:05.356827+00:00",
+  "fetched_utc": "2026-08-20T06:58:22.043470+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
-    "ffg_in": "empty",
+    "ffg_in": "HTTPError",
     "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787202900,
-        447.0
+        1787206500,
+        757.0
       ],
       "00065": [
-        1787202900,
-        5.31
+        1787206500,
+        6.03
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,32 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787202900,
-        278.0
+        1787206500,
+        274.0
       ],
       "00065": [
-        1787202900,
-        3.26
+        1787206500,
+        3.25
       ]
     },
-    "local_inflow_cfs": -169.0,
+    "local_inflow_cfs": -483.0,
     "stage_series_up": [
-      [
-        1787184000,
-        4.8
-      ],
-      [
-        1787184900,
-        4.81
-      ],
-      [
-        1787185800,
-        4.81
-      ],
-      [
-        1787186700,
-        4.81
-      ],
       [
         1787187600,
         4.81
@@ -129,25 +113,25 @@
       [
         1787202900,
         5.31
+      ],
+      [
+        1787203800,
+        5.78
+      ],
+      [
+        1787204700,
+        5.96
+      ],
+      [
+        1787205600,
+        6.02
+      ],
+      [
+        1787206500,
+        6.03
       ]
     ],
     "stage_series_down": [
-      [
-        1787184000,
-        3.49
-      ],
-      [
-        1787184900,
-        3.48
-      ],
-      [
-        1787185800,
-        3.46
-      ],
-      [
-        1787186700,
-        3.45
-      ],
       [
         1787187600,
         3.43
@@ -219,16 +203,28 @@
       [
         1787202900,
         3.26
+      ],
+      [
+        1787203800,
+        3.26
+      ],
+      [
+        1787204700,
+        3.26
+      ],
+      [
+        1787205600,
+        3.25
+      ],
+      [
+        1787206500,
+        3.25
       ]
     ],
     "provenance": "MEASURED"
   },
   "alerts": [],
-  "ffg_in": {
-    "ffg1h": null,
-    "ffg3h": null,
-    "ffg6h": null
-  },
+  "ffg_in": null,
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
@@ -317,9 +313,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 56.4,
+    "age_min": 55.6,
     "fresh": true,
-    "last_updated_utc": "2026-08-20T05:03:00+00:00",
+    "last_updated_utc": "2026-08-20T06:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -365,7 +361,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260820_0500.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260820_0600.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -382,7 +378,7 @@
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 53.0,
+        "soil_sat_pct": 52.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -421,7 +417,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.0,
-        "soil_sat_pct": 43.0,
+        "soil_sat_pct": 42.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -459,7 +455,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 7.6,
+        "streamflow_m3s": 7.4,
         "soil_sat_pct": 42.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -484,8 +480,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 9.4,
-    "valid_utc": "2026-08-20T05:50:00+00:00",
+    "age_min": 8.6,
+    "valid_utc": "2026-08-20T06:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

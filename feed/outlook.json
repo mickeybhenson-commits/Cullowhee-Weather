@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-20T08:36:19.225393+00:00",
+  "fetched_utc": "2026-08-20T09:32:58.900712+00:00",
   "status": "unavailable: no source configured (set WN_FIXTURE or WN_BQ_TABLE)",
   "tier": "outlook",
   "cap": "WATCH",
@@ -7,14 +7,14 @@
   "issued_utc": null,
   "n_members": 0,
   "nws_qpf24_in": {
-    "CC-UP-503": 0.15,
-    "CC-MS-1100": 0.15,
-    "CC-TIL-705": 0.21,
-    "CC-SPD-1830": 0.14,
-    "CC-COX-097": 0.17,
-    "CC-LB-171": 0.21,
-    "CC-WCU-2260": 0.17,
-    "CC-MOUTH-2340": 0.17
+    "CC-UP-503": 0.17,
+    "CC-MS-1100": 0.16,
+    "CC-TIL-705": 0.22,
+    "CC-SPD-1830": 0.15,
+    "CC-COX-097": 0.18,
+    "CC-LB-171": 0.22,
+    "CC-WCU-2260": 0.18,
+    "CC-MOUTH-2340": 0.18
   },
   "nws_note": "api.weather.gov gridded forecast, next 24 h"
 }

@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-21T06:42:55.038022+00:00",
+  "fetched_utc": "2026-08-21T07:41:11.966607+00:00",
   "status": "unavailable: no source configured (set WN_FIXTURE or WN_BQ_TABLE)",
   "tier": "outlook",
   "cap": "WATCH",
@@ -10,7 +10,7 @@
     "CC-UP-503": 0.19,
     "CC-MS-1100": 0.22,
     "CC-TIL-705": 0.32,
-    "CC-SPD-1830": 0.31,
+    "CC-SPD-1830": 0.3,
     "CC-COX-097": 0.38,
     "CC-LB-171": 0.39,
     "CC-WCU-2260": 0.38,

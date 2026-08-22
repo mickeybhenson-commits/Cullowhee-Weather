@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-22T21:19:52.165609+00:00",
+  "fetched_utc": "2026-08-22T21:45:59.307208+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ok",
+    "nwm": "ReadTimeout",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787429700,
-        71.6
+        1787433300,
+        69.9
       ],
       "00065": [
-        1787429700,
-        4.05
+        1787433300,
+        4.04
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787429700,
-        633.0
+        1787433300,
+        541.0
       ],
       "00065": [
-        1787429700,
-        3.95
+        1787433300,
+        3.8
       ]
     },
-    "local_inflow_cfs": 561.4,
+    "local_inflow_cfs": 471.1,
     "stage_series_up": [
-      [
-        1787412600,
-        4.21
-      ],
-      [
-        1787413500,
-        4.19
-      ],
       [
         1787414400,
         4.17
@@ -121,17 +113,25 @@
       [
         1787429700,
         4.05
+      ],
+      [
+        1787430600,
+        4.05
+      ],
+      [
+        1787431500,
+        4.04
+      ],
+      [
+        1787432400,
+        4.04
+      ],
+      [
+        1787433300,
+        4.04
       ]
     ],
     "stage_series_down": [
-      [
-        1787412600,
-        4.31
-      ],
-      [
-        1787413500,
-        4.31
-      ],
       [
         1787414400,
         4.32
@@ -203,6 +203,22 @@
       [
         1787429700,
         3.95
+      ],
+      [
+        1787430600,
+        3.91
+      ],
+      [
+        1787431500,
+        3.88
+      ],
+      [
+        1787432400,
+        3.84
+      ],
+      [
+        1787433300,
+        3.8
       ]
     ],
     "provenance": "MEASURED"
@@ -213,102 +229,25 @@
     "ffg3h": null,
     "ffg6h": null
   },
-  "nwm": {
-    "reach": 19730552,
-    "reach_is_cullowhee": false,
-    "series": [
-      [
-        1787425200,
-        82.3
-      ],
-      [
-        1787428800,
-        92.2
-      ],
-      [
-        1787432400,
-        105.9
-      ],
-      [
-        1787436000,
-        122.9
-      ],
-      [
-        1787439600,
-        142.0
-      ],
-      [
-        1787443200,
-        161.0
-      ],
-      [
-        1787446800,
-        178.0
-      ],
-      [
-        1787450400,
-        192.1
-      ],
-      [
-        1787454000,
-        202.3
-      ],
-      [
-        1787457600,
-        209.8
-      ],
-      [
-        1787461200,
-        214.7
-      ],
-      [
-        1787464800,
-        217.9
-      ],
-      [
-        1787468400,
-        219.7
-      ],
-      [
-        1787472000,
-        221.1
-      ],
-      [
-        1787475600,
-        221.8
-      ],
-      [
-        1787479200,
-        222.5
-      ],
-      [
-        1787482800,
-        222.5
-      ],
-      [
-        1787486400,
-        222.8
-      ]
-    ]
-  },
+  "nwm": null,
   "cucn7": {
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.46,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 76.9,
-    "fresh": false,
-    "last_updated_utc": "2026-08-22T20:03:00+00:00",
+    "age_min": 73.4,
+    "fresh": true,
+    "last_updated_utc": "2026-08-22T20:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 76.9 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -469,7 +408,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-22T21:19:54.186430+00:00",
+    "valid_utc": "2026-08-22T21:46:21.884951+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

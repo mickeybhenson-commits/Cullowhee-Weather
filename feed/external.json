@@ -1,11 +1,11 @@
 {
-  "fetched_utc": "2026-08-22T14:47:55.142225+00:00",
+  "fetched_utc": "2026-08-22T15:19:27.904682+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
     "nwm": "ok",
-    "cucn7": "empty",
+    "cucn7": "ok",
     "flash": "ok"
   },
   "usgs": {
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 263.0,
     "stage_series_up": [
-      [
-        1787389200,
-        6.06
-      ],
-      [
-        1787390100,
-        6.06
-      ],
       [
         1787391000,
         6.06
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787389200,
-        3.31
-      ],
-      [
-        1787390100,
-        3.3
-      ],
       [
         1787391000,
         3.3
@@ -307,7 +291,25 @@
       ]
     ]
   },
-  "cucn7": null,
+  "cucn7": {
+    "site_id": "25380",
+    "nws_lid": "CUCN7",
+    "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
+    "stage_ft": 2.48,
+    "condition": "Normal",
+    "level": "NORMAL",
+    "trend": "Constant",
+    "rain_1hr": null,
+    "rain_24hr": null,
+    "age_min": 76.5,
+    "fresh": false,
+    "last_updated_utc": "2026-08-22T14:03:00+00:00",
+    "datum_verified": false,
+    "gage_datum_ft": null,
+    "wse_navd88_ft": null,
+    "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
+    "note": "NOT driving posture: stale/invalid (age 76.5 min, limit 75)"
+  },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
     "endpoint": "https://thredds.aos.wisc.edu/thredds/ncss/grid/grib/NCEP/MRMS/CONUS/FLASH",
@@ -347,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260822_1400.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260822_1500.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -441,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 15.9,
+        "streamflow_m3s": 15.4,
         "soil_sat_pct": 40.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -467,7 +469,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-22T14:47:58.074750+00:00",
+    "valid_utc": "2026-08-22T15:19:32.122314+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

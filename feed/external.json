@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-23T18:58:00.370760+00:00",
+  "fetched_utc": "2026-08-23T19:26:14.026001+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 473.0,
     "stage_series_up": [
-      [
-        1787490000,
-        4.94
-      ],
-      [
-        1787490900,
-        4.84
-      ],
       [
         1787491800,
         4.78
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787490000,
-        3.62
-      ],
-      [
-        1787490900,
-        3.65
-      ],
       [
         1787491800,
         3.69
@@ -234,75 +218,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787504400,
-        222.8
-      ],
-      [
         1787508000,
-        222.8
+        160.7
       ],
       [
         1787511600,
-        222.8
+        165.6
       ],
       [
         1787515200,
-        222.8
+        172.0
       ],
       [
         1787518800,
-        222.8
+        179.8
       ],
       [
         1787522400,
-        222.8
+        187.9
       ],
       [
         1787526000,
-        222.8
+        196.3
       ],
       [
         1787529600,
-        222.8
+        203.4
       ],
       [
         1787533200,
-        222.8
+        209.4
       ],
       [
         1787536800,
-        222.8
+        214.0
       ],
       [
         1787540400,
-        222.8
+        217.2
       ],
       [
         1787544000,
-        222.8
+        219.3
       ],
       [
         1787547600,
-        222.8
+        220.7
       ],
       [
         1787551200,
-        222.8
+        221.4
       ],
       [
         1787554800,
-        222.8
+        222.1
       ],
       [
         1787558400,
-        222.8
+        222.5
       ],
       [
         1787562000,
-        222.8
+        222.5
       ],
       [
         1787565600,
+        222.8
+      ],
+      [
+        1787569200,
         222.8
       ]
     ]
@@ -317,9 +301,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 55.0,
+    "age_min": 53.3,
     "fresh": true,
-    "last_updated_utc": "2026-08-23T18:03:00+00:00",
+    "last_updated_utc": "2026-08-23T18:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -365,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260823_1700.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260823_1900.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -421,7 +405,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.0,
-        "soil_sat_pct": 39.0,
+        "soil_sat_pct": 38.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -459,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 8.0,
+        "streamflow_m3s": 7.7,
         "soil_sat_pct": 38.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -484,8 +468,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 68.0,
-    "valid_utc": "2026-08-23T17:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-23T19:26:19.528584+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

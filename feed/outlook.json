@@ -1,11 +1,11 @@
 {
-  "fetched_utc": "2026-08-23T04:02:52.554562+00:00",
-  "status": "unavailable: no source configured (set WN_FIXTURE or WN_BQ_TABLE)",
+  "fetched_utc": "2026-08-23T04:26:09.057287+00:00",
+  "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
-  "source": null,
-  "issued_utc": null,
-  "n_members": 0,
+  "source": "wn2-openmeteo",
+  "issued_utc": "2026-08-23T04:00:00Z",
+  "n_members": 64,
   "nws_qpf24_in": {
     "CC-UP-503": 0.0,
     "CC-MS-1100": 0.0,
@@ -16,5 +16,386 @@
     "CC-WCU-2260": 0.0,
     "CC-MOUTH-2340": 0.0
   },
-  "nws_note": "api.weather.gov gridded forecast, next 24 h"
+  "nws_note": "api.weather.gov gridded forecast, next 24 h",
+  "wetness_note": "live_rainfall unavailable; ARC-II default (TypeError)",
+  "basins": {
+    "CC-UP-503": {
+      "basin": "CC-UP-503",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 0.13,
+        "p50": 0.13,
+        "p90": 0.13
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-MS-1100": {
+      "basin": "CC-MS-1100",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 0.2,
+        "p50": 0.2,
+        "p90": 0.2
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-TIL-705": {
+      "basin": "CC-TIL-705",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 0.17,
+        "p50": 0.17,
+        "p90": 0.17
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-SPD-1830": {
+      "basin": "CC-SPD-1830",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 0.25,
+        "p50": 0.25,
+        "p90": 0.25
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-COX-097": {
+      "basin": "CC-COX-097",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 0.07,
+        "p50": 0.07,
+        "p90": 0.07
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-LB-171": {
+      "basin": "CC-LB-171",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 0.1,
+        "p50": 0.1,
+        "p90": 0.1
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-WCU-2260": {
+      "basin": "CC-WCU-2260",
+      "n_members": 64,
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "stage_ft": {
+        "p10": 4.0,
+        "p50": 4.0,
+        "p90": 4.0
+      },
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "NORMAL",
+      "outlook_level": "NORMAL",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.032
+      },
+      "worst24_start_utc": "2026-08-23T10:00:00Z"
+    },
+    "CC-MOUTH-2340": {
+      "error": "ValueError: 'N/A' is not in list"
+    }
+  },
+  "campus_wetness_projection": [
+    {
+      "day": 1,
+      "api": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.0
+      },
+      "w": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.0
+      }
+    },
+    {
+      "day": 2,
+      "api": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.0
+      },
+      "w": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.0
+      }
+    },
+    {
+      "day": 3,
+      "api": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.028
+      },
+      "w": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.005
+      }
+    },
+    {
+      "day": 4,
+      "api": {
+        "p10": 0.023,
+        "p50": 0.12,
+        "p90": 0.455
+      },
+      "w": {
+        "p10": 0.004,
+        "p50": 0.022,
+        "p90": 0.085
+      }
+    },
+    {
+      "day": 5,
+      "api": {
+        "p10": 0.188,
+        "p50": 0.496,
+        "p90": 1.072
+      },
+      "w": {
+        "p10": 0.035,
+        "p50": 0.093,
+        "p90": 0.2
+      }
+    },
+    {
+      "day": 6,
+      "api": {
+        "p10": 0.205,
+        "p50": 0.564,
+        "p90": 1.201
+      },
+      "w": {
+        "p10": 0.038,
+        "p50": 0.105,
+        "p90": 0.224
+      }
+    },
+    {
+      "day": 7,
+      "api": {
+        "p10": 0.234,
+        "p50": 0.609,
+        "p90": 1.2
+      },
+      "w": {
+        "p10": 0.044,
+        "p50": 0.114,
+        "p90": 0.224
+      }
+    }
+  ],
+  "campus_daily": [
+    {
+      "day": 1,
+      "date_utc": "2026-08-24",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.0
+      }
+    },
+    {
+      "day": 2,
+      "date_utc": "2026-08-25",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.0
+      }
+    },
+    {
+      "day": 3,
+      "date_utc": "2026-08-26",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.024
+      }
+    },
+    {
+      "day": 4,
+      "date_utc": "2026-08-27",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.016,
+        "p50": 0.102,
+        "p90": 0.435
+      }
+    },
+    {
+      "day": 5,
+      "date_utc": "2026-08-28",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.048,
+        "p50": 0.33,
+        "p90": 0.662
+      }
+    },
+    {
+      "day": 6,
+      "date_utc": "2026-08-29",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.0,
+        "p50": 0.048,
+        "p90": 0.287
+      }
+    },
+    {
+      "day": 7,
+      "date_utc": "2026-08-30",
+      "p_watch": 0.0,
+      "qpf_in": {
+        "p10": 0.0,
+        "p50": 0.048,
+        "p90": 0.216
+      }
+    }
+  ]
 }

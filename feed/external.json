@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-23T02:44:10.525588+00:00",
+  "fetched_utc": "2026-08-23T03:49:34.915365+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787451300,
+        1787454900,
         269.0
       ],
       "00065": [
-        1787451300,
+        1787454900,
         4.81
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,36 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787451300,
-        328.0
+        1787454900,
+        306.0
       ],
       "00065": [
-        1787451300,
-        3.38
+        1787454900,
+        3.33
       ]
     },
-    "local_inflow_cfs": 59.0,
+    "local_inflow_cfs": 37.0,
     "stage_series_up": [
-      [
-        1787431500,
-        4.04
-      ],
-      [
-        1787432400,
-        4.04
-      ],
-      [
-        1787433300,
-        4.04
-      ],
-      [
-        1787434200,
-        4.04
-      ],
-      [
-        1787435100,
-        4.04
-      ],
       [
         1787436000,
         4.03
@@ -133,29 +113,25 @@
       [
         1787451300,
         4.81
+      ],
+      [
+        1787452200,
+        4.81
+      ],
+      [
+        1787453100,
+        4.81
+      ],
+      [
+        1787454000,
+        4.81
+      ],
+      [
+        1787454900,
+        4.81
       ]
     ],
     "stage_series_down": [
-      [
-        1787431500,
-        3.88
-      ],
-      [
-        1787432400,
-        3.84
-      ],
-      [
-        1787433300,
-        3.8
-      ],
-      [
-        1787434200,
-        3.77
-      ],
-      [
-        1787435100,
-        3.74
-      ],
       [
         1787436000,
         3.71
@@ -227,6 +203,22 @@
       [
         1787451300,
         3.38
+      ],
+      [
+        1787452200,
+        3.36
+      ],
+      [
+        1787453100,
+        3.35
+      ],
+      [
+        1787454000,
+        3.34
+      ],
+      [
+        1787454900,
+        3.33
       ]
     ],
     "provenance": "MEASURED"
@@ -325,14 +317,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 71.2,
-    "fresh": true,
-    "last_updated_utc": "2026-08-23T01:33:00+00:00",
+    "age_min": 76.6,
+    "fresh": false,
+    "last_updated_utc": "2026-08-23T02:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 76.6 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -373,7 +365,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260823_0000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260823_0300.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -389,8 +381,8 @@
         "name": "Mountain",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": null,
-        "soil_sat_pct": null,
+        "streamflow_m3s": 0.2,
+        "soil_sat_pct": 48.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -467,7 +459,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 11.1,
+        "streamflow_m3s": 10.4,
         "soil_sat_pct": 39.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -481,9 +473,9 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 41.0,
-        "ffg_ratio_1h": 0.0,
-        "ffg_ratio_3h": 0.0,
+        "soil_sat_pct": 42.0,
+        "ffg_ratio_1h": 5.0,
+        "ffg_ratio_3h": 5.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -492,8 +484,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 114.2,
-    "valid_utc": "2026-08-23T00:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-23T03:49:37.436435+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

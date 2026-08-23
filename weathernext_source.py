@@ -47,6 +47,24 @@ ACCESS  [CONFIRM after Google data-request approval]
   `google-cloud-bigquery` is an OPTIONAL dep (feeds.py pattern): absent lib,
   absent creds, or absent table => graceful "unavailable", never a crash.
 
+NO-CREDENTIAL LIVE PATH  (added 2026-08-23)
+  Open-Meteo's ensemble API serves WeatherNext 2 with NO key
+  (models=google_weathernext2_ensemble) — the same vendor live_rainfall /
+  the QPF ledger already pull from. It is the default rung when neither
+  WN_FIXTURE nor WN_BQ_TABLE is set, so the whole dark-shipped pipeline
+  (outlook.json -> live.html chips -> storm_watch strip) lights up today.
+  Caveats, stated in .source = 'wn2-openmeteo':
+    * Open-Meteo interpolates the native 6-h totals to hourly; this module
+      re-sums them into 6-h windows, which conserves totals. Sub-6-h timing
+      is NOT real information and nothing here reads it.
+    * Open-Meteo does not expose the model init time. issued_utc is the
+      first hour of the trimmed series (now, floored to the hour). The ledger
+      archiver keys on issued_utc, so Open-Meteo rows are ~6-8 h "younger"
+      than the true init; fetch_weathernext.py header notes this.
+    * Open-Meteo is a third-party mirror: if it lags or drops the model the
+      rung degrades to 'unavailable: <why>' like every other rung.
+  WN_OPENMETEO=0 disables the rung.
+
 OFFLINE / TEST PATH
   WN_FIXTURE=/path/to/fixture.json   loads a saved data-contract dict, so the
   whole pipeline (ensemble -> outlook -> feed -> live.html) runs with zero
@@ -91,6 +109,10 @@ BASIN_POINTS = {
 
 SRC_BQ = "wn2-bq"
 SRC_FIXTURE = "wn2-fixture"
+SRC_OPENMETEO = "wn2-openmeteo"
+
+OPENMETEO_ENSEMBLE_URL = "https://ensemble-api.open-meteo.com/v1/ensemble"
+OPENMETEO_MODEL = "google_weathernext2_ensemble"
 
 # [CONFIRM] column names once Google confirms the real-time table schema.
 _BQ_COLS = dict(init="init_time", valid="forecast_time",
@@ -298,6 +320,104 @@ def _fetch_bigquery(table, points=BASIN_POINTS, timeout=120):
 
 
 # ---------------------------------------------------------------------------
+# OPEN-METEO PATH  (real-time, no credentials)
+# ---------------------------------------------------------------------------
+def _member_keys(hourly):
+    """Open-Meteo ensemble naming: 'precipitation' is the control member,
+    'precipitation_memberNN' the perturbed ones. Returned in stable order."""
+    keys = [k for k in hourly if k == "precipitation"
+            or k.startswith("precipitation_member")]
+    return sorted(keys, key=lambda k: (k != "precipitation", k))
+
+
+def hourly_to_windows(times, hourly_by_member, now_utc=None,
+                      window_hr=WINDOW_HR, max_days=MAX_LEAD_DAYS):
+    """Pure: trim an hourly ensemble to [now, now + max_days), re-sum into
+    `window_hr` windows, and return (issued_utc, valid_utc, members) in the
+    data contract. `times` are 'YYYY-MM-DDTHH:MM' UTC strings (Open-Meteo).
+    None amounts count as 0 — safe only because this source can ADD risk,
+    never remove it (a missing hour cannot lower a rolling max below what
+    the other hours give)."""
+    fmt_in, fmt_out = "%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%SZ"
+    now = now_utc or _dt.datetime.utcnow()
+    now = now.replace(minute=0, second=0, microsecond=0)
+    ts = [_dt.datetime.strptime(t, fmt_in) for t in times]
+    start = next((i for i, t in enumerate(ts) if t >= now), None)
+    if start is None:
+        raise ValueError("series ends before now")
+    n_hours = min(len(ts) - start, max_days * 24)
+    nwin = n_hours // window_hr
+    if nwin == 0:
+        raise ValueError("fewer than one window of lead time in series")
+    issued = ts[start].strftime(fmt_out)
+    valid = [(ts[start] + _dt.timedelta(hours=window_hr * (i + 1))).strftime(fmt_out)
+             for i in range(nwin)]
+    members = []
+    for key in _member_keys(hourly_by_member):
+        ser = hourly_by_member[key][start:start + nwin * window_hr]
+        vals = [0.0 if v is None else float(v) for v in ser]
+        members.append([round(sum(vals[i * window_hr:(i + 1) * window_hr]), 3)
+                        for i in range(nwin)])
+    return issued, valid, members
+
+
+def _fetch_openmeteo(points=BASIN_POINTS, timeout=60, now_utc=None):
+    """All basin points in one request (Open-Meteo accepts comma lists and
+    returns a list of results in the same order). stdlib urllib only."""
+    import urllib.parse
+    import urllib.request
+    bids = list(points)
+    q = urllib.parse.urlencode({
+        "latitude": ",".join(str(points[b][0]) for b in bids),
+        "longitude": ",".join(str(points[b][1]) for b in bids),
+        "hourly": "precipitation",
+        "models": OPENMETEO_MODEL,
+        "forecast_days": min(16, MAX_LEAD_DAYS + 1),   # +1 day: trimming to 'now' eats part of today
+        "precipitation_unit": "inch",
+        "timezone": "UTC",
+    })
+    try:
+        with urllib.request.urlopen(f"{OPENMETEO_ENSEMBLE_URL}?{q}", timeout=timeout) as r:
+            payload = json.loads(r.read().decode())
+    except Exception as e:                           # noqa: BLE001 — DNS, HTTP, JSON
+        return _unavailable(f"Open-Meteo: {type(e).__name__}: {e}")
+    results = payload if isinstance(payload, list) else [payload]
+    if isinstance(payload, dict) and payload.get("error"):
+        return _unavailable(f"Open-Meteo: {payload.get('reason')}")
+    if len(results) != len(bids):
+        return _unavailable(f"Open-Meteo returned {len(results)} points for {len(bids)} basins")
+
+    basins, issued, valid = {}, None, None
+    for bid, res in zip(bids, results):
+        h = res.get("hourly") or {}
+        unit = (res.get("hourly_units") or {}).get("precipitation")
+        if unit not in (None, "inch"):
+            return _unavailable(f"Open-Meteo unit {unit!r}, expected inch")
+        keys = _member_keys(h)
+        if not h.get("time") or not keys:
+            return _unavailable(f"Open-Meteo: no ensemble precipitation for {bid} "
+                                f"(keys={list(h)[:5]})")
+        try:
+            iss, val, mem = hourly_to_windows(h["time"], {k: h[k] for k in keys},
+                                              now_utc=now_utc)
+        except ValueError as e:
+            return _unavailable(f"Open-Meteo: {e}")
+        if valid is None:
+            issued, valid = iss, val
+        elif val != valid:                            # points must share one axis
+            n = min(len(val), len(valid))
+            valid = valid[:n]
+            mem = [m[:n] for m in mem]
+            basins = {b: [m[:n] for m in ms] for b, ms in basins.items()}
+        basins[bid] = mem
+    n = len(next(iter(basins.values()), []))
+    if n < 2:
+        return _unavailable(f"Open-Meteo: only {n} member(s) — not an ensemble")
+    return {"status": "ok", "source": SRC_OPENMETEO, "issued_utc": issued,
+            "n_members": n, "valid_utc": valid, "basins": basins}
+
+
+# ---------------------------------------------------------------------------
 # RESOLVER
 # ---------------------------------------------------------------------------
 def latest(mode=None):
@@ -305,8 +425,9 @@ def latest(mode=None):
       1. WN_FIXTURE env (explicit offline/test data — out-ranks live so a
          drill can be run against a known storm without touching env creds)
       2. BigQuery real-time (needs WN_BQ_TABLE + ADC + optional dep)
-      3. unavailable (callers publish the reason; nothing downstream breaks)
-    `mode` forces one rung: 'fixture' | 'bigquery' | 'off'."""
+      3. Open-Meteo real-time (no credentials; default; WN_OPENMETEO=0 disables)
+      4. unavailable (callers publish the reason; nothing downstream breaks)
+    `mode` forces one rung: 'fixture' | 'bigquery' | 'openmeteo' | 'off'."""
     mode = mode or os.getenv("WN_MODE")
     if mode == "off":
         return _unavailable("disabled (WN_MODE=off)")
@@ -316,9 +437,14 @@ def latest(mode=None):
     if mode == "fixture":
         return _unavailable("WN_MODE=fixture but WN_FIXTURE not set")
     table = os.getenv("WN_BQ_TABLE")
-    if table:
+    if table and mode in (None, "bigquery"):
         return _fetch_bigquery(table)
-    return _unavailable("no source configured (set WN_FIXTURE or WN_BQ_TABLE)")
+    if mode == "bigquery":
+        return _unavailable("WN_MODE=bigquery but WN_BQ_TABLE not set")
+    if os.getenv("WN_OPENMETEO", "1") != "0" and mode in (None, "openmeteo"):
+        return _fetch_openmeteo()
+    return _unavailable("no source configured (WN_FIXTURE / WN_BQ_TABLE unset, "
+                        "Open-Meteo rung disabled)")
 
 
 # ---------------------------------------------------------------------------
@@ -366,9 +492,41 @@ if __name__ == "__main__":
     # resolver honesty: unconfigured => a REASON, not a crash or a lie
     for k in ("WN_FIXTURE", "WN_BQ_TABLE", "WN_MODE"):
         os.environ.pop(k, None)
+    os.environ["WN_OPENMETEO"] = "0"          # keep the self-test offline
     r = latest()
     assert r["status"].startswith("unavailable"), r["status"]
-    print("resolver (unconfigured):", r["status"])
+    print("resolver (unconfigured, Open-Meteo rung off):", r["status"])
+    os.environ.pop("WN_OPENMETEO")
+
+    # Open-Meteo hourly -> 6-h window algebra (pure, offline)
+    t0 = _dt.datetime(2026, 8, 23, 0, 0)
+    times = [(t0 + _dt.timedelta(hours=h)).strftime("%Y-%m-%dT%H:%M")
+             for h in range(16 * 24)]
+    ctrl = [0.0] * len(times)
+    for h in range(100, 136):                  # 36-h event, 7.0 in, starts hour 100
+        ctrl[h] = 7.0 / 36
+    pert = [v * 0.5 for v in ctrl]
+    pert[110] = None                           # a missing hour must not crash
+    hourly = {"precipitation": ctrl, "precipitation_member01": pert}
+    now = _dt.datetime(2026, 8, 23, 9, 40)     # trims to 09:00
+    iss, val, mem = hourly_to_windows(times, hourly, now_utc=now)
+    assert iss == "2026-08-23T09:00:00Z", iss
+    assert val[0] == "2026-08-23T15:00:00Z" and len(val) == MAX_LEAD_DAYS * 4
+    assert len(mem) == 2 and len(mem[0]) == len(val)
+    assert abs(sum(mem[0]) - 7.0) < 0.01       # conservation (3-dp window rounding)
+    assert abs(sum(mem[1]) - (3.5 - 3.5 / 36)) < 0.01   # None counted as 0, nothing else lost
+    w24, s24 = max_window_totals(mem, 24)
+    assert abs(w24[0] - 7.0 * 24 / 36) < 0.02  # worst 24 h of a uniform 36-h storm
+    assert val[s24[0]] > iss                   # onset is in the future
+    assert _member_keys({"precipitation_member02": [], "time": [],
+                         "precipitation": [], "precipitation_member01": []}) == \
+        ["precipitation", "precipitation_member01", "precipitation_member02"]
+    try:
+        hourly_to_windows(times[:5], {"precipitation": ctrl[:5]}, now_utc=now)
+        raise AssertionError("expected ValueError for a series ending before now")
+    except ValueError:
+        pass
+    print("Open-Meteo window algebra: conservation, trimming, None-handling — OK")
 
     dry = make_fixture(wet=False)
     assert max(window_totals(dry["basins"]["CC-WCU-2260"], 240)) == 0.0

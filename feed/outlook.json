@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-23T05:06:25.705831+00:00",
+  "fetched_utc": "2026-08-23T05:09:59.224381+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
@@ -17,13 +17,13 @@
     "CC-MOUTH-2340": 0.0
   },
   "nws_note": "api.weather.gov gridded forecast, next 24 h",
-  "wetness_note": "live_rainfall unavailable; ARC-II default (TypeError)",
+  "wetness_note": "live_rainfall ladder (soil percentile > p5)",
   "basins": {
     "CC-UP-503": {
       "basin": "CC-UP-503",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -52,8 +52,8 @@
     "CC-MS-1100": {
       "basin": "CC-MS-1100",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -82,8 +82,8 @@
     "CC-TIL-705": {
       "basin": "CC-TIL-705",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -112,8 +112,8 @@
     "CC-SPD-1830": {
       "basin": "CC-SPD-1830",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -142,8 +142,8 @@
     "CC-COX-097": {
       "basin": "CC-COX-097",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -172,8 +172,8 @@
     "CC-LB-171": {
       "basin": "CC-LB-171",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -202,8 +202,8 @@
     "CC-WCU-2260": {
       "basin": "CC-WCU-2260",
       "n_members": 64,
-      "wetness": 0.5,
-      "wetness_src": "default_ARC_II",
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.0,
         "p50": 0.0,
@@ -230,99 +230,122 @@
       "worst24_start_utc": "2026-08-23T11:00:00Z"
     },
     "CC-MOUTH-2340": {
-      "error": "ValueError: 'N/A' is not in list"
+      "basin": "CC-MOUTH-2340",
+      "n_members": 64,
+      "wetness": 1.0,
+      "wetness_src": "soil_percentile",
+      "qpf24_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.024
+      },
+      "stage_ft": null,
+      "p_exceed": {
+        "WATCH": 0.0,
+        "WARNING": 0.0,
+        "EMERGENCY": 0.0
+      },
+      "forecast_posture": "N/A",
+      "outlook_level": "N/A",
+      "bias_mult": 1.0,
+      "qpf72_in": {
+        "p10": 0.0,
+        "p50": 0.0,
+        "p90": 0.024
+      },
+      "worst24_start_utc": "2026-08-23T11:00:00Z"
     }
   },
   "campus_wetness_projection": [
     {
       "day": 1,
       "api": {
-        "p10": 0.0,
-        "p50": 0.0,
-        "p90": 0.0
+        "p10": 0.034,
+        "p50": 0.034,
+        "p90": 0.034
       },
       "w": {
-        "p10": 0.0,
-        "p50": 0.0,
-        "p90": 0.0
+        "p10": 0.006,
+        "p50": 0.006,
+        "p90": 0.006
       }
     },
     {
       "day": 2,
       "api": {
-        "p10": 0.0,
-        "p50": 0.0,
-        "p90": 0.0
+        "p10": 0.031,
+        "p50": 0.031,
+        "p90": 0.031
       },
       "w": {
-        "p10": 0.0,
-        "p50": 0.0,
-        "p90": 0.0
+        "p10": 0.006,
+        "p50": 0.006,
+        "p90": 0.006
       }
     },
     {
       "day": 3,
       "api": {
-        "p10": 0.0,
-        "p50": 0.0,
-        "p90": 0.024
+        "p10": 0.028,
+        "p50": 0.028,
+        "p90": 0.052
       },
       "w": {
-        "p10": 0.0,
-        "p50": 0.0,
-        "p90": 0.004
+        "p10": 0.005,
+        "p50": 0.005,
+        "p90": 0.01
       }
     },
     {
       "day": 4,
       "api": {
-        "p10": 0.023,
-        "p50": 0.134,
-        "p90": 0.479
+        "p10": 0.048,
+        "p50": 0.159,
+        "p90": 0.505
       },
       "w": {
-        "p10": 0.004,
-        "p50": 0.025,
-        "p90": 0.089
+        "p10": 0.009,
+        "p50": 0.03,
+        "p90": 0.094
       }
     },
     {
       "day": 5,
       "api": {
-        "p10": 0.191,
-        "p50": 0.496,
-        "p90": 1.122
+        "p10": 0.214,
+        "p50": 0.519,
+        "p90": 1.144
       },
       "w": {
-        "p10": 0.036,
-        "p50": 0.092,
-        "p90": 0.209
+        "p10": 0.04,
+        "p50": 0.097,
+        "p90": 0.213
       }
     },
     {
       "day": 6,
       "api": {
-        "p10": 0.205,
-        "p50": 0.562,
-        "p90": 1.199
+        "p10": 0.226,
+        "p50": 0.583,
+        "p90": 1.22
       },
       "w": {
-        "p10": 0.038,
-        "p50": 0.105,
-        "p90": 0.224
+        "p10": 0.042,
+        "p50": 0.109,
+        "p90": 0.227
       }
     },
     {
       "day": 7,
       "api": {
-        "p10": 0.234,
-        "p50": 0.608,
-        "p90": 1.193
+        "p10": 0.252,
+        "p50": 0.626,
+        "p90": 1.211
       },
       "w": {
-        "p10": 0.044,
-        "p50": 0.113,
-        "p90": 0.222
+        "p10": 0.047,
+        "p50": 0.117,
+        "p90": 0.226
       }
     }
   ],

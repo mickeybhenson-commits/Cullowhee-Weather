@@ -1,9 +1,9 @@
 {
-  "fetched_utc": "2026-08-23T09:35:35.836483+00:00",
+  "fetched_utc": "2026-08-23T10:22:09.343449+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
-    "ffg_in": "HTTPError",
+    "ffg_in": "empty",
     "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
@@ -42,18 +42,6 @@
     },
     "local_inflow_cfs": -161.0,
     "stage_series_up": [
-      [
-        1787456700,
-        4.81
-      ],
-      [
-        1787457600,
-        4.81
-      ],
-      [
-        1787458500,
-        4.81
-      ],
       [
         1787459400,
         4.81
@@ -136,18 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787456700,
-        3.31
-      ],
-      [
-        1787457600,
-        3.3
-      ],
-      [
-        1787458500,
-        3.29
-      ],
       [
         1787459400,
         3.28
@@ -232,81 +208,85 @@
     "provenance": "MEASURED"
   },
   "alerts": [],
-  "ffg_in": null,
+  "ffg_in": {
+    "ffg1h": null,
+    "ffg3h": null,
+    "ffg6h": null
+  },
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787472000,
+        1787475600,
         414.2
       ],
       [
-        1787475600,
+        1787479200,
         397.3
       ],
       [
-        1787479200,
+        1787482800,
         377.5
       ],
       [
-        1787482800,
+        1787486400,
         356.3
       ],
       [
-        1787486400,
+        1787490000,
         333.0
       ],
       [
-        1787490000,
+        1787493600,
         309.7
       ],
       [
-        1787493600,
+        1787497200,
         288.2
       ],
       [
-        1787497200,
+        1787500800,
         270.2
       ],
       [
-        1787500800,
+        1787504400,
         256.0
       ],
       [
-        1787504400,
+        1787508000,
         245.8
       ],
       [
-        1787508000,
+        1787511600,
         238.0
       ],
       [
-        1787511600,
+        1787515200,
         232.7
       ],
       [
-        1787515200,
+        1787518800,
         229.2
       ],
       [
-        1787518800,
+        1787522400,
         226.7
       ],
       [
-        1787522400,
+        1787526000,
         224.9
       ],
       [
-        1787526000,
+        1787529600,
         223.9
       ],
       [
-        1787529600,
+        1787533200,
         223.5
       ],
       [
-        1787533200,
+        1787536800,
         223.2
       ]
     ]
@@ -315,15 +295,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.46,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 62.8,
+    "age_min": 49.2,
     "fresh": true,
-    "last_updated_utc": "2026-08-23T08:33:00+00:00",
+    "last_updated_utc": "2026-08-23T09:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -369,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260823_0900.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260823_1000.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -463,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 9.2,
+        "streamflow_m3s": 9.0,
         "soil_sat_pct": 39.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -477,7 +457,7 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 42.0,
+        "soil_sat_pct": 41.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -489,7 +469,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-23T09:35:48.293794+00:00",
+    "valid_utc": "2026-08-23T10:22:12.191392+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

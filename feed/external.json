@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-23T10:50:05.934259+00:00",
+  "fetched_utc": "2026-08-23T11:19:40.934297+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": -165.0,
     "stage_series_up": [
-      [
-        1787461200,
-        4.85
-      ],
-      [
-        1787462100,
-        4.97
-      ],
       [
         1787463000,
         5.11
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787461200,
-        3.27
-      ],
-      [
-        1787462100,
-        3.26
-      ],
       [
         1787463000,
         3.26
@@ -234,75 +218,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787475600,
+        1787479200,
         414.2
       ],
       [
-        1787479200,
+        1787482800,
         397.3
       ],
       [
-        1787482800,
+        1787486400,
         377.5
       ],
       [
-        1787486400,
+        1787490000,
         356.3
       ],
       [
-        1787490000,
+        1787493600,
         333.0
       ],
       [
-        1787493600,
+        1787497200,
         309.7
       ],
       [
-        1787497200,
+        1787500800,
         288.2
       ],
       [
-        1787500800,
+        1787504400,
         270.2
       ],
       [
-        1787504400,
+        1787508000,
         256.0
       ],
       [
-        1787508000,
-        245.8
-      ],
-      [
         1787511600,
-        238.0
+        245.4
       ],
       [
         1787515200,
-        232.7
+        238.0
       ],
       [
         1787518800,
-        229.2
+        232.7
       ],
       [
         1787522400,
-        226.7
+        229.2
       ],
       [
         1787526000,
-        224.9
+        226.7
       ],
       [
         1787529600,
-        223.9
+        224.9
       ],
       [
         1787533200,
-        223.5
+        223.9
       ],
       [
         1787536800,
+        223.5
+      ],
+      [
+        1787540400,
         223.2
       ]
     ]
@@ -311,20 +295,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.46,
+    "stage_ft": 2.48,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 77.1,
-    "fresh": false,
-    "last_updated_utc": "2026-08-23T09:33:00+00:00",
+    "age_min": 46.7,
+    "fresh": true,
+    "last_updated_utc": "2026-08-23T10:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 77.1 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -365,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260823_1000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260823_1100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -447,7 +431,7 @@
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.1,
-        "soil_sat_pct": 43.0,
+        "soil_sat_pct": 42.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -459,7 +443,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 9.0,
+        "streamflow_m3s": 8.9,
         "soil_sat_pct": 39.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -484,8 +468,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.1,
-    "valid_utc": "2026-08-23T10:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-23T11:19:43.088336+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

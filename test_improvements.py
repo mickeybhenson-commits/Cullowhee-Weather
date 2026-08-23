@@ -196,5 +196,86 @@ class TestHeleneBacktest(unittest.TestCase):
         self.assertIn(obs["CC-WCU-2260"]["posture"], ("WATCH", "WARNING"))
 
 
+class TestOutlookFeedPath(unittest.TestCase):
+    """feed/outlook.json end to end, 2026-08-23. Two defects found the day the
+    WeatherNext feed first carried real members, both on the same root: the
+    mouth basin has no creek-stage ladder BY DECISION (backwater-controlled,
+    basins.py 2026-08-13) and two consumers assumed every basin has one.
+    (1) live_rainfall.compute_from_response: round(None) on the mouth's stage
+        raised TypeError — and because feed_runner wraps the whole antecedent
+        fetch in one try, every basin silently ran at the ARC-II default.
+    (2) outlook_engine._cap("N/A") raised ValueError, dropping the mouth from
+        the feed with an error string. The mouth's honest answer is "N/A".
+    Plus the doc-vs-repo check: the Aug 10 runbook said live.html rendered this
+    feed; it did not. A page that reads a feed must name it, and the keys it
+    reads must be keys the publisher writes."""
+
+    MOUTH = "CC-MOUTH-2340"
+
+    def _daily_response(self, n=8, rain=0.1):
+        import datetime as dt
+        today = dt.date.today()
+        dates = [(today + dt.timedelta(days=d)).isoformat() for d in range(-30, 8)]
+        loc = {"daily": {"time": dates,
+                         "precipitation_sum": [rain] * len(dates),
+                         "et0_fao_evapotranspiration": [3.0] * len(dates)},
+               "daily_units": {"et0_fao_evapotranspiration": "mm"}}
+        return [dict(loc) for _ in range(n)]
+
+    def test_mouth_has_no_ladder_by_decision(self):
+        # the premise the two fixes rest on; if this changes, revisit both
+        self.assertIsNone(BASINS[self.MOUTH]["thr_ft"])
+
+    def test_live_rainfall_survives_mouth(self):
+        import datetime as dt
+        import live_rainfall
+        rows = live_rainfall.compute_from_response(
+            self._daily_response(), now=dt.datetime.now(dt.timezone.utc))
+        self.assertEqual(set(rows), set(BASINS))
+        self.assertIsNone(rows[self.MOUTH]["stage"])
+        self.assertEqual(rows[self.MOUTH]["posture"], "N/A")
+        # and the other seven still carry a live (non-default) wetness source
+        self.assertNotEqual(rows["CC-WCU-2260"]["wetness_src"], "default_ARC_II")
+
+    def test_cap_passes_na_through(self):
+        import outlook_engine as oe
+        self.assertEqual(oe._cap("N/A"), "N/A")
+        self.assertEqual(oe._cap("EMERGENCY"), "WATCH")
+        self.assertEqual(oe._cap("NORMAL"), "NORMAL")
+
+    def test_ensemble_forecast_survives_mouth(self):
+        import outlook_engine as oe
+        import weathernext_source as wn
+        d = wn.make_fixture()
+        m24, _ = wn.max_window_totals(d["basins"][self.MOUTH], 24, horizon_hr=72)
+        fc = oe.forecast_basin_ens(self.MOUTH, m24, p5_in=1.7)
+        self.assertEqual(fc["outlook_level"], "N/A")
+        self.assertIsNone(fc["stage_ft"])
+        self.assertEqual(fc["p_exceed"]["WATCH"], 0.0)
+        # a real basin on the same fixture still posts a WATCH-capped outlook
+        m24, _ = wn.max_window_totals(d["basins"]["CC-WCU-2260"], 24, horizon_hr=72)
+        fc = oe.forecast_basin_ens("CC-WCU-2260", m24, p5_in=1.7)
+        self.assertIn(fc["outlook_level"], ("NORMAL", "WATCH"))
+
+    def test_live_html_reads_the_outlook_feed(self):
+        import os
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "live.html"), encoding="utf-8") as f:
+            page = f.read()
+        self.assertIn("feed/outlook.json", page,
+                      "live.html does not fetch feed/outlook.json — the extended "
+                      "outlook panel is missing (runbook claimed it since 2026-08-10)")
+        # every key the page reads is a key feed_runner.publish_outlook writes
+        for key in ("campus_daily", "p_watch", "qpf_in", "p_exceed", "outlook_level",
+                    "qpf72_in", "worst24_start_utc", "bias_mult", "wetness_note",
+                    "n_members", "fetched_utc"):
+            self.assertIn(key, page, f"page never reads {key}")
+        with open(os.path.join(here, "feed_runner.py"), encoding="utf-8") as f:
+            runner = f.read()
+        for key in ("campus_daily", "p_watch", "qpf72_in", "worst24_start_utc",
+                    "bias_mult", "wetness_note", "n_members", "fetched_utc"):
+            self.assertIn(f'"{key}"', runner, f"feed_runner never writes {key}")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

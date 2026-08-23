@@ -46,7 +46,13 @@ _ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
 _OUTLOOK_CAP = "WATCH"
 
 def _cap(level):
-    """Outlook ceiling: forecast evidence may not exceed WATCH (flood_network rule)."""
+    """Outlook ceiling: forecast evidence may not exceed WATCH (flood_network rule).
+    A level outside the ladder ("N/A" — CC-MOUTH-2340 is backwater-controlled and
+    has no creek-stage ladder by decision, 2026-08-13) passes through unchanged:
+    it is not a posture and there is nothing to cap. Raising here took the whole
+    basin out of feed/outlook.json with a ValueError (seen 2026-08-23)."""
+    if level not in _ORDER:
+        return level
     return level if _ORDER.index(level) <= _ORDER.index(_OUTLOOK_CAP) else _OUTLOOK_CAP
 
 

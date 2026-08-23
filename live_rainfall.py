@@ -189,7 +189,15 @@ def compute_from_response(data, points=BASIN_POINTS, PRF=484.0,   # PRF kept for
         # engine runs on whatever rainfall won (measured gauge or model)
         w, wet_src = resolve_wetness(p5_in=ant.value)
         r = assess_wet(bid, rain.value, w)
-        m_stage = round(r["stage_ft"], 2)
+        # CC-MOUTH-2340 is backwater-controlled (stage set by the Tuckasegee,
+        # not creek discharge — basins.py, 2026-08-13): assess_wet returns
+        # stage None / posture "N/A" there by design. round(None) raised
+        # TypeError and, because this loop is one try-block in
+        # feed_runner.publish_outlook, silently dropped the LIVE antecedent
+        # state for all eight basins — the whole outlook ran at the ARC-II
+        # default (seen 2026-08-23). None stays None; sources.resolve marks it
+        # valid=False and posture_stage() answers "N/A" for it.
+        m_stage = None if r["stage_ft"] is None else round(r["stage_ft"], 2)
 
         # stage sensor (NOAH) is the most direct truth: if MEASURED it governs
         stage = src.resolve(src.Q_STAGE, bid, m_stage, now=now)

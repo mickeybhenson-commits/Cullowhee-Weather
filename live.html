@@ -150,6 +150,11 @@
     <div id="extbody" style="font-size:10.5px;color:#c9d6e2;white-space:normal;line-height:1.5;">loading gov feed&hellip;</div>
     <div class="sbleg-f" id="extstamp" style="margin-top:4px;"></div>
   </div>
+  <h4 id="wnhdr" style="margin-top:9px;border-top:1px solid rgba(255,255,255,.12);padding-top:8px;" title="WeatherNext 2 ensemble, days 1-10. Forecast evidence only; one 28 km grid cell for the whole watershed; capped at WATCH.">Extended outlook &middot; days 1&ndash;10 <span id="wntog">&#9662;</span></h4>
+  <div id="wnwrap">
+    <div id="wnbody" style="font-size:10.5px;color:#c9d6e2;white-space:normal;line-height:1.5;">loading extended outlook&hellip;</div>
+    <div class="sbleg-f" id="wnstamp" style="margin-top:4px;"></div>
+  </div>
 </div>
 <div id="provbanner">Modeled watershed status · in-stream gauges pending</div>
 <div id="top" class="panel">
@@ -1300,6 +1305,96 @@ fetch("feed/external.json?t="+Date.now()).then(function(r){
   .catch(function(){var b=document.getElementById("extbody");
     if(b) b.innerHTML="<span style='color:#7f93a5;font-size:10px;'>gov feed not published yet "+
       "(appears after the next 30-min Action run)</span>";});
+})();
+
+/* ===== EXTENDED OUTLOOK — feed/outlook.json (feed_runner.publish_outlook,
+   WeatherNext 2 ensemble through weathernext_source, 64 members, days 1-10).
+   RENDER ONLY. Every number here was computed in Python (outlook_engine.
+   forecast_basin_ens on each member, wetness.project_wetness_members for the
+   soil projection); this block draws them and never re-derives one. The
+   browser engine above owns the 0-48 h posture from hourly rain; this is the
+   horizon beyond it, and it is MODELED evidence under the same two-tier rule -
+   it may say Watch and no more. One 0.25 deg cell (~28 km) covers the whole
+   watershed, so the per-basin spread below is the ENGINE's (thresholds, Tc,
+   calibration), not the weather's; read eight agreeing basins accordingly.
+   If the feed is not "ok" the panel prints the feed's own reason: an absent
+   source must never read as a quiet week. ===== */
+(function(){
+  var hdr=document.getElementById("wnhdr"), wrap=document.getElementById("wnwrap");
+  if(hdr&&wrap){hdr.addEventListener("click",function(){
+    var c=wrap.style.display==="none"; wrap.style.display=c?"":"none";
+    document.getElementById("wntog").innerHTML=c?"▾":"▸";});}
+  function esc(s){return String(s==null?"":s).replace(/[<>&"]/g,function(c){
+    return {"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];});}
+  function pct(p){return p==null?"&ndash;":Math.round(p*100)+"%";}
+  function inch(v){return v==null?"&ndash;":v.toFixed(v>=1?1:2)+"&Prime;";}
+  function md(iso){ if(!iso) return ""; var d=new Date(iso); if(isNaN(d)) return esc(iso.slice(0,10));
+    return d.toLocaleDateString([], {month:"short",day:"numeric"}); }
+  function pcol(p){ return p>=0.45?SEV.WATCH:(p>0?"#c9d6e2":"#7f93a5"); }
+  function render(j){
+    var b=document.getElementById("wnbody"), st=document.getElementById("wnstamp");
+    if(!b) return;
+    if(!j||j.status!=="ok"){
+      b.innerHTML="<span style='color:#f2882d'>extended outlook unavailable</span> "
+        +"<span style='color:#5f7488'>&mdash; "+esc(j&&j.status?j.status:"no feed")
+        +". No information about days 3&ndash;10, which is not the same as no rain.</span>";
+      if(st) st.innerHTML="";
+      return;
+    }
+    var h="";
+    /* campus day strip: P(WATCH-level rain) per day on each member's own
+       projected soil state (feed_runner: campus_daily). */
+    var days=j.campus_daily||[];
+    if(days.length){
+      h+="<div style='color:#8aa0b2;margin:2px 0 1px;'>Campus <b>P(Watch)</b> by day "
+        +"<span style='color:#5f7488'>&middot; member rain on that member's projected soil</span></div>";
+      h+="<div style='display:flex;gap:3px;margin-bottom:5px;'>";
+      for(var i=0;i<days.length;i++){ var d=days[i], p=d.p_watch, q=d.qpf_in||{};
+        h+="<div title='"+esc(d.date_utc)+": p50 "+(q.p50!=null?q.p50:"?")+" in, p90 "
+          +(q.p90!=null?q.p90:"?")+" in' style='flex:1;text-align:center;border-radius:4px;"
+          +"padding:2px 0;background:rgba(255,255,255,.05);border:1px solid "+pcol(p)+";'>"
+          +"<div style='font-size:9px;color:#7f93a5;'>"+md(d.date_utc)+"</div>"
+          +"<div style='font-variant-numeric:tabular-nums;color:"+pcol(p)+";'>"+pct(p)+"</div>"
+          +"<div style='font-size:9px;color:#7f93a5;'>"+inch(q.p50)+"</div></div>"; }
+      h+="</div>";
+    }
+    /* per-basin rows, worst-first by P(WATCH); engine-derived, see header */
+    var bs=j.basins||{}, rows=[];
+    ORDER.forEach(function(bid){ var x=bs[bid]; if(!x) return;
+      rows.push({bid:bid, x:x, p:(x.p_exceed&&x.p_exceed.WATCH!=null)?x.p_exceed.WATCH:-1}); });
+    rows.sort(function(a,c){return c.p-a.p;});
+    h+="<div style='display:grid;grid-template-columns:auto 1fr auto auto;gap:1px 8px;"
+      +"font-variant-numeric:tabular-nums;'>"
+      +"<span style='color:#5f7488;font-size:9px;'>basin</span>"
+      +"<span style='color:#5f7488;font-size:9px;'>outlook</span>"
+      +"<span style='color:#5f7488;font-size:9px;'>P(Watch)</span>"
+      +"<span style='color:#5f7488;font-size:9px;'>72h p50/p90</span>";
+    rows.forEach(function(r){ var x=r.x, nm=(META[r.bid]&&META[r.bid].short)||r.bid;
+      if(x.error){ h+="<span>"+esc(nm)+"</span><span style='color:#f2882d;grid-column:span 3;'>"
+                     +"error &mdash; "+esc(x.error)+"</span>"; return; }
+      var lv=x.outlook_level||"N/A", q=x.qpf72_in||{};
+      var lvTxt = lv==="N/A" ? "<span style='color:#7f93a5' title='backwater-controlled: stage set by the Tuckasegee, no creek ladder'>n/a</span>"
+                             : "<b style='color:"+(SEV[lv]||"#9AA8B5")+"'>"+esc(lv)+"</b>"
+                               +(x.worst24_start_utc?" <span style='color:#5f7488'>&middot; worst 24 h from "+md(x.worst24_start_utc)+"</span>":"");
+      h+="<span>"+esc(nm)+"</span><span>"+lvTxt+"</span>"
+        +"<span style='color:"+pcol(r.p)+"'>"+(r.p<0?"&ndash;":pct(r.p))+"</span>"
+        +"<span>"+inch(q.p50)+" / "+inch(q.p90)+"</span>"; });
+    h+="</div>";
+    var mult=[]; ORDER.forEach(function(bid){ var x=bs[bid]; if(x&&x.bias_mult&&x.bias_mult!==1) mult.push(META[bid].short+" x"+x.bias_mult); });
+    h+="<div style='font-size:9.5px;color:#7f93a5;margin-top:4px;'>"+esc(j.n_members||"?")+" members &middot; "
+      +esc(j.source||"")+" &middot; soil: "+esc(j.wetness_note||"?")
+      +(mult.length?" &middot; orographic bias "+esc(mult.join(", ")):" &middot; <b>no orographic bias correction yet</b> (28 km model under-calls mountain rain; read these as a floor)")
+      +"</div>";
+    b.innerHTML=h;
+    if(st&&j.fetched_utc){
+      var age=Math.round((Date.now()-new Date(j.fetched_utc).getTime())/60000);
+      st.innerHTML="WeatherNext 2 ensemble &middot; modeled, max Watch &middot; published "
+        +(age<1?"just now":age+" min ago")+(age>480?" <b style='color:#f2882d'>(stale)</b>":"");
+    }
+  }
+  fetch("feed/outlook.json?t="+Date.now(),{cache:"no-store"}).then(function(r){
+      if(!r.ok) throw new Error("HTTP "+r.status); return r.json();}).then(render)
+    .catch(function(e){ render({status:"feed not published yet ("+(e&&e.message?e.message:"fetch failed")+")"}); });
 })();
 </script>
 </body></html>

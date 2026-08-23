@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-23T04:35:20.936252+00:00",
+  "fetched_utc": "2026-08-23T05:06:25.705831+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787454900,
+        1787458500,
         269.0
       ],
       "00065": [
-        1787454900,
+        1787458500,
         4.81
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,24 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787454900,
-        306.0
+        1787458500,
+        290.0
       ],
       "00065": [
-        1787454900,
-        3.33
+        1787458500,
+        3.29
       ]
     },
-    "local_inflow_cfs": 37.0,
+    "local_inflow_cfs": 21.0,
     "stage_series_up": [
-      [
-        1787438700,
-        4.03
-      ],
-      [
-        1787439600,
-        4.02
-      ],
       [
         1787440500,
         4.02
@@ -117,17 +109,25 @@
       [
         1787454900,
         4.81
+      ],
+      [
+        1787455800,
+        4.81
+      ],
+      [
+        1787456700,
+        4.81
+      ],
+      [
+        1787457600,
+        4.81
+      ],
+      [
+        1787458500,
+        4.81
       ]
     ],
     "stage_series_down": [
-      [
-        1787438700,
-        3.62
-      ],
-      [
-        1787439600,
-        3.6
-      ],
       [
         1787440500,
         3.57
@@ -195,6 +195,22 @@
       [
         1787454900,
         3.33
+      ],
+      [
+        1787455800,
+        3.32
+      ],
+      [
+        1787456700,
+        3.31
+      ],
+      [
+        1787457600,
+        3.3
+      ],
+      [
+        1787458500,
+        3.29
       ]
     ],
     "provenance": "MEASURED"
@@ -287,15 +303,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.46,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Rising",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 62.4,
+    "age_min": 63.6,
     "fresh": true,
-    "last_updated_utc": "2026-08-23T03:33:00+00:00",
+    "last_updated_utc": "2026-08-23T04:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -358,7 +374,7 @@
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 48.0,
+        "soil_sat_pct": null,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -460,8 +476,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-23T04:35:24.150020+00:00",
+    "age_min": 16.6,
+    "valid_utc": "2026-08-23T04:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

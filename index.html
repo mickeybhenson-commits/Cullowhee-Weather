@@ -160,6 +160,7 @@
       <a class="btn btn-primary" href="#now">See current conditions</a>
       <a class="btn btn-ghost" href="#crosscheck">Independent cross-check</a>
       <a class="btn btn-ghost" href="#watch">Storm track watch</a>
+      <a class="btn btn-ghost" href="#ground">The ground layer</a>
       <a class="btn btn-ghost" href="#how">Explore the system</a>
     </div>
   </div>
@@ -269,6 +270,16 @@
   <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
 </section>
 
+<section id="ground" class="section reveal">
+  <p class="eyebrow">The ground layer</p>
+  <h2>Watching the hillsides the way NOAH watches the creek.</h2>
+  <p class="section-lede">Helene didn't only flood these mountains — it broke them loose. The USGS mapped more than 2,000 landslides across western North Carolina, and the slopes above Cullowhee Creek carry the same geology. This layer reads them from orbit: ESA's Sentinel-1 radar measures millimetre-scale ground creep across the whole watershed every twelve days, looking for the hillside that starts moving <em>before</em> it fails — then hands its verdict to the same sub-basin roster the flood system runs on.</p>
+  <div class="frame frame-tall frame-breakout">
+    <iframe id="slopeMonitor" title="Slope monitor — satellite radar ground-motion analysis for the Cullowhee Creek watershed" loading="lazy"></iframe>
+  </div>
+  <p class="caption"><b>Weeks-scale, not minutes</b> — this layer finds slow pre-failure creep and can never warn of a debris flow mid-storm; that remains SKYE's rainfall thresholds' job · updates with each satellite pass (~12 days) and is cloud-processed, so during an outage its posture is <b>last known</b>, not live · first year of data: slopes quiet, one candidate held for re-checking in Cox Branch · <a href="slope_monitor.html" target="_blank" rel="noopener">open the slope monitor full screen</a></p>
+</section>
+
 <section id="how" class="section reveal">
   <p class="eyebrow">How it works</p>
   <h2>The whole system, in one model</h2>
@@ -294,7 +305,7 @@
 
 <footer class="foot">
   <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies</p>
-  <p><a href="rain_to_trip.html">How much rain would it take</a> &nbsp;·&nbsp; <a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="flash.html">FLASH cross-check</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+  <p><a href="rain_to_trip.html">How much rain would it take</a> &nbsp;·&nbsp; <a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="flash.html">FLASH cross-check</a> &nbsp;·&nbsp; <a href="slope_monitor.html">Slope monitor</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
 </footer>
 
 <script>
@@ -357,6 +368,12 @@
   (function(){
     var f = document.getElementById('flashWindow');
     if(f){ f.src = bust('flash.html'); }
+  })();
+
+  // ---- slope monitor embed (same cache-busting) ----
+  (function(){
+    var s = document.getElementById('slopeMonitor');
+    if(s){ s.src = bust('slope_monitor.html'); }
   })();
 </script>
 </body>

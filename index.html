@@ -275,9 +275,9 @@
   <h2>Watching the hillsides the way NOAH watches the creek.</h2>
   <p class="section-lede">Helene didn't only flood these mountains — it broke them loose. The USGS mapped more than 2,000 landslides across western North Carolina, and the slopes above Cullowhee Creek carry the same geology. This layer reads them from orbit: ESA's Sentinel-1 radar measures millimetre-scale ground creep across the whole watershed every twelve days, looking for the hillside that starts moving <em>before</em> it fails — then hands its verdict to the same sub-basin roster the flood system runs on.</p>
   <div class="frame frame-tall frame-breakout">
-    <iframe id="slopeMonitor" title="Slope monitor — satellite radar ground-motion analysis for the Cullowhee Creek watershed" loading="lazy"></iframe>
+    <iframe id="slopeMonitor" title="Interactive slope motion map — satellite radar ground-motion for the Cullowhee Creek watershed; click any outlined area for its motion history" loading="lazy"></iframe>
   </div>
-  <p class="caption"><b>Weeks-scale, not minutes</b> — this layer finds slow pre-failure creep and can never warn of a debris flow mid-storm; that remains SKYE's rainfall thresholds' job · updates with each satellite pass (~12 days) and is cloud-processed, so during an outage its posture is <b>last known</b>, not live · first year of data: slopes quiet, one candidate held for re-checking in Cox Branch · <a href="slope_monitor.html" target="_blank" rel="noopener">open the slope monitor full screen</a></p>
+  <p class="caption"><b>Click any outlined area</b> for its twelve-month motion history · <b>weeks-scale, not minutes</b> — this layer finds slow pre-failure creep and can never warn of a debris flow mid-storm; that remains SKYE's rainfall thresholds' job · updates with each satellite pass (~12 days) and is cloud-processed, so during an outage its posture is <b>last known</b>, not live · first year of data: slopes broadly quiet; two candidates under watch — Mtn.&nbsp;Lower and Cox&nbsp;Branch · <a href="slope_map.html" target="_blank" rel="noopener">open the map full screen</a> · <a href="slope_monitor.html" target="_blank" rel="noopener">full analysis</a></p>
 </section>
 
 <section id="how" class="section reveal">
@@ -370,10 +370,10 @@
     if(f){ f.src = bust('flash.html'); }
   })();
 
-  // ---- slope monitor embed (same cache-busting) ----
+  // ---- slope motion map embed (same cache-busting) ----
   (function(){
     var s = document.getElementById('slopeMonitor');
-    if(s){ s.src = bust('slope_monitor.html'); }
+    if(s){ s.src = bust('slope_map.html'); }
   })();
 </script>
 </body>

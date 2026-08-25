@@ -1,9 +1,9 @@
 {
-  "fetched_utc": "2026-08-25T16:35:36.231185+00:00",
+  "fetched_utc": "2026-08-25T17:30:08.125428+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
-    "ffg_in": "HTTPError",
+    "ffg_in": "empty",
     "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
@@ -42,22 +42,6 @@
     },
     "local_inflow_cfs": 766.2,
     "stage_series_up": [
-      [
-        1787654700,
-        6.05
-      ],
-      [
-        1787655600,
-        6.05
-      ],
-      [
-        1787656500,
-        6.05
-      ],
-      [
-        1787657400,
-        6.05
-      ],
       [
         1787658300,
         6.05
@@ -136,22 +120,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787654700,
-        3.56
-      ],
-      [
-        1787655600,
-        3.56
-      ],
-      [
-        1787656500,
-        3.56
-      ],
-      [
-        1787657400,
-        3.56
-      ],
       [
         1787658300,
         3.56
@@ -232,81 +200,85 @@
     "provenance": "MEASURED"
   },
   "alerts": [],
-  "ffg_in": null,
+  "ffg_in": {
+    "ffg1h": null,
+    "ffg3h": null,
+    "ffg6h": null
+  },
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787670000,
-        162.8
-      ],
-      [
         1787673600,
-        167.4
+        117.2
       ],
       [
         1787677200,
-        173.4
+        125.4
       ],
       [
         1787680800,
-        180.8
+        135.6
       ],
       [
         1787684400,
-        188.9
+        148.7
       ],
       [
         1787688000,
-        197.1
+        162.8
       ],
       [
         1787691600,
-        204.1
+        176.9
       ],
       [
         1787695200,
-        209.8
+        189.3
       ],
       [
         1787698800,
-        214.0
+        199.5
       ],
       [
         1787702400,
-        217.2
+        207.3
       ],
       [
         1787706000,
-        218.9
+        212.6
       ],
       [
         1787709600,
-        220.4
+        216.5
       ],
       [
         1787713200,
-        221.4
+        218.6
       ],
       [
         1787716800,
-        221.8
+        220.4
       ],
       [
         1787720400,
-        222.1
+        221.1
       ],
       [
         1787724000,
-        222.5
+        221.8
       ],
       [
         1787727600,
-        222.5
+        222.1
       ],
       [
         1787731200,
+        222.1
+      ],
+      [
+        1787734800,
         222.5
       ]
     ]
@@ -315,15 +287,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.45,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Constant",
+    "trend": "Falling",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 62.8,
+    "age_min": 57.2,
     "fresh": true,
-    "last_updated_utc": "2026-08-25T15:33:00+00:00",
+    "last_updated_utc": "2026-08-25T16:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -385,8 +357,8 @@
         "name": "Mountain",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.2,
-        "soil_sat_pct": 42.0,
+        "streamflow_m3s": null,
+        "soil_sat_pct": null,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -488,8 +460,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 0.0,
-    "valid_utc": "2026-08-25T16:35:49.593939+00:00",
+    "age_min": 40.2,
+    "valid_utc": "2026-08-25T16:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

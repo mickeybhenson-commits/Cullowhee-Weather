@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-25T20:56:31.738459+00:00",
+  "fetched_utc": "2026-08-25T21:29:30.234718+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 555.4,
     "stage_series_up": [
-      [
-        1787670000,
-        4.29
-      ],
-      [
-        1787670900,
-        4.25
-      ],
       [
         1787671800,
         4.22
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787670000,
-        4.27
-      ],
-      [
-        1787670900,
-        4.27
-      ],
       [
         1787671800,
         4.27
@@ -234,75 +218,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787684400,
-        84.0
-      ],
-      [
         1787688000,
-        93.9
+        80.5
       ],
       [
         1787691600,
-        107.4
+        90.8
       ],
       [
         1787695200,
-        123.9
+        104.2
       ],
       [
         1787698800,
-        142.7
+        121.5
       ],
       [
         1787702400,
-        161.7
+        140.9
       ],
       [
         1787706000,
-        178.3
+        160.0
       ],
       [
         1787709600,
-        192.1
+        177.3
       ],
       [
         1787713200,
-        202.3
+        191.4
       ],
       [
         1787716800,
-        209.4
+        201.6
       ],
       [
         1787720400,
-        214.4
+        209.1
       ],
       [
         1787724000,
-        217.5
+        214.0
       ],
       [
         1787727600,
-        219.3
+        217.2
       ],
       [
         1787731200,
-        220.7
+        219.3
       ],
       [
         1787734800,
-        221.4
+        220.7
       ],
       [
         1787738400,
-        221.8
+        221.4
       ],
       [
         1787742000,
-        222.1
+        221.8
       ],
       [
         1787745600,
+        222.1
+      ],
+      [
+        1787749200,
         222.5
       ]
     ]
@@ -317,9 +301,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 53.6,
+    "age_min": 56.5,
     "fresh": true,
-    "last_updated_utc": "2026-08-25T20:03:00+00:00",
+    "last_updated_utc": "2026-08-25T20:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -365,7 +349,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260825_2000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260825_2100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -421,7 +405,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.0,
-        "soil_sat_pct": 35.0,
+        "soil_sat_pct": 34.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -473,7 +457,7 @@
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 37.0,
+        "soil_sat_pct": 36.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -484,8 +468,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 6.6,
-    "valid_utc": "2026-08-25T20:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-25T21:29:33.408581+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-25T00:58:48.404355+00:00",
+  "fetched_utc": "2026-08-25T01:10:11.588481+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": -29.0,
     "stage_series_up": [
-      [
-        1787598000,
-        3.99
-      ],
       [
         1787598900,
         3.99
@@ -132,10 +128,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787598000,
-        3.27
-      ],
       [
         1787598900,
         3.26
@@ -317,7 +309,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 55.9,
+    "age_min": 67.2,
     "fresh": true,
     "last_updated_utc": "2026-08-25T00:03:00+00:00",
     "datum_verified": false,
@@ -365,7 +357,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260825_0000.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260825_0100.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -460,7 +452,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 5.7,
-        "soil_sat_pct": 36.0,
+        "soil_sat_pct": 35.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -484,8 +476,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 8.9,
-    "valid_utc": "2026-08-25T00:50:00+00:00",
+    "age_min": 0.0,
+    "valid_utc": "2026-08-25T01:10:15.688288+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

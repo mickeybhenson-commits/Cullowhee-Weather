@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-08-25T04:37:28.834866+00:00",
+  "fetched_utc": "2026-08-25T05:30:08.861301+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
-    "nwm": "ok",
+    "nwm": "empty",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,22 +42,6 @@
     },
     "local_inflow_cfs": -43.0,
     "stage_series_up": [
-      [
-        1787611500,
-        4.72
-      ],
-      [
-        1787612400,
-        4.79
-      ],
-      [
-        1787613300,
-        4.8
-      ],
-      [
-        1787614200,
-        4.8
-      ],
       [
         1787615100,
         4.8
@@ -136,22 +120,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787611500,
-        3.18
-      ],
-      [
-        1787612400,
-        3.18
-      ],
-      [
-        1787613300,
-        3.18
-      ],
-      [
-        1787614200,
-        3.17
-      ],
       [
         1787615100,
         3.17
@@ -240,80 +208,7 @@
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
-    "series": [
-      [
-        1787616000,
-        264.1
-      ],
-      [
-        1787619600,
-        261.0
-      ],
-      [
-        1787623200,
-        257.4
-      ],
-      [
-        1787626800,
-        252.8
-      ],
-      [
-        1787630400,
-        247.9
-      ],
-      [
-        1787634000,
-        242.6
-      ],
-      [
-        1787637600,
-        238.0
-      ],
-      [
-        1787641200,
-        233.8
-      ],
-      [
-        1787644800,
-        230.2
-      ],
-      [
-        1787648400,
-        227.8
-      ],
-      [
-        1787652000,
-        226.0
-      ],
-      [
-        1787655600,
-        224.6
-      ],
-      [
-        1787659200,
-        223.9
-      ],
-      [
-        1787662800,
-        223.2
-      ],
-      [
-        1787666400,
-        223.2
-      ],
-      [
-        1787670000,
-        222.8
-      ],
-      [
-        1787673600,
-        222.8
-      ],
-      [
-        1787677200,
-        222.8
-      ]
-    ]
+    "series": []
   },
   "cucn7": {
     "site_id": "25380",
@@ -325,9 +220,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 64.5,
+    "age_min": 57.2,
     "fresh": true,
-    "last_updated_utc": "2026-08-25T03:33:00+00:00",
+    "last_updated_utc": "2026-08-25T04:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -373,7 +268,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260825_0400.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260825_0500.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -493,7 +388,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-25T04:37:32.386250+00:00",
+    "valid_utc": "2026-08-25T05:30:11.256046+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

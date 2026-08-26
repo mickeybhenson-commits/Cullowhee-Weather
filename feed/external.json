@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-26T04:37:43.488004+00:00",
+  "fetched_utc": "2026-08-26T05:32:59.475220+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,22 +42,6 @@
     },
     "local_inflow_cfs": 205.2,
     "stage_series_up": [
-      [
-        1787697900,
-        4.03
-      ],
-      [
-        1787698800,
-        4.03
-      ],
-      [
-        1787699700,
-        4.03
-      ],
-      [
-        1787700600,
-        4.02
-      ],
       [
         1787701500,
         4.02
@@ -136,22 +120,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787697900,
-        3.6
-      ],
-      [
-        1787698800,
-        3.57
-      ],
-      [
-        1787699700,
-        3.55
-      ],
-      [
-        1787700600,
-        3.52
-      ],
       [
         1787701500,
         3.5
@@ -319,15 +287,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.44,
+    "stage_ft": 2.45,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 64.9,
+    "age_min": 60.1,
     "fresh": true,
-    "last_updated_utc": "2026-08-26T03:33:00+00:00",
+    "last_updated_utc": "2026-08-26T04:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -373,7 +341,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260826_0400.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260826_0500.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -493,7 +461,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-08-26T04:37:56.877391+00:00",
+    "valid_utc": "2026-08-26T05:33:06.262940+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

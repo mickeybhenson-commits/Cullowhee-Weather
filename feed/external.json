@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-26T16:53:28.689671+00:00",
+  "fetched_utc": "2026-08-26T18:59:38.988823+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1787760900,
-        90.6
+        1787768100,
+        76.9
       ],
       "00065": [
-        1787760900,
-        4.15
+        1787768100,
+        4.08
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,48 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1787760900,
-        541.0
+        1787768100,
+        553.0
       ],
       "00065": [
-        1787760900,
-        3.8
+        1787768100,
+        3.82
       ]
     },
-    "local_inflow_cfs": 450.4,
+    "local_inflow_cfs": 476.1,
     "stage_series_up": [
-      [
-        1787742000,
-        5.22
-      ],
-      [
-        1787742900,
-        5.22
-      ],
-      [
-        1787743800,
-        5.22
-      ],
-      [
-        1787744700,
-        5.22
-      ],
-      [
-        1787745600,
-        5.22
-      ],
-      [
-        1787746500,
-        5.21
-      ],
-      [
-        1787747400,
-        5.15
-      ],
-      [
-        1787748300,
-        5.04
-      ],
       [
         1787749200,
         4.9
@@ -129,41 +97,41 @@
       [
         1787760900,
         4.15
+      ],
+      [
+        1787761800,
+        4.13
+      ],
+      [
+        1787762700,
+        4.13
+      ],
+      [
+        1787763600,
+        4.11
+      ],
+      [
+        1787764500,
+        4.11
+      ],
+      [
+        1787765400,
+        4.1
+      ],
+      [
+        1787766300,
+        4.09
+      ],
+      [
+        1787767200,
+        4.09
+      ],
+      [
+        1787768100,
+        4.08
       ]
     ],
     "stage_series_down": [
-      [
-        1787742000,
-        3.13
-      ],
-      [
-        1787742900,
-        3.13
-      ],
-      [
-        1787743800,
-        3.13
-      ],
-      [
-        1787744700,
-        3.12
-      ],
-      [
-        1787745600,
-        3.12
-      ],
-      [
-        1787746500,
-        3.12
-      ],
-      [
-        1787747400,
-        3.12
-      ],
-      [
-        1787748300,
-        3.12
-      ],
       [
         1787749200,
         3.12
@@ -219,6 +187,38 @@
       [
         1787760900,
         3.8
+      ],
+      [
+        1787761800,
+        3.8
+      ],
+      [
+        1787762700,
+        3.81
+      ],
+      [
+        1787763600,
+        3.81
+      ],
+      [
+        1787764500,
+        3.81
+      ],
+      [
+        1787765400,
+        3.81
+      ],
+      [
+        1787766300,
+        3.82
+      ],
+      [
+        1787767200,
+        3.82
+      ],
+      [
+        1787768100,
+        3.82
       ]
     ],
     "provenance": "MEASURED"
@@ -234,76 +234,76 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1787756400,
-        150.1
-      ],
-      [
-        1787760000,
-        155.7
-      ],
-      [
         1787763600,
-        163.1
+        95.7
       ],
       [
         1787767200,
-        172.0
+        104.9
       ],
       [
         1787770800,
-        181.9
+        117.2
       ],
       [
         1787774400,
-        191.4
+        132.8
       ],
       [
         1787778000,
-        199.9
+        149.7
       ],
       [
         1787781600,
-        206.9
+        167.0
       ],
       [
         1787785200,
-        211.9
+        182.2
       ],
       [
         1787788800,
-        215.8
+        194.6
       ],
       [
         1787792400,
-        218.2
+        203.8
       ],
       [
         1787796000,
-        219.7
+        210.5
       ],
       [
         1787799600,
-        220.7
+        214.7
       ],
       [
         1787803200,
-        221.4
+        217.9
       ],
       [
         1787806800,
-        221.8
+        219.7
       ],
       [
         1787810400,
-        222.1
+        220.7
       ],
       [
         1787814000,
-        222.1
+        221.4
       ],
       [
         1787817600,
-        222.5
+        221.8
+      ],
+      [
+        1787821200,
+        222.1
+      ],
+      [
+        1787824800,
+        222.1
       ]
     ]
   },
@@ -311,20 +311,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.46,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 80.6,
-    "fresh": false,
-    "last_updated_utc": "2026-08-26T15:33:00+00:00",
+    "age_min": 56.7,
+    "fresh": true,
+    "last_updated_utc": "2026-08-26T18:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 80.6 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -365,7 +365,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260826_1600.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260826_1800.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -460,7 +460,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 4.9,
-        "soil_sat_pct": 33.0,
+        "soil_sat_pct": 32.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -484,8 +484,8 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 3.6,
-    "valid_utc": "2026-08-26T16:50:00+00:00",
+    "age_min": 9.7,
+    "valid_utc": "2026-08-26T18:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

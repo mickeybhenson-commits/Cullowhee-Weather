@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-27T13:51:47.593405+00:00",
+  "fetched_utc": "2026-08-27T14:07:51.354820+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": -86.0,
     "stage_series_up": [
-      [
-        1787817600,
-        6.06
-      ],
       [
         1787818500,
         6.06
@@ -132,10 +128,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787817600,
-        3.21
-      ],
       [
         1787818500,
         3.2
@@ -311,20 +303,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.48,
+    "stage_ft": 2.47,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 78.8,
-    "fresh": false,
-    "last_updated_utc": "2026-08-27T12:33:00+00:00",
+    "age_min": 64.9,
+    "fresh": true,
+    "last_updated_utc": "2026-08-27T13:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 78.8 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -379,10 +371,10 @@
     "basins": {
       "CC-UP-503": {
         "name": "Mountain",
-        "unit_streamflow": 0.1,
+        "unit_streamflow": null,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 38.0,
+        "soil_sat_pct": null,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -484,7 +476,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 1.8,
+    "age_min": 17.9,
     "valid_utc": "2026-08-27T13:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

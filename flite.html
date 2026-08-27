@@ -142,6 +142,23 @@
   .caption{font-family:var(--mono);font-size:12px;color:var(--faint);margin:16px 0 0;line-height:1.6;letter-spacing:.01em}
   .caption b{color:var(--slate);font-weight:500}
 
+  /* ---------- static figure plates ---------- */
+  .figs{margin-top:clamp(34px,4.4vw,54px);display:grid;gap:clamp(34px,4.4vw,54px)}
+  .figs-head{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--current);margin:0}
+  .figs-head + p{margin:10px 0 0;color:var(--slate);font-size:17.5px;line-height:1.6;max-width:64ch}
+  .fig{margin:0;min-width:0}
+  .fig-plate{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--shoal2);
+    box-shadow:0 24px 60px -30px rgba(0,0,0,.8)}
+  .fig-plate img{display:block;width:100%;height:auto}
+  .fig-scroll{display:none}
+  /* narrow screens: the annotations are too fine to shrink, so pan instead */
+  @media (max-width:760px){
+    .fig-plate{overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+    .fig-plate img{width:760px;max-width:none}
+    .fig-scroll{display:inline;color:var(--current)}
+  }
+
   /* fallback card when live-map URL not yet set */
   .map-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
     justify-content:center;text-align:center;padding:36px;gap:16px}
@@ -331,6 +348,26 @@
       <p>This work designs an ADCP for the streams that feed the rivers — the shallow, steep, debris-loaded channels where the standard instrument does not fit and the standard budget does not stretch to one per reach. A velocity profile is also the raw ingredient for the question underneath all of this: which reach of a creek moves water fastest, and when.</p>
       <span class="who">Brody Yarbrough &amp; Gabe Hitesman · NSF FLiTE Scholars</span>
     </article>
+  </div>
+
+  <p class="figs-head" style="margin-top:clamp(40px,5vw,64px)">Getting the reading off the ridge</p>
+  <p>A calibration is only worth what it returns. The TEROS 12 probes sit on slopes with no cell coverage and no mains power, which makes the uplink part of the instrument rather than an accessory to it. Two node designs are under evaluation for the same buried array &mdash; a short-haul radio to a local gateway, and a direct satellite path where no gateway is reachable.</p>
+
+  <div class="figs frame-breakout">
+    <figure class="fig">
+      <div class="fig-plate">
+        <img src="pickering-node.png" width="2000" height="1125" loading="lazy" decoding="async"
+             alt="Diagram of a solar-powered soil moisture sensor node: a tilted solar panel and a sealed enclosure holding a Heltec V4 board and a 3.7&nbsp;volt battery on a post, cabled to four soil moisture probes buried below the surface, with a dotted LoRa link arcing to a gateway on a second post.">
+      </div>
+      <figcaption class="caption"><span class="fig-scroll">Scroll the plate sideways to read the labels &middot; </span><b>LoRa node</b> &middot; Heltec V4, 3.7&nbsp;V cell, solar top-up, four probes on one buried run to a gateway within radio line of sight &middot; cheapest per node, but it needs a gateway inside range &middot; <b>Jackson Pickering</b>, NSF FLiTE Scholar</figcaption>
+    </figure>
+    <figure class="fig">
+      <div class="fig-plate">
+        <img src="pickering-telemetry.png" width="2000" height="1125" loading="lazy" decoding="async"
+             alt="Diagram of solar-powered soil telemetry via satellite: a sealed enclosure holding an nRF21540 development kit and a 3.7&nbsp;volt battery, fed by a solar panel, cabled to three soil moisture probes buried below the surface, with a 2.4&nbsp;GHz uplink to a low-earth-orbit satellite.">
+      </div>
+      <figcaption class="caption"><span class="fig-scroll">Scroll the plate sideways to read the labels &middot; </span><b>Satellite node</b> &middot; nRF21540 DK on a 2.4&nbsp;GHz uplink to a LEO constellation, no ground infrastructure between the probe and the record &middot; the option for ridges a gateway cannot see &middot; <b>Jackson Pickering</b>, NSF FLiTE Scholar</figcaption>
+    </figure>
   </div>
 </section>
 

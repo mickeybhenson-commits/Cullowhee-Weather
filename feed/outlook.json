@@ -1,22 +1,13 @@
 {
-  "fetched_utc": "2026-08-27T02:03:07.995544+00:00",
+  "fetched_utc": "2026-08-27T02:56:10.550242+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
   "source": "wn2-openmeteo",
   "issued_utc": "2026-08-27T02:00:00Z",
   "n_members": 64,
-  "nws_qpf24_in": {
-    "CC-UP-503": 0.38,
-    "CC-MS-1100": 0.3,
-    "CC-TIL-705": 0.2,
-    "CC-SPD-1830": 0.21,
-    "CC-COX-097": 0.15,
-    "CC-LB-171": 0.14,
-    "CC-WCU-2260": 0.15,
-    "CC-MOUTH-2340": 0.15
-  },
-  "nws_note": "api.weather.gov gridded forecast, next 24 h",
+  "nws_qpf24_in": null,
+  "nws_note": "unavailable (HTTPError)",
   "wetness_note": "live_rainfall ladder (soil percentile > p5)",
   "basins": {
     "CC-UP-503": {

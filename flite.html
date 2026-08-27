@@ -109,6 +109,25 @@
   .two-col p + p{margin-top:14px}
   .who{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--current);display:block;margin-top:14px}
 
+  /* ---- scholar roster ---- */
+  .roster{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2.4vw,26px);margin-top:26px}
+  .roster-card{border:1px solid var(--line);border-radius:6px;background:var(--shoal2);
+    padding:22px 20px 20px;display:flex;flex-direction:column}
+  .roster-name{font-size:20px;color:var(--mist);font-weight:600;letter-spacing:-.01em;line-height:1.2}
+  .roster-instr{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--current);margin-top:6px}
+  .roster-card p{margin:14px 0 0;color:var(--slate);font-size:16px;line-height:1.55;flex:1}
+  .roster-state{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--current);margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+
+  /* ---- scope callout: what this is / is not ---- */
+  .scope{margin-top:32px;border-left:2px solid var(--current);padding:2px 0 2px 22px}
+  .scope-head{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--current);margin:0 0 9px}
+  .scope-head.not{color:var(--warning);margin-top:22px}
+  .scope p:not(.scope-head){margin:0;color:var(--slate);font-size:17.5px;line-height:1.6}
+  .scope strong{color:var(--mist);font-weight:600}
+
   /* ---------- embed frames ---------- */
   .frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;
     background:var(--shoal2);box-shadow:0 24px 60px -30px rgba(0,0,0,.8)}
@@ -169,6 +188,7 @@
     .hero-gauge{order:-1;max-width:230px;margin:0 auto}
     .partition{max-width:230px}
     .two-col{grid-template-columns:1fr;gap:28px}
+    .roster{grid-template-columns:1fr;gap:16px}
     body{font-size:18px}
   }
 </style>
@@ -179,12 +199,12 @@
   <div class="hero-copy">
     <p class="eyebrow"><span class="live-dot"></span>NSF FLiTE Scholars · Western Carolina University</p>
     <h1>FLiTE</h1>
-    <p class="thesis">Before you can forecast a flood, somebody has to go measure the ground.</p>
-    <p class="lede">The forecast for Cullowhee Creek runs on numbers that were never measured here. Three engineering students are building the instruments that will change that — starting with the two terms nobody has ever recorded in these headwaters.</p>
+    <p class="thesis">You cannot find the fastest water in a creek nobody has ever measured.</p>
+    <p class="lede">Three NSF FLiTE Scholars are building the baseline record for the hydrologic cycle of western North Carolina — soil moisture from a TEROS 12 calibrated to these mountain soils, stream discharge from an acoustic Doppler profiler built for headwater channels. The assignment is the measurement itself: the raw data that has never been collected in these watersheds.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="#instruments">Meet the instruments</a>
+      <a class="btn btn-primary" href="#assignments">The assignments</a>
+      <a class="btn btn-ghost" href="#instruments">Meet the instruments</a>
       <a class="btn btn-ghost" href="#partition">Where the rain goes</a>
-      <a class="btn btn-ghost" href="#ground">The ground layer</a>
       <a class="btn btn-ghost" href="#how">Explore the system</a>
     </div>
   </div>
@@ -258,6 +278,42 @@
   </div>
 </header>
 
+<section id="assignments" class="section reveal">
+  <p class="eyebrow">The assignments</p>
+  <h2>Three scholars, two instruments, one missing record.</h2>
+  <p class="section-lede">The NSF FLiTE program funds each scholar against a defined engineering problem. These three were pointed at the same gap from two directions &mdash; what the ground is holding, and what the channel is carrying.</p>
+
+  <div class="roster">
+    <article class="roster-card">
+      <span class="roster-name">Jackson Pickering</span>
+      <span class="roster-instr">TEROS 12 &middot; soil moisture</span>
+      <p>Calibrate the sensor&rsquo;s volumetric water content response to the thin, rocky, organic-rich soils of the western North Carolina mountains &mdash; so that a reading taken on a ridge means what it says.</p>
+      <span class="roster-state">In calibration</span>
+    </article>
+    <article class="roster-card">
+      <span class="roster-name">Brody Yarbrough</span>
+      <span class="roster-instr">Headwater ADCP &middot; discharge</span>
+      <p>Design an acoustic Doppler current profiler that can resolve a velocity profile in water too shallow, too steep and too debris-loaded for a commercial instrument to sit in.</p>
+      <span class="roster-state">In design</span>
+    </article>
+    <article class="roster-card">
+      <span class="roster-name">Gabe Hitesman</span>
+      <span class="roster-instr">Headwater ADCP &middot; discharge</span>
+      <p>Co-developing the same profiler. It has to survive the channel as well as measure it, and be cheap enough to put one on every reach rather than one on the river.</p>
+      <span class="roster-state">In design</span>
+    </article>
+  </div>
+
+  <div class="scope">
+    <p class="scope-head">What the assignment is</p>
+    <p>Capture the baseline data that describes the <strong>real-time hydrologic cycle</strong> of western North Carolina, and from that record help resolve <strong>where velocity peaks in a waterway</strong> &mdash; which reaches move water fastest, and under what conditions.</p>
+    <p class="scope-head not">What it is not</p>
+    <p>This is not flood estimation and it is not landslide prediction. Those are downstream uses, handled by other layers of the system. This work is the measurement underneath them &mdash; and nothing can be forecast from a record that was never collected.</p>
+  </div>
+
+  <p class="caption"><b>Where the data goes</b> &mdash; the readings feed three layers of the Cullowhee Creek system: <b>NOAH</b>, the in-water sensing network &middot; <b>SKYE</b>, the forecast engine &middot; <b>TERRA</b>, the ground layer &middot; the scholars supply the measurement; each layer decides what to do with it.</p>
+</section>
+
 <section id="instruments" class="section reveal">
   <p class="eyebrow">Two instruments, one water balance</p>
   <div class="two-col">
@@ -265,14 +321,14 @@
       <span class="kicker">Soil moisture</span>
       <h3>How much room is left in the ground</h3>
       <p>Off-the-shelf soil moisture probes are calibrated against reference soils that look nothing like what is under these ridges — thin, rocky, steep, and full of organic matter. Read a Piedmont calibration curve on a Nantahala hillside and the number that comes back is confidently wrong.</p>
-      <p>This work builds a probe calibrated to the soils of western North Carolina specifically, so that a reading taken on a mountain slope means what it says. Antecedent wetness is the single largest source of uncertainty in whether a given storm floods — and right now it is the term the model has to guess at.</p>
+      <p>This work calibrates the METER <b>TEROS 12</b> to the soils of western North Carolina specifically. The sensor ships with a generic mineral-soil curve good to about &plusmn;0.03 m&sup3;/m&sup3; of volumetric water content; a medium-specific calibration tightens that to &plusmn;0.01&ndash;0.02. Antecedent wetness is the largest single unknown in the water balance, so a factor of two or three on that term is the difference between a reading you can build on and one you can only argue with.</p>
       <span class="who">Jackson Pickering · NSF FLiTE Scholar</span>
     </article>
     <article>
       <span class="kicker">Stream discharge</span>
       <h3>How much water is actually moving, and how fast</h3>
       <p>An acoustic Doppler current profiler measures a velocity profile through the water column rather than a single point — the difference between knowing a creek is three feet deep and knowing what it is carrying. Commercial ADCPs are built for rivers: too large, too power-hungry, and too expensive to leave in a headwater stream.</p>
-      <p>This work designs an ADCP for the streams that feed the rivers — the shallow, steep, debris-loaded channels where the standard instrument does not fit and the standard budget does not stretch to one per reach.</p>
+      <p>This work designs an ADCP for the streams that feed the rivers — the shallow, steep, debris-loaded channels where the standard instrument does not fit and the standard budget does not stretch to one per reach. A velocity profile is also the raw ingredient for the question underneath all of this: which reach of a creek moves water fastest, and when.</p>
       <span class="who">Brody Yarbrough &amp; Gabe Hitesman · NSF FLiTE Scholars</span>
     </article>
   </div>
@@ -280,7 +336,7 @@
 
 <section id="gap" class="section reveal">
   <p class="eyebrow">What gets measured today</p>
-  <h2>A forecast standing on numbers nobody collected here</h2>
+  <h2>The baseline nobody collected here</h2>
   <p class="section-lede">Stream depth and discharge are measured on the large rivers. On the small and medium headwater streams that feed them — the ones that rise in minutes and do most of the killing — they are not measured at all. Everything below is running on modeled rainfall and inference. It works well enough to be useful, and not well enough to be trusted the way a measurement can be trusted.</p>
   <div class="frame frame-live frame-breakout">
     <iframe id="liveMap" title="Live Cullowhee Creek watershed status map" loading="lazy" style="display:none"></iframe>
@@ -327,7 +383,7 @@
   <p class="eyebrow">The ground layer</p>
   <h2>The same reading tells you when a hillside lets go.</h2>
   <p class="section-lede">Soil moisture is not only a flood term. A slope fails when the water in it exceeds what the friction can hold, which is why Helene broke these mountains as well as flooding them — the USGS mapped more than two thousand landslides across western North Carolina, and the slopes above Cullowhee Creek carry the same geology.</p>
-  <p class="section-lede">The system already watches those hillsides from orbit: ESA's Sentinel-1 radar measures millimetre-scale creep across the whole watershed every twelve days, looking for the slope that starts moving before it fails. What that layer cannot see is <em>how much water is in the ground it is watching</em>. A probe calibrated to these soils is what turns "this slope is creeping" into "this slope is close."</p>
+  <p class="section-lede">The system already watches those hillsides from orbit: ESA's Sentinel-1 radar measures millimetre-scale creep across the whole watershed every twelve days, looking for the slope that starts moving before it fails. What that layer cannot see is <em>how much water is in the ground it is watching</em>. A probe calibrated to these soils is what turns "this slope is creeping" into "this slope is close." <em>That is a downstream use of the soil moisture record, not the assignment that produced it</em> — the scholars are collecting the measurement; what each layer does with it afterward is a separate question.</p>
   <div class="frame frame-tall frame-breakout">
     <iframe id="slopeMonitor" title="Interactive slope motion map — satellite radar ground-motion for the Cullowhee Creek watershed; click any outlined area for its motion history" loading="lazy"></iframe>
   </div>
@@ -349,14 +405,14 @@
   <h2>This started as an energy project.</h2>
   <p>We were designing a hydrokinetic power platform — a vessel that would find the fastest water in a river and anchor there, because power goes with the cube of velocity and a ten percent gain in speed is a third more electricity. To find the fastest water, the vessel needed to know where the fastest water was.</p>
   <p>The data did not exist. Not in a form we could use, and in the headwaters, not in any form at all. Depth and discharge are recorded on the large rivers; the small and medium streams that feed them are unrecorded. And underneath that gap was a deeper one — the <em>raw</em> measurements that would let anyone compute the answer had never been taken either.</p>
-  <p class="dim">So the question turned around. Instead of asking where the water is fastest, we started asking the question one level down: when rain arrives, where does it actually go — into the soil, back through the plants, or into the creek? Answer that with instruments rather than assumptions and you get the velocity prediction, and you get something more valuable besides. You get a flood forecast that rests on measurement.</p>
+  <p class="dim">So the question turned around. Instead of asking where the water is fastest, we started asking the question one level down: when rain arrives, where does it actually go — into the soil, back through the plants, or into the creek? Answer that with instruments rather than assumptions and the velocity question becomes answerable, because you finally know how much water is in the channel and when it got there. Everything else the system does is built on top of that record — but the record comes first.</p>
   <p class="dim">It is the habit of the Coweeta Hydrologic Laboratory, just up the road: <em>measure the ground truth, then trust what you measured.</em></p>
 </section>
 
 <section id="stands" class="section section-narrow reveal prose">
   <p class="eyebrow">Where it stands</p>
   <h2>Honest about what's proven.</h2>
-  <p>Both instruments are in development. The soil moisture probe is in calibration against western North Carolina soils; the headwater ADCP is in design. Neither has produced a validated field record yet, and nothing on this page feeds an operational warning.</p>
+  <p>Both instruments are in development. The TEROS 12 is in calibration against western North Carolina soils; the headwater ADCP is in design. Neither has produced a validated field record yet, and nothing on this page feeds an operational warning. What is being built here is the baseline — the measurement record that does not exist yet — not a warning product.</p>
   <p class="dim">The work is supported by the NSF FLiTE program — Fostering Leaders in Technology Entrepreneurship — a $1.5 million National Science Foundation scholarship initiative in Western Carolina University's College of Engineering and Technology, which pairs need-based support with mentoring in bringing engineering work to the world. <a href="https://www.wcu.edu/_files/learn/NSFFLiTE.pdf" target="_blank" rel="noopener">Program details</a>.</p>
 </section>
 

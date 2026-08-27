@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<div id="devbanner" style="position:fixed;top:0;left:0;right:0;z-index:2000;
+  background:#3a1d12;border-bottom:1px solid #f2882d;color:#ffd9bd;
+  font:600 11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
+  padding:9px 16px;text-align:center;letter-spacing:.01em">
+  <strong style="color:#f2882d">RESEARCH INSTRUMENTATION — IN DEVELOPMENT.</strong>
+  Sensors described here are prototypes under calibration. Nothing on this page is an operational warning.
+  Official warnings: <a href="https://www.weather.gov/gsp/" style="color:#ffd9bd">NWS Greenville-Spartanburg</a>.
+</div>
+<script>if(window.self!==window.top){document.getElementById('devbanner').style.display='none';}</script>
+<html lang="en" id="top">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FLiTE — Measuring the Water Balance of a Mountain Watershed</title>
+<meta name="description" content="Three NSF FLiTE Scholars at Western Carolina University are building the soil-moisture and stream-discharge instruments that headwater flood forecasting has never had.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --abyss:#0a161a;        /* deep creek water at night */
+    --shoal:#102128;        /* raised panel */
+    --shoal2:#0e1c22;
+    --mist:#e9f1ef;         /* primary text, green-white */
+    --slate:#8aa6a6;        /* secondary text */
+    --faint:#5c7576;        /* tertiary / captions */
+    --current:#45d0c0;      /* signature water-cyan */
+    --watch:#e2b52b;        /* alert ladder */
+    --warning:#f2882d;
+    --emergency:#ef5350;
+    --line:#20363c;
+    --disp:'Space Grotesk',system-ui,sans-serif;
+    --body:'Newsreader',Georgia,serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--abyss);color:var(--mist);
+    font-family:var(--body);font-size:19px;line-height:1.6;font-weight:300;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  }
+  a{color:inherit}
+  ::selection{background:rgba(69,208,192,.28)}
+
+  .eyebrow{
+    font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--current);margin:0 0 18px;
+    display:flex;align-items:center;gap:9px;
+  }
+  .live-dot{width:8px;height:8px;border-radius:50%;background:var(--current);
+    box-shadow:0 0 0 0 rgba(69,208,192,.55);animation:pulse 2.4s ease-out infinite;flex:0 0 auto}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(69,208,192,.5)}70%{box-shadow:0 0 0 9px rgba(69,208,192,0)}100%{box-shadow:0 0 0 0 rgba(69,208,192,0)}}
+
+  h1,h2,h3{font-family:var(--disp);font-weight:500;line-height:1.05;letter-spacing:-.01em}
+
+  /* ---------- hero ---------- */
+  .hero{
+    max-width:1180px;margin:0 auto;padding:clamp(56px,9vw,120px) 28px clamp(48px,7vw,96px);
+    display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(28px,5vw,72px);align-items:center;
+  }
+  .hero h1{font-size:clamp(56px,11vw,132px);margin:0 0 6px;font-weight:700}
+  .hero h1 .amp{color:var(--current);font-weight:400}
+  .thesis{font-family:var(--disp);font-weight:400;font-size:clamp(20px,2.6vw,28px);
+    line-height:1.25;margin:0 0 22px;color:var(--mist)}
+  .lede{font-size:20px;color:var(--slate);max-width:34ch;margin:0 0 32px}
+  .cta-row{display:flex;flex-wrap:wrap;gap:14px}
+  .btn{font-family:var(--mono);font-size:13px;letter-spacing:.04em;text-decoration:none;
+    padding:14px 22px;border-radius:2px;transition:.18s;display:inline-block}
+  .btn-primary{background:var(--current);color:#04211d;font-weight:500}
+  .btn-primary:hover{background:#6fe0d2;transform:translateY(-1px)}
+  .btn-ghost{border:1px solid var(--line);color:var(--mist)}
+  .btn-ghost:hover{border-color:var(--current);color:var(--current)}
+
+  /* ---------- water-balance partition (signature) ---------- */
+  .hero-gauge{display:flex;justify-content:center}
+  .partition{width:100%;max-width:300px;height:auto;overflow:visible}
+  .rain-streak{stroke:var(--current);stroke-width:1.5;stroke-linecap:round;opacity:.5}
+  .rain-grp{animation:fall 3.4s linear infinite}
+  @keyframes fall{0%{transform:translateY(-14px);opacity:0}
+    18%{opacity:.6}82%{opacity:.6}100%{transform:translateY(14px);opacity:0}}
+  .flux{fill:none;stroke-width:2;stroke-linecap:round}
+  .flux-known{stroke:var(--current);opacity:.9}
+  .flux-unknown{stroke:var(--faint);stroke-dasharray:4 5}
+  .node{fill:var(--abyss);stroke:var(--current);stroke-width:2}
+  .glyph{fill:none;stroke:var(--slate);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .glyph-live{stroke:var(--current)}
+  .p-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;fill:var(--slate)}
+  .p-who{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;fill:var(--current)}
+  .p-who-dim{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;fill:var(--faint)}
+  .p-head{font-family:var(--mono);font-size:10px;letter-spacing:.14em;fill:var(--current)}
+  .p-ask{font-family:var(--mono);font-size:9px;letter-spacing:.08em;fill:var(--faint)}
+  .surface{stroke:var(--line);stroke-width:1.5}
+  @media (prefers-reduced-motion:reduce){.rain-grp{animation:none}.live-dot{animation:none}}
+
+  /* ---------- sections ---------- */
+  .section{max-width:1120px;margin:0 auto;padding:clamp(60px,9vw,110px) 28px;border-top:1px solid var(--line)}
+  .section-narrow{max-width:720px}
+  .section h2{font-size:clamp(30px,5vw,52px);margin:0 0 20px;max-width:20ch}
+  .section-lede{font-size:20px;color:var(--slate);max-width:60ch;margin:0 0 40px}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,4vw,56px);margin-top:12px}
+  .two-col article{border-left:2px solid var(--current);padding-left:22px}
+  .two-col h3{font-size:24px;margin:0 0 12px;color:var(--mist)}
+  .two-col .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .two-col p{margin:0;color:var(--slate);font-size:18px}
+  .two-col p + p{margin-top:14px}
+  .who{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--current);display:block;margin-top:14px}
+
+  /* ---------- embed frames ---------- */
+  .frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+    background:var(--shoal2);box-shadow:0 24px 60px -30px rgba(0,0,0,.8)}
+  .frame iframe{display:block;width:100%;height:100%;border:0}
+  .frame-live{aspect-ratio:16/9}
+  .frame-tall{aspect-ratio:4/3}
+  /* break embeds out of the text column: near-full-viewport width, capped
+     so tall aspect ratios never exceed the screen */
+  .frame-breakout{width:min(94vw,1560px);position:relative;left:50%;transform:translateX(-50%)}
+  .frame-live,.frame-tall{max-height:85vh}
+  @media (max-width:640px){.frame-live,.frame-tall{aspect-ratio:3/4;max-height:none}}
+  .caption{font-family:var(--mono);font-size:12px;color:var(--faint);margin:16px 0 0;line-height:1.6;letter-spacing:.01em}
+  .caption b{color:var(--slate);font-weight:500}
+
+  /* fallback card when live-map URL not yet set */
+  .map-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;padding:36px;gap:16px}
+  .map-fallback p{margin:0;color:var(--slate);font-family:var(--disp);font-size:19px;max-width:34ch}
+  .map-fallback .hint{font-family:var(--mono);font-size:12px;color:var(--faint)}
+
+  /* ---------- water-balance ledger ---------- */
+  .ledger{border:1px solid var(--line);border-radius:6px;background:var(--shoal2);
+    margin:0 0 34px;overflow:hidden}
+  .ledger-row{display:grid;grid-template-columns:minmax(140px,1fr) minmax(0,2.1fr) minmax(120px,.85fr);
+    gap:18px;padding:18px 22px;border-top:1px solid var(--line);align-items:baseline}
+  .ledger-row:first-child{border-top:0}
+  .ledger-term{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--mist)}
+  .ledger-what{font-size:17px;color:var(--slate);line-height:1.5}
+  .ledger-state{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-align:right;color:var(--faint)}
+  .ledger-state.building{color:var(--current)}
+  .ledger-state.missing{color:var(--warning)}
+  @media (max-width:720px){
+    .ledger-row{grid-template-columns:1fr;gap:7px}
+    .ledger-state{text-align:left}
+  }
+
+  /* ---------- prose ---------- */
+  .prose p{max-width:60ch;color:var(--mist);margin:0 0 22px}
+  .prose p.dim{color:var(--slate)}
+  .prose em{font-style:italic;color:var(--current)}
+
+  /* ---------- footer ---------- */
+  .foot{max-width:1120px;margin:0 auto;padding:56px 28px 72px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:13px;color:var(--faint);display:flex;flex-wrap:wrap;
+    justify-content:space-between;gap:16px;align-items:baseline}
+  .foot strong{color:var(--mist);font-weight:500}
+  .foot a{color:var(--slate);text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:1px}
+  .foot a:hover{color:var(--current);border-color:var(--current)}
+
+  /* ---------- reveal ---------- */
+  .js .reveal{opacity:0;transform:translateY(18px)}
+  .js .reveal.in{opacity:1;transform:none;transition:opacity .7s ease,transform .7s ease}
+
+  :focus-visible{outline:2px solid var(--current);outline-offset:3px;border-radius:2px}
+
+  @media (max-width:840px){
+    .hero{grid-template-columns:1fr;padding-top:48px}
+    .hero-gauge{order:-1;max-width:230px;margin:0 auto}
+    .partition{max-width:230px}
+    .two-col{grid-template-columns:1fr;gap:28px}
+    body{font-size:18px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="live-dot"></span>NSF FLiTE Scholars · Western Carolina University</p>
+    <h1>FLiTE</h1>
+    <p class="thesis">Before you can forecast a flood, somebody has to go measure the ground.</p>
+    <p class="lede">The forecast for Cullowhee Creek runs on numbers that were never measured here. Three engineering students are building the instruments that will change that — starting with the two terms nobody has ever recorded in these headwaters.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="#instruments">Meet the instruments</a>
+      <a class="btn btn-ghost" href="#partition">Where the rain goes</a>
+      <a class="btn btn-ghost" href="#ground">The ground layer</a>
+      <a class="btn btn-ghost" href="#how">Explore the system</a>
+    </div>
+  </div>
+
+  <div class="hero-gauge">
+    <!-- signature: the water balance, and which terms anyone actually measures -->
+    <svg class="partition" viewBox="0 0 300 400" role="img"
+      aria-label="Diagram of the watershed water balance. Rainfall arrives and divides three ways: evapotranspiration, which is inferred rather than measured; soil moisture, which a FLiTE Scholar is instrumenting; and runoff to the stream, which two FLiTE Scholars are instrumenting.">
+
+      <!-- rainfall -->
+      <g class="rain-grp">
+        <line class="rain-streak" x1="72"  y1="10" x2="66"  y2="30"/>
+        <line class="rain-streak" x1="110" y1="4"  x2="104" y2="24"/>
+        <line class="rain-streak" x1="150" y1="12" x2="144" y2="32"/>
+        <line class="rain-streak" x1="190" y1="3"  x2="184" y2="23"/>
+        <line class="rain-streak" x1="228" y1="11" x2="222" y2="31"/>
+      </g>
+      <text class="p-head" x="150" y="52" text-anchor="middle">RAINFALL</text>
+
+      <!-- inflow to the split -->
+      <line class="flux flux-known" x1="150" y1="64" x2="150" y2="96"/>
+      <text class="p-ask" x="150" y="114" text-anchor="middle">WHERE DOES IT GO?</text>
+      <circle class="node" cx="150" cy="132" r="6"/>
+
+      <!-- three fluxes -->
+      <path class="flux flux-unknown" d="M150 138 C 112 146, 62 152, 52 188"/>
+      <path class="flux flux-known"   d="M150 138 L 150 188"/>
+      <path class="flux flux-known"   d="M150 138 C 188 146, 238 152, 248 188"/>
+
+      <!-- 1. evapotranspiration: rising arrow through a plant -->
+      <g transform="translate(52,200)">
+        <path class="glyph" d="M0 30 L0 2"/>
+        <path class="glyph" d="M-10 13 L0 1 L10 13" opacity=".6"/>
+        <path class="glyph" d="M0 23 C -13 21, -16 10, -4 12"/>
+        <path class="glyph" d="M0 29 C 13 27, 16 16, 4 18"/>
+      </g>
+      <text class="p-label" x="52" y="258" text-anchor="middle">EVAPO-</text>
+      <text class="p-label" x="52" y="269" text-anchor="middle">TRANSPIRATION</text>
+      <text class="p-who-dim" x="52" y="290" text-anchor="middle">NO INSTRUMENT</text>
+      <text class="p-who-dim" x="52" y="319" text-anchor="middle">INFERRED</text>
+
+      <!-- 2. soil moisture: layered ground + probe -->
+      <g transform="translate(150,200)">
+        <path class="glyph glyph-live" d="M-22 4 H22"/>
+        <path class="glyph glyph-live" d="M-22 15 H22" opacity=".62"/>
+        <path class="glyph glyph-live" d="M-22 26 H22" opacity=".34"/>
+        <path class="glyph glyph-live" d="M0 -8 L0 30"/>
+        <circle cx="0" cy="30" r="2.6" fill="#45d0c0" stroke="none"/>
+      </g>
+      <text class="p-label" x="150" y="258" text-anchor="middle">SOIL MOISTURE</text>
+      <text class="p-who" x="150" y="290" text-anchor="middle">PICKERING</text>
+      <text class="p-who-dim" x="150" y="319" text-anchor="middle">CALIBRATING</text>
+
+      <!-- 3. runoff: channel + current profile -->
+      <g transform="translate(248,200)">
+        <path class="glyph glyph-live" d="M-22 -4 L-11 26 H11 L22 -4"/>
+        <path class="glyph glyph-live" d="M-16 8 H16" opacity=".62"/>
+        <path class="glyph glyph-live" d="M-13 17 H13" opacity=".4"/>
+        <path class="glyph glyph-live" d="M0 30 L0 -10" opacity=".5"/>
+      </g>
+      <text class="p-label" x="248" y="258" text-anchor="middle">RUNOFF</text>
+      <text class="p-label" x="248" y="269" text-anchor="middle">&amp; DISCHARGE</text>
+      <text class="p-who" x="248" y="290" text-anchor="middle">YARBROUGH</text>
+      <text class="p-who" x="248" y="301" text-anchor="middle">HITESMAN</text>
+      <text class="p-who-dim" x="248" y="319" text-anchor="middle">IN DESIGN</text>
+
+      <!-- baseline -->
+      <line x1="14" y1="344" x2="286" y2="344" stroke="#20363c" stroke-width="2"/>
+      <text class="p-ask" x="150" y="364" text-anchor="middle">THE BALANCE MUST CLOSE</text>
+    </svg>
+  </div>
+</header>
+
+<section id="instruments" class="section reveal">
+  <p class="eyebrow">Two instruments, one water balance</p>
+  <div class="two-col">
+    <article>
+      <span class="kicker">Soil moisture</span>
+      <h3>How much room is left in the ground</h3>
+      <p>Off-the-shelf soil moisture probes are calibrated against reference soils that look nothing like what is under these ridges — thin, rocky, steep, and full of organic matter. Read a Piedmont calibration curve on a Nantahala hillside and the number that comes back is confidently wrong.</p>
+      <p>This work builds a probe calibrated to the soils of western North Carolina specifically, so that a reading taken on a mountain slope means what it says. Antecedent wetness is the single largest source of uncertainty in whether a given storm floods — and right now it is the term the model has to guess at.</p>
+      <span class="who">Jackson Pickering · NSF FLiTE Scholar</span>
+    </article>
+    <article>
+      <span class="kicker">Stream discharge</span>
+      <h3>How much water is actually moving, and how fast</h3>
+      <p>An acoustic Doppler current profiler measures a velocity profile through the water column rather than a single point — the difference between knowing a creek is three feet deep and knowing what it is carrying. Commercial ADCPs are built for rivers: too large, too power-hungry, and too expensive to leave in a headwater stream.</p>
+      <p>This work designs an ADCP for the streams that feed the rivers — the shallow, steep, debris-loaded channels where the standard instrument does not fit and the standard budget does not stretch to one per reach.</p>
+      <span class="who">Brody Yarbrough &amp; Gabe Hitesman · NSF FLiTE Scholars</span>
+    </article>
+  </div>
+</section>
+
+<section id="gap" class="section reveal">
+  <p class="eyebrow">What gets measured today</p>
+  <h2>A forecast standing on numbers nobody collected here</h2>
+  <p class="section-lede">Stream depth and discharge are measured on the large rivers. On the small and medium headwater streams that feed them — the ones that rise in minutes and do most of the killing — they are not measured at all. Everything below is running on modeled rainfall and inference. It works well enough to be useful, and not well enough to be trusted the way a measurement can be trusted.</p>
+  <div class="frame frame-live frame-breakout">
+    <iframe id="liveMap" title="Live Cullowhee Creek watershed status map" loading="lazy" style="display:none"></iframe>
+    <div class="map-fallback" id="mapFallback">
+      <p>The live watershed map opens in its own window.</p>
+      <a class="btn btn-primary" id="mapLink" href="#" target="_blank" rel="noopener">Open the live map</a>
+      <span class="hint">— set the map address to embed it here —</span>
+    </div>
+  </div>
+  <p class="caption"><b>Modeled, not measured</b> — every sub-basin above is colored from forecast rainfall and radar, with soil wetness estimated rather than observed · the instruments on this page exist to replace the estimate with a reading · <a href="index.html">back to the main system</a></p>
+</section>
+
+<section id="partition" class="section reveal">
+  <p class="eyebrow">The question underneath</p>
+  <h2>Where does the water go when it comes out of the sky?</h2>
+  <p class="section-lede">Rain that lands on a watershed has exactly three places to be. It can go into the soil. It can go back to the atmosphere through the plants. Or it can run into the waterways. That is the whole accounting, and it has to close — every inch that does not soak in and does not transpire arrives in the creek.</p>
+  <p class="section-lede">Which is why the split matters more than the total. Ten inches onto dry ground is a manageable event; the same ten inches onto ground that is already full is a flood, because the soil term has gone to zero and the entire volume is routed to the channel. Helene made this point in the worst possible way: roughly two-hundred-year rainfall fell on drought-dry soil and produced about a nine-year peak. The rain was extreme. The ground had room.</p>
+  <div class="ledger">
+    <div class="ledger-row">
+      <span class="ledger-term">Precipitation</span>
+      <span class="ledger-what">What arrives — radar, gauges, and forecast rainfall.</span>
+      <span class="ledger-state">Measured</span>
+    </div>
+    <div class="ledger-row">
+      <span class="ledger-term">Soil moisture</span>
+      <span class="ledger-what">How much the ground can still absorb before it stops absorbing.</span>
+      <span class="ledger-state building">Being built</span>
+    </div>
+    <div class="ledger-row">
+      <span class="ledger-term">Evapotranspiration</span>
+      <span class="ledger-what">What the plants and the air take back. Estimated from temperature, sun, and season.</span>
+      <span class="ledger-state">Inferred</span>
+    </div>
+    <div class="ledger-row">
+      <span class="ledger-term">Discharge</span>
+      <span class="ledger-what">What reaches the channel, and how fast it is moving when it gets there.</span>
+      <span class="ledger-state missing">Big rivers only</span>
+    </div>
+  </div>
+  <p class="caption"><b>Why this is worth instrumenting</b> — close two of the four terms with real measurements and the third stops being a guess, because the balance constrains it · <a href="rain_to_trip.html" target="_blank" rel="noopener">see how much rain it would take today</a></p>
+</section>
+
+<section id="ground" class="section reveal">
+  <p class="eyebrow">The ground layer</p>
+  <h2>The same reading tells you when a hillside lets go.</h2>
+  <p class="section-lede">Soil moisture is not only a flood term. A slope fails when the water in it exceeds what the friction can hold, which is why Helene broke these mountains as well as flooding them — the USGS mapped more than two thousand landslides across western North Carolina, and the slopes above Cullowhee Creek carry the same geology.</p>
+  <p class="section-lede">The system already watches those hillsides from orbit: ESA's Sentinel-1 radar measures millimetre-scale creep across the whole watershed every twelve days, looking for the slope that starts moving before it fails. What that layer cannot see is <em>how much water is in the ground it is watching</em>. A probe calibrated to these soils is what turns "this slope is creeping" into "this slope is close."</p>
+  <div class="frame frame-tall frame-breakout">
+    <iframe id="slopeMonitor" title="Interactive slope motion map — satellite radar ground-motion for the Cullowhee Creek watershed; click any outlined area for its motion history" loading="lazy"></iframe>
+  </div>
+  <p class="caption"><b>Click any outlined area</b> for its twelve-month motion history · <b>weeks-scale, not minutes</b> — this layer finds slow pre-failure creep and can never warn of a debris flow mid-storm; that remains SKYE's rainfall thresholds' job · updates with each satellite pass (~12 days) and is cloud-processed, so during an outage its posture is <b>last known</b>, not live · a calibrated soil moisture record is the missing second variable here, not a replacement for the radar · <a href="slope_map.html" target="_blank" rel="noopener">open the map full screen</a> · <a href="slope_monitor.html" target="_blank" rel="noopener">full analysis</a></p>
+</section>
+
+<section id="how" class="section reveal">
+  <p class="eyebrow">How it works</p>
+  <h2>Where the instruments plug in</h2>
+  <p class="section-lede">The sensors in the creek, the gateways that carry the data out, the satellites overhead, and the weather that drives it all — on the real watershed. Two of the instrument classes already sited in that model are exactly what this research supplies: the soil-and-rain stations set mid-hillslope in each sub-basin, and the side-looking ADCP at the campus reference section. Drag to look around; zoom in for the instrument labels.</p>
+  <div class="frame frame-tall frame-breakout">
+    <iframe id="model3d" title="Interactive 3D model of the NOAH and SKYE system" loading="lazy"></iframe>
+  </div>
+  <p class="caption">Interactive · the true Cullowhee Creek watershed on <b>2025 QL1 lidar terrain</b> at 10 ft, NAVD88, north up, with vertical relief exaggerated about 3.4× for legibility · sub-basins are cumulative drainage areas; instrument positions are DEM-derived candidate sites, not final survey points.</p>
+</section>
+
+<section id="why" class="section section-narrow reveal prose">
+  <p class="eyebrow">Why</p>
+  <h2>This started as an energy project.</h2>
+  <p>We were designing a hydrokinetic power platform — a vessel that would find the fastest water in a river and anchor there, because power goes with the cube of velocity and a ten percent gain in speed is a third more electricity. To find the fastest water, the vessel needed to know where the fastest water was.</p>
+  <p>The data did not exist. Not in a form we could use, and in the headwaters, not in any form at all. Depth and discharge are recorded on the large rivers; the small and medium streams that feed them are unrecorded. And underneath that gap was a deeper one — the <em>raw</em> measurements that would let anyone compute the answer had never been taken either.</p>
+  <p class="dim">So the question turned around. Instead of asking where the water is fastest, we started asking the question one level down: when rain arrives, where does it actually go — into the soil, back through the plants, or into the creek? Answer that with instruments rather than assumptions and you get the velocity prediction, and you get something more valuable besides. You get a flood forecast that rests on measurement.</p>
+  <p class="dim">It is the habit of the Coweeta Hydrologic Laboratory, just up the road: <em>measure the ground truth, then trust what you measured.</em></p>
+</section>
+
+<section id="stands" class="section section-narrow reveal prose">
+  <p class="eyebrow">Where it stands</p>
+  <h2>Honest about what's proven.</h2>
+  <p>Both instruments are in development. The soil moisture probe is in calibration against western North Carolina soils; the headwater ADCP is in design. Neither has produced a validated field record yet, and nothing on this page feeds an operational warning.</p>
+  <p class="dim">The work is supported by the NSF FLiTE program — Fostering Leaders in Technology Entrepreneurship — a $1.5 million National Science Foundation scholarship initiative in Western Carolina University's College of Engineering and Technology, which pairs need-based support with mentoring in bringing engineering work to the world. <a href="https://www.wcu.edu/_files/learn/NSFFLiTE.pdf" target="_blank" rel="noopener">Program details</a>.</p>
+</section>
+
+<footer class="foot">
+  <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies</p>
+  <p><a href="index.html">NOAH &amp; SKYE</a> &nbsp;·&nbsp; <a href="rain_to_trip.html">How much rain would it take</a> &nbsp;·&nbsp; <a href="slope_monitor.html">Slope monitor</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="https://www.wcu.edu/_files/learn/NSFFLiTE.pdf" target="_blank" rel="noopener">NSF FLiTE</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+</footer>
+
+<script>
+  document.documentElement.classList.add('js');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- scroll reveal ----
+  var reveals = document.querySelectorAll('.reveal');
+  if(reduce || !('IntersectionObserver' in window)){
+    reveals.forEach(function(el){el.classList.add('in');});
+  } else {
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+    },{rootMargin:'0px 0px -12% 0px',threshold:0.08});
+    reveals.forEach(function(el){io.observe(el);});
+  }
+
+  // ---- cache-busting for embedded pages ----
+  // Browsers cache iframe documents aggressively; appending a fresh version
+  // stamp to the URL forces the latest committed copy every page load.
+  var CACHE_BUST = 'v=' + Date.now();
+  function bust(url){ return url + (url.indexOf('?') < 0 ? '?' : '&') + CACHE_BUST; }
+
+  // ---- live map embed ----
+  // Paste the address of your live watershed map between the quotes to embed it here.
+  // Leave it empty and the section shows an "Open the live map" button instead.
+  var DASHBOARD_URL = "live.html";
+
+  (function(){
+    var frame = document.getElementById('liveMap');
+    var fallback = document.getElementById('mapFallback');
+    var link = document.getElementById('mapLink');
+    var url = (DASHBOARD_URL || "").trim();
+    if(url){
+      frame.src = bust(url);
+      frame.style.display = 'block';
+      fallback.style.display = 'none';
+      link.href = url;
+    } else {
+      // no URL yet: keep the button, point it nowhere harmful
+      link.addEventListener('click', function(ev){
+        if(!link.getAttribute('href') || link.getAttribute('href')==='#'){ ev.preventDefault(); }
+      });
+    }
+  })();
+
+  // ---- slope motion map embed (same cache-busting) ----
+  (function(){
+    var s = document.getElementById('slopeMonitor');
+    if(s){ s.src = bust('slope_map.html'); }
+  })();
+
+  // ---- 3D model embed (same cache-busting) ----
+  (function(){
+    var m = document.getElementById('model3d');
+    if(m){ m.src = bust('noah_skye_3d.html'); }
+  })();
+</script>
+</body>
+</html>

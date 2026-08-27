@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-08-27T01:39:43.899626+00:00",
+  "fetched_utc": "2026-08-27T02:03:07.995544+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 254.2,
     "stage_series_up": [
-      [
-        1787773500,
-        4.05
-      ],
-      [
-        1787774400,
-        4.05
-      ],
       [
         1787775300,
         4.05
@@ -136,14 +128,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1787773500,
-        3.8
-      ],
-      [
-        1787774400,
-        3.79
-      ],
       [
         1787775300,
         3.78
@@ -319,15 +303,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.46,
+    "stage_ft": 2.45,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Rising",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 66.8,
+    "age_min": 60.2,
     "fresh": true,
-    "last_updated_utc": "2026-08-27T00:33:00+00:00",
+    "last_updated_utc": "2026-08-27T01:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -492,7 +476,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 49.9,
+    "age_min": 73.2,
     "valid_utc": "2026-08-27T00:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

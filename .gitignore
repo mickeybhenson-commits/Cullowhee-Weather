@@ -45,3 +45,12 @@ venv/
 scripts/xs_out/
 scripts/xs_up/
 scripts/xs_check/
+
+# ---------------------------------------------------------------------------
+# Slope monitor: raw HyP3 rasters and run outputs. ~100 MB per interferogram
+# pair — the workflow warps them into pipeline/state/pair_cache.npz and deletes
+# them in the same step. Only the cache, the epoch ledger and the bulletins in
+# pipeline/state/ are committed.
+# ---------------------------------------------------------------------------
+pipeline/data/
+pipeline/outputs/

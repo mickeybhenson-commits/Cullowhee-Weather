@@ -7,4 +7,4 @@ requests>=2.31       # hydrologic conditions (Open-Meteo + USGS public feeds)
 asf_search>=7.0        # Sentinel-1 scene discovery (free, no login for search)
 hyp3_sdk>=6.0          # ASF on-demand InSAR processing (free NASA Earthdata login)
 rasterio>=1.3          # reading HyP3 GeoTIFF products
-matplotlib>=3.7        # optional: quick-look plots
+matplotlib>=3.7        # the base64 maps embedded in the published pages

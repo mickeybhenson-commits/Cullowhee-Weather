@@ -119,6 +119,12 @@
   .roster-card p{margin:14px 0 0;color:var(--slate);font-size:16px;line-height:1.55;flex:1}
   .roster-state{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
     color:var(--current);margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+  .mentor{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin:22px 0 0;
+    color:var(--slate);font-size:16px;line-height:1.55}
+  .mentor b{color:var(--mist);font-weight:600}
+  .mentor-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--current);flex:0 0 auto}
+  .mentor-body{flex:1 1 auto}
 
   /* ---- scope callout: what this is / is not ---- */
   .scope{margin-top:32px;border-left:2px solid var(--current);padding:2px 0 2px 22px}
@@ -306,8 +312,8 @@
 
 <section id="assignments" class="section reveal">
   <p class="eyebrow">The assignments</p>
-  <h2>Three scholars, two instruments, one missing record.</h2>
-  <p class="section-lede">The NSF FLiTE program funds each scholar against a defined engineering problem. These three were pointed at the same gap from two directions &mdash; what the ground is holding, and what the channel is carrying.</p>
+  <h2>Three scholars, one mentor, two instruments, one missing record.</h2>
+  <p class="section-lede">The NSF FLiTE program funds each scholar against a defined engineering problem and pairs it with faculty mentorship. These three were pointed at the same gap from two directions &mdash; what the ground is holding, and what the channel is carrying.</p>
 
   <div class="roster">
     <article class="roster-card">
@@ -329,6 +335,8 @@
       <span class="roster-state">In design</span>
     </article>
   </div>
+
+  <p class="mentor"><span class="mentor-label">Mentor</span><span class="mentor-body"><b>Dr. Mickey Henson</b>, co-developing the soil moisture sensor with Jackson Pickering.</span></p>
 
   <div class="scope">
     <p class="scope-head">What the assignment is</p>
@@ -378,6 +386,19 @@
       <figcaption class="caption"><span class="fig-scroll">Scroll the plate sideways to read the labels &middot; </span><b>Satellite node</b> &middot; nRF21540 DK on a 2.4&nbsp;GHz uplink to a LEO constellation, no ground infrastructure between the probe and the record &middot; the option for ridges a gateway cannot see &middot; <b>Jackson Pickering</b>, NSF FLiTE Scholar</figcaption>
     </figure>
   </div>
+  <p class="figs-head" style="margin-top:clamp(40px,5vw,64px)">Powering an instrument that lives in the water</p>
+  <p>An acoustic Doppler profiler draws far more current than a buried probe, and it has to keep drawing through the storm that makes the measurement worth having. So the instrument runs on its own 12&nbsp;V solar bus, and the radio runs on a separate small cell with a panel of its own &mdash; a flat instrument battery should not also take the telemetry down with it.</p>
+
+  <div class="figs frame-breakout">
+    <figure class="fig">
+      <div class="fig-plate">
+        <img src="adcp-node.png" width="2000" height="1125" loading="eager" fetchpriority="high" decoding="async"
+             alt="Diagram of a headwater ADCP node. On the stream bank, a large tilted solar panel on a mast charges a 12&nbsp;volt battery and charge controller in a sealed enclosure, cabled down the bank to a side-looking acoustic Doppler profiler mounted just below the water surface, which fans three acoustic beams across the channel. A short data cable runs to a second, smaller enclosure holding a LoRa module and its own 3.7&nbsp;volt cell charged by a small panel of its own, and a dotted LoRa link arcs across the channel to a gateway on the far bank.">
+      </div>
+      <figcaption class="caption"><span class="fig-scroll">Scroll the plate sideways to read the labels &middot; </span><b>Headwater ADCP node</b> &middot; bank-mounted side-looking profiler reading velocity across the channel &middot; <b>12&nbsp;V battery and solar</b> for the instrument, a <b>separate cell and panel</b> for the LoRa module, joined only by a data link &middot; <b>Brody Yarbrough &amp; Gabe Hitesman</b>, NSF FLiTE Scholars</figcaption>
+    </figure>
+  </div>
+
 </section>
 
 <section id="gap" class="section reveal">

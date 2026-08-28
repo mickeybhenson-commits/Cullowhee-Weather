@@ -1,0 +1,10 @@
+numpy>=1.24
+scipy>=1.10
+pyyaml>=6.0
+requests>=2.31       # hydrologic conditions (Open-Meteo + USGS public feeds)
+# google-cloud-firestore  # uncomment when your watershed sensors go live
+# --- real-data pipeline (not needed for the offline demo) ---
+asf_search>=7.0        # Sentinel-1 scene discovery (free, no login for search)
+hyp3_sdk>=6.0          # ASF on-demand InSAR processing (free NASA Earthdata login)
+rasterio>=1.3          # reading HyP3 GeoTIFF products
+matplotlib>=3.7        # optional: quick-look plots

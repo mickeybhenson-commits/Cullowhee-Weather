@@ -1,0 +1,85 @@
+# Cullowhee Creek Watershed Landslide Early Warning System (LEWS)
+# Jackson County, North Carolina, USA
+
+aoi:
+  name: "Cullowhee Creek Watershed"
+  # Bounding box (WGS84) covering the FULL watershed, southern headwaters
+  # (Mountain / CC-UP-503) included. Widened 2026-08-25 from the original
+  # northern-only rectangle.
+  min_lon: -83.250
+  max_lon: -83.130
+  min_lat: 35.200
+  max_lat: 35.330
+  wkt: "POLYGON((-83.250 35.200, -83.130 35.200, -83.130 35.330, -83.250 35.330, -83.250 35.200))"
+
+sentinel1:
+  platform: "SENTINEL-1"
+  processing_level: "SLC"
+  beam_mode: "IW"
+  polarization: "VV"
+  # Prefer one geometry per stack; do NOT mix ascending & descending in one time series.
+  # Cullowhee is covered by path 48 ASCENDING only (verified via diagnostic 2026-08).
+  flight_direction: "ASCENDING"
+  # Max temporal baseline for interferogram pairs (days). Short pairs keep coherence
+  # in vegetated Appalachian terrain.
+  max_temporal_baseline_days: 36
+  start_date: "2025-06-01"
+
+hyp3:
+  # ASF HyP3 on-demand InSAR (free, needs NASA Earthdata login).
+  # Set credentials via environment: EARTHDATA_USERNAME / EARTHDATA_PASSWORD,
+  # or a ~/.netrc entry for urs.earthdata.nasa.gov
+  job_type: "INSAR_GAMMA"          # or INSAR_ISCE_BURST for burst-level pairs
+  looks: "20x4"                    # ~80 m pixels; good SNR for vegetated terrain
+  include_displacement_maps: true
+  include_dem: true
+  water_mask: true
+
+analysis:
+  coherence_threshold: 0.35        # mask pixels below this mean coherence
+  reference_point: "auto"          # stable low-slope pixel chosen automatically
+  min_valid_fraction: 0.6          # pixel must have data in >=60% of epochs
+  velocity_alert_mm_yr: 25.0       # sustained LOS velocity to flag (Advisory)
+  accel_alert_mm_yr2: 40.0         # LOS acceleration to flag (Watch)
+  min_cluster_pixels: 4            # spatial persistence: isolated pixels are noise
+  persistence_epochs: 3            # temporal persistence: must persist N epochs
+  slope_min_deg: 8.0               # ignore flat ground (roads, fields, campus)
+
+forecast:
+  # Inverse-velocity (Fukuzono 1985) failure-time forecasting for WARNING clusters
+  window_epochs: 8                 # epochs used in the 1/v regression
+  min_r2: 0.45                     # regression quality gate before publishing a date
+  min_accel_ratio: 1.5             # late-window velocity must exceed early-window by this factor
+  warning_horizon_days: 60         # forecast failure within this window => WARNING
+
+alerting:
+  levels: ["NORMAL", "ADVISORY", "WATCH", "WARNING"]
+  output_dir: "outputs"
+  geojson: true
+
+hydro:
+  # Hydrologic conditioning layer: rainfall / soil moisture / stream flow.
+  # Until the watershed sensors are deployed, live conditions come from free
+  # public feeds (Open-Meteo model data + nearest USGS gauge). When Firestore
+  # is live, set firestore.enabled: true and the same metrics come from your
+  # own instruments instead.
+  center_lat: 35.29
+  center_lon: -83.18
+  porosity: 0.45                   # saturation = soil moisture / porosity
+  api_decay_per_day: 0.9           # antecedent precipitation index decay
+  thresholds:
+    rain24_severe_mm: 125.0        # ~5 in / 24 h: debris-flow conditions (WNC)
+    rain24_primed_mm: 75.0         # ~3 in / 24 h on wet ground: primed
+    antecedent_api_mm: 60.0        # "wet ground" via antecedent precip index
+    soil_sat_primed: 0.85          # or via soil saturation fraction
+    forecast48_elevated_mm: 50.0   # ~2 in forecast in 48 h: elevated
+  usgs_bbox: [-83.30, 35.20, -83.05, 35.40]   # search box for nearest gauge
+  firestore:
+    enabled: false
+    # Expected schema when enabled: a collection of documents with fields
+    #   sensor_type: "rain" | "soil_moisture" | "stream_stage" | "wind"
+    #   timestamp:   Firestore timestamp (UTC)
+    #   value:       number (rain: mm per reading; soil_moisture: m3/m3)
+    # Auth: set GOOGLE_APPLICATION_CREDENTIALS to your service-account JSON.
+    collection: "sensor_readings"
+    project: ""

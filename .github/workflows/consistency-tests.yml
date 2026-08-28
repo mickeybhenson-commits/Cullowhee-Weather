@@ -74,7 +74,20 @@ jobs:
         with:
           python-version: "3.11"
 
-      # --- the three that guard warning behaviour ------------------------------
+      # The eight suites in the repo root are stdlib-only; the two slope suites
+      # are not. test_slope_ci.py synthesises HyP3-shaped GeoTIFFs and runs the
+      # real inversion and page render over them, so it needs the pipeline's
+      # numerical stack. These five are pinned to pipeline/requirements.txt's
+      # floors, and deliberately NOT installed from that file: asf_search and
+      # hyp3_sdk are network clients this workflow must never acquire a reason
+      # to call.
+      - name: Dependencies
+        run: >-
+          python -m pip install --quiet
+          "numpy>=1.24" "scipy>=1.10" "rasterio>=1.3"
+          "matplotlib>=3.7" "pyyaml>=6.0"
+
+      # --- the four that guard warning behaviour -------------------------------
       # Run these FIRST and separately, so a failure here is unmistakable in the
       # job list rather than buried in a loop's output.
 
@@ -86,6 +99,41 @@ jobs:
 
       - name: Posture algebra — escalation, corroboration, the FloodNet veto bug
         run: python test_posture_rules.py
+
+      # The slope side of the same question. hydro.classify() decides when the
+      # ground is PRIMED for debris flow, and every landslide alert the InSAR
+      # pipeline escalates is gated on that ladder (see fuse.py). It has had a
+      # selftest since it was written — six canned scenarios from dry spell to
+      # Helene-scale — and, like the three above, nothing has ever run it. The
+      # thresholds it checks are the tuned WNC values in pipeline/config.yaml;
+      # this step is what notices if someone edits that file and the ladder
+      # stops meaning what it meant.
+      - name: Slope hydro ladder — rainfall/antecedent priming thresholds
+        working-directory: pipeline
+        run: python -m src.hydro selftest
+
+      # And the pass that publishes those levels. Everything upstream of this
+      # test needs Sentinel-1 and an Earthdata login, so CI cannot prove the
+      # real satellite pass — but it can prove every step after the download,
+      # against synthetic HyP3 products with a known moving patch: the warp onto
+      # the analysis grid, the incremental cache, SBAS inversion over the whole
+      # network, detection, the screening policy, and the surgical rewrite of
+      # slope_monitor / slope_map / slope_3d.
+      #
+      # The page checks are the reason this belongs here rather than only in
+      # slope-monitor.yml. That workflow renders the three published pages by
+      # substituting into marker-delimited regions and leaving the hand-written
+      # scaffolding byte-for-byte alone. Nothing about an edit to those pages
+      # announces that it has moved or dropped a marker; the next scheduled pass
+      # just writes into the wrong place, or silently stops updating a region
+      # that still shows last month's numbers. This runs on every push that
+      # touches them, which is when the anchors actually break.
+      #
+      # It also re-runs the hydro ladder above as one of its own checks. The
+      # duplication is deliberate: a threshold change should be named in the job
+      # list, not buried in this test's output.
+      - name: Slope pass end-to-end — cache, inversion, detection, page anchors
+        run: python pipeline/tests/test_slope_ci.py
 
       # --- and the one that guards the boundary --------------------------------
       # Every test above asks whether the code is CORRECT. This one asks whether

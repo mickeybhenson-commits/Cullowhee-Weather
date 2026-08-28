@@ -155,8 +155,19 @@ def test_detection(cfg, pc):
                          c.centroid_lonlat[1] - PLANT_LAT) for c in clusters)
         check(d < 0.004, f"a cluster sits on the planted patch (off by {d:.4f}°)")
     noise = cache.epoch_noise_mm(stack, fields["usable"])
-    check(len(noise) == len(stack.dates) and np.isfinite(noise[-1]),
+    check(len(noise) == len(stack.dates) and all(np.isfinite(n) for n in noise),
           "per-epoch noise floor computed for every epoch")
+    # The synthetic stack has a known 1.2 mm per-epoch sigma. The floor must
+    # measure THAT, not the spatial spread of cumulative displacement — which
+    # grows with the record and, on the first real 31-epoch stack, wiped out
+    # the leaf-off/leaf-on contrast the plan calls the honest context.
+    med = float(np.median(noise))
+    check(0.5 < med < 3.0,
+          f"noise floor tracks the injected per-epoch sigma (1.2 mm), got {med:.1f} mm")
+    drift = float(np.median([np.nanstd(stack.disp[k][fields["usable"]])
+                             for k in range(stack.shape[0])]))
+    check(med < drift,
+          f"noise floor is below the cumulative spatial spread ({med:.1f} < {drift:.1f} mm)")
     return stack, fields, clusters
 
 

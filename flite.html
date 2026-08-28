@@ -365,14 +365,14 @@
   <div class="figs frame-breakout">
     <figure class="fig">
       <div class="fig-plate">
-        <img src="pickering-node.png" width="2000" height="1125" loading="lazy" decoding="async"
+        <img src="pickering-node.png" width="2000" height="1125" loading="eager" fetchpriority="high" decoding="async"
              alt="Diagram of a solar-powered soil moisture sensor node: a tilted solar panel and a sealed enclosure holding a Heltec V4 board and a 3.7&nbsp;volt battery on a post, cabled to four soil moisture probes buried below the surface, with a dotted LoRa link arcing to a gateway on a second post.">
       </div>
       <figcaption class="caption"><span class="fig-scroll">Scroll the plate sideways to read the labels &middot; </span><b>LoRa node</b> &middot; Heltec V4, 3.7&nbsp;V cell, solar top-up, four probes on one buried run to a gateway within radio line of sight &middot; cheapest per node, but it needs a gateway inside range &middot; <b>Jackson Pickering</b>, NSF FLiTE Scholar</figcaption>
     </figure>
     <figure class="fig">
       <div class="fig-plate">
-        <img src="pickering-telemetry.png" width="2000" height="1125" loading="lazy" decoding="async"
+        <img src="pickering-telemetry.png" width="2000" height="1125" loading="eager" fetchpriority="high" decoding="async"
              alt="Diagram of solar-powered soil telemetry via satellite: a sealed enclosure holding an nRF21540 development kit and a 3.7&nbsp;volt battery, fed by a solar panel, cabled to three soil moisture probes buried below the surface, with a 2.4&nbsp;GHz uplink to a low-earth-orbit satellite.">
       </div>
       <figcaption class="caption"><span class="fig-scroll">Scroll the plate sideways to read the labels &middot; </span><b>Satellite node</b> &middot; nRF21540 DK on a 2.4&nbsp;GHz uplink to a LEO constellation, no ground infrastructure between the probe and the record &middot; the option for ridges a gateway cannot see &middot; <b>Jackson Pickering</b>, NSF FLiTE Scholar</figcaption>
@@ -479,6 +479,37 @@
   var CACHE_BUST = 'v=' + Date.now();
   function bust(url){ return url + (url.indexOf('?') < 0 ? '?' : '&') + CACHE_BUST; }
 
+  // ---- deferred embeds (2026-08-27) ----
+  // The three embeds below total ~1.8 MB and one of them builds a WebGL terrain
+  // scene. Setting all three src values on load fetched every byte before the
+  // reader had scrolled anywhere -- which starved the figure images further up
+  // the page (they never resolved and rendered as alt text) and could lock the
+  // renderer outright. Each embed now loads only when scrolled near.
+  // Verified: with all three loading at once the figure images stayed at
+  // naturalWidth 0 indefinitely; deferring them lets the images resolve.
+  // Each embed loads on approach and is released once it is well out of view.
+  // Measured layout: the live map sits ~3800px above the 3D model, so those two
+  // are never resident together; the slope map and the 3D model are only ~700px
+  // apart and necessarily overlap. Peak drops from all three (~1.8 MB, two
+  // Leaflet maps + a radar loop + a WebGL scene) to at most the lighter pair. Chrome was killing the
+  // live-map subframe outright (grey page, sad-file icon) when all three were
+  // held in memory together: two Leaflet maps with a radar tile loop, plus a
+  // WebGL terrain scene, in one renderer process.
+  function deferFrame(el, url){
+    if(!el) return;
+    var wrap = el.parentNode || el;         // the .frame wrapper carries the height
+    var on = false;                         // track state here, not off the src
+    function load(){ if(on) return; on = true; el.src = bust(url); }
+    function unload(){ if(!on) return; on = false; el.src = 'about:blank'; }
+    if(!('IntersectionObserver' in window)){ load(); return; }
+    new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting) load(); });
+    }, {rootMargin:'600px 0px'}).observe(wrap);          // arrive loaded
+    new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(!e.isIntersecting) unload(); });
+    }, {rootMargin:'1600px 0px'}).observe(wrap);         // release well behind
+  }
+
   // ---- live map embed ----
   // Paste the address of your live watershed map between the quotes to embed it here.
   // Leave it empty and the section shows an "Open the live map" button instead.
@@ -490,10 +521,11 @@
     var link = document.getElementById('mapLink');
     var url = (DASHBOARD_URL || "").trim();
     if(url){
-      frame.src = bust(url);
+      // show the frame immediately so the layout is right; fetch it on approach
       frame.style.display = 'block';
       fallback.style.display = 'none';
       link.href = url;
+      deferFrame(frame, url);
     } else {
       // no URL yet: keep the button, point it nowhere harmful
       link.addEventListener('click', function(ev){
@@ -503,16 +535,10 @@
   })();
 
   // ---- slope motion map embed (same cache-busting) ----
-  (function(){
-    var s = document.getElementById('slopeMonitor');
-    if(s){ s.src = bust('slope_map.html'); }
-  })();
+  deferFrame(document.getElementById('slopeMonitor'), 'slope_map.html');
 
   // ---- 3D model embed (same cache-busting) ----
-  (function(){
-    var m = document.getElementById('model3d');
-    if(m){ m.src = bust('noah_skye_3d.html'); }
-  })();
+  deferFrame(document.getElementById('model3d'), 'noah_skye_3d.html');
 </script>
 </body>
 </html>

@@ -41,3 +41,5 @@
 *.db       binary
 *.tif      binary
 *.zip      binary
+# pipeline/state/pair_cache.npz — the InSAR pair cache
+*.npz      binary

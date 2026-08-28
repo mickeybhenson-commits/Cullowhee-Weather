@@ -115,6 +115,46 @@ def atmospheric_filter(disp: np.ndarray, t_years: np.ndarray, sigma_px: float = 
     return out
 
 
+def analysis_grid(cfg) -> tuple[int, int]:
+    """(H, W) of the ~80 m lat/lon analysis grid derived from the config bbox.
+
+    Split out of load_hyp3_stack so the CI pair cache warps onto exactly the
+    same grid; the arithmetic is unchanged.
+    """
+    import math
+
+    min_lon, min_lat, max_lon, max_lat = cfg.bbox
+    mid_lat = math.radians((min_lat + max_lat) / 2)
+    W = max(60, int(round((max_lon - min_lon) * 111320 * math.cos(mid_lat) / 80)))
+    H = max(60, int(round((max_lat - min_lat) * 110574 / 80)))
+    return H, W
+
+
+def make_warper(cfg):
+    """Return warp(path, resampling) -> (H, W) float32 array on the analysis grid."""
+    import rasterio
+    from rasterio.transform import from_bounds
+    from rasterio.warp import reproject
+
+    min_lon, min_lat, max_lon, max_lat = cfg.bbox
+    H, W = analysis_grid(cfg)
+    dst_transform = from_bounds(min_lon, min_lat, max_lon, max_lat, W, H)
+
+    def warp(path, resampling):
+        with rasterio.open(path) as src:
+            dst = np.full((H, W), np.nan, np.float32)
+            reproject(
+                rasterio.band(src, 1), dst,
+                dst_transform=dst_transform, dst_crs="EPSG:4326",
+                src_nodata=src.nodata, dst_nodata=np.nan,
+                resampling=resampling,
+            )
+        # HyP3 uses 0 as nodata in some layers; treat exact zeros at the edge as missing
+        return dst
+
+    return warp
+
+
 def load_hyp3_stack(data_dir: Path, cfg) -> DisplacementStack:
     """Load real HyP3 INSAR_GAMMA products into a DisplacementStack.
 
@@ -127,10 +167,7 @@ def load_hyp3_stack(data_dir: Path, cfg) -> DisplacementStack:
     import zipfile
     from datetime import datetime
 
-    import rasterio
     from rasterio.enums import Resampling
-    from rasterio.transform import from_bounds
-    from rasterio.warp import reproject
 
     # 1. unzip anything not yet unzipped
     for z in sorted(Path(data_dir).glob("*.zip")):
@@ -145,26 +182,9 @@ def load_hyp3_stack(data_dir: Path, cfg) -> DisplacementStack:
             "'python -m src.process_insar download' first."
         )
 
-    min_lon, min_lat, max_lon, max_lat = cfg.bbox
-    # grid at ~80 m, sized from the AOI (so widening the bbox widens coverage)
-    import math
-    mid_lat = math.radians((min_lat + max_lat) / 2)
-    W = max(60, int(round((max_lon - min_lon) * 111320 * math.cos(mid_lat) / 80)))
-    H = max(60, int(round((max_lat - min_lat) * 110574 / 80)))
+    H, W = analysis_grid(cfg)
     print(f"analysis grid: {H} x {W} @ ~80 m")
-    dst_transform = from_bounds(min_lon, min_lat, max_lon, max_lat, W, H)
-
-    def warp(path, resampling):
-        with rasterio.open(path) as src:
-            dst = np.full((H, W), np.nan, np.float32)
-            reproject(
-                rasterio.band(src, 1), dst,
-                dst_transform=dst_transform, dst_crs="EPSG:4326",
-                src_nodata=src.nodata, dst_nodata=np.nan,
-                resampling=resampling,
-            )
-        # HyP3 uses 0 as nodata in some layers; treat exact zeros at the edge as missing
-        return dst
+    warp = make_warper(cfg)
 
     date_re = re.compile(r"(\d{8}T\d{6})_(\d{8}T\d{6})")
     pair_map = {}

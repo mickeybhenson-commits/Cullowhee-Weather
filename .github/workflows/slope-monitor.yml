@@ -1,0 +1,219 @@
+# Sentinel-1 InSAR slope monitor — the ground layer of NOAH & SKYE.
+#
+# WHY DAILY FOR A 12-DAY SATELLITE
+# Sentinel-1 revisits path 48 over this watershed about every 12 days, and cron
+# cannot express "every 12 days". So this runs daily and the first job asks one
+# cheap question: is there a scene at ASF that is not yet in
+# pipeline/state/epochs.json? ASF scene search is free and needs no login, so
+# eleven days out of twelve the answer is no and the whole run is over in well
+# under two minutes without ever touching HyP3.
+#
+# WHAT A REAL PASS DOES
+# Submits the new interferogram pairs to ASF HyP3, waits (budget 3.5 h; the
+# Actions job is capped at 6 h), downloads ONLY the new products, warps them
+# into pipeline/state/pair_cache.npz, deletes the rasters, re-inverts the whole
+# cached SBAS network, re-detects, fuses with the hydrologic layer, and rewrites
+# the data regions of slope_monitor.html / slope_map.html / slope_3d.html.
+#
+# The raster archive is ~100 MB per pair and never enters the repo. The cache
+# is the only thing that persists, and it holds just the two layers the
+# inversion needs, already on the ~80 m analysis grid.
+#
+# VERDICTS
+# The pages carry per-cluster verdicts. CI computes them from metrics only
+# (pipeline/src/verdicts.py) and stamps every one "automated screening —
+# pending analyst review". It never writes analyst judgment, and it never
+# writes WARNING — that can only come from the pipeline's own escalation gates
+# in detect / forecast / alert against the tuned thresholds in config.yaml.
+
+name: slope monitor (Sentinel-1 InSAR)
+
+on:
+  schedule:
+    # 10:07 UTC daily — off the hour on purpose, like the land-cover watch.
+    - cron: "7 10 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "update = normal pass · bootstrap = backfill the cache · rebuild = re-render from the cache (no network)"
+        type: choice
+        required: true
+        default: update
+        options: [update, bootstrap, rebuild]
+      max_pairs:
+        description: "Cap pairs submitted this run (bootstrap in chunks; blank = no cap)"
+        required: false
+        default: ""
+      budget_minutes:
+        description: "Minutes to wait on HyP3 before collecting what finished"
+        required: false
+        default: "210"
+      force:
+        description: "Run the full pass even when no new scene was found"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: slope-monitor
+  cancel-in-progress: false
+
+jobs:
+  # ---------------------------------------------------------------------
+  # The cheap daily question. Scheduled runs only — a manual dispatch is
+  # already an explicit decision to run.
+  # ---------------------------------------------------------------------
+  check:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      needs_run: ${{ steps.probe.outputs.needs_run }}
+      new_scenes: ${{ steps.probe.outputs.new_scenes }}
+      latest_scene: ${{ steps.probe.outputs.latest_scene }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # Deliberately not the full requirements file: the probe needs a scene
+      # search and the cache header, nothing that reads a raster.
+      - name: Install the search-only dependencies
+        run: pip install "numpy>=1.24" "pyyaml>=6.0" "asf_search>=7.0"
+
+      - name: Any new Sentinel-1 scene over the watershed?
+        id: probe
+        run: python pipeline/ci_update.py check
+
+      - name: Report
+        run: |
+          if [ "${{ steps.probe.outputs.needs_run }}" != "true" ]; then
+            echo "No scene newer than the processed-epoch ledger (latest at ASF: ${{ steps.probe.outputs.latest_scene }}). Nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  # ---------------------------------------------------------------------
+  # The real pass.
+  # ---------------------------------------------------------------------
+  update:
+    needs: [check]
+    # `always()` so a manual dispatch runs even though `check` was skipped.
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' ||
+       needs.check.outputs.needs_run == 'true')
+    runs-on: ubuntu-latest
+    # HyP3 budget is 3.5 h; leave headroom for download, inversion and render.
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      # A published slope page is a safety artefact. Prove the screening policy
+      # and the whole cache -> SBAS -> detect -> page chain on synthetic data
+      # BEFORE letting this run touch the live pages. No network needed.
+      - name: Self-test the pipeline
+        run: python pipeline/tests/test_slope_ci.py
+
+      - name: Self-test the notifier
+        run: python pipeline/notify_slope.py --selftest
+
+      - name: Resolve the mode
+        id: mode
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          echo "mode=${MODE:-update}" >> "$GITHUB_OUTPUT"
+
+      - name: Run the slope pass
+        id: pass
+        env:
+          # NASA Earthdata login — HyP3 submit/download only. Scene search
+          # needs neither of these.
+          EARTHDATA_USERNAME: ${{ secrets.EARTHDATA_USERNAME }}
+          EARTHDATA_PASSWORD: ${{ secrets.EARTHDATA_PASSWORD }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.max_pairs }}" ]; then
+            ARGS="$ARGS --max-pairs ${{ github.event.inputs.max_pairs }}"
+          fi
+          MINUTES="${{ github.event.inputs.budget_minutes }}"
+          ARGS="$ARGS --budget $(( ${MINUTES:-210} * 60 ))"
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          python pipeline/ci_update.py "${{ steps.mode.outputs.mode }}" $ARGS
+
+      # The raw HyP3 products are deleted by ci_update as it warps them; this
+      # is the belt-and-braces check that none survived a crash mid-run.
+      - name: Refuse to commit raw rasters
+        run: |
+          if find pipeline/data -type f \( -name '*.tif' -o -name '*.zip' \) 2>/dev/null | grep -q .; then
+            echo "::error::raw HyP3 products are still on disk — they must never be committed"
+            find pipeline/data -type f \( -name '*.tif' -o -name '*.zip' \) | head
+            exit 1
+          fi
+          if [ -f pipeline/state/pair_cache.npz ]; then
+            SIZE=$(stat -c%s pipeline/state/pair_cache.npz)
+            echo "pair cache: $(( SIZE / 1000000 )) MB"
+            if [ "$SIZE" -gt 95000000 ]; then
+              echo "::error::pair_cache.npz is over 95 MB — GitHub rejects blobs at 100 MB"
+              exit 1
+            fi
+          fi
+
+      - name: Commit the pass
+        if: steps.pass.outputs.changed == 'true'
+        run: |
+          git config user.name  "slope-monitor"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A slope_monitor.html slope_map.html slope_3d.html pipeline/state
+          if git diff --staged --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "${{ steps.pass.outputs.commit_message }}"
+          # main is written continuously by the 30-minute feed job, so a plain
+          # push loses the race after a multi-hour run. Rebase and retry — the
+          # same lesson the land-cover watch learned the hard way.
+          for i in 1 2 3 4 5; do
+            if git push; then
+              echo "pushed on attempt $i"
+              exit 0
+            fi
+            echo "push rejected on attempt $i — rebasing onto origin/${{ github.ref_name }}"
+            sleep $(( i * 5 ))
+            git pull --rebase --autostash origin "${{ github.ref_name }}" || {
+              echo "::error::rebase failed — a human needs to look at this"
+              exit 1
+            }
+          done
+          echo "::error::could not push the slope pass after 5 attempts"
+          exit 1
+
+      - name: Push a phone notification
+        if: steps.pass.outputs.notify == 'true'
+        continue-on-error: true
+        env:
+          # ntfy.sh topic — set the repo secret to enable phone pushes;
+          # unset = the notifier idles with a log line.
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python pipeline/notify_slope.py
+
+      - name: Note an unfinished bootstrap
+        if: steps.pass.outputs.pairs_remaining != '' && steps.pass.outputs.pairs_remaining != '0'
+        run: |
+          echo "::notice::${{ steps.pass.outputs.pairs_remaining }} pair(s) are still missing from the cache. Dispatch this workflow again with mode=bootstrap to continue where it stopped."
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**${{ steps.pass.outputs.pairs_remaining }} pairs still to fetch** — dispatch again with \`mode=bootstrap\`." >> "$GITHUB_STEP_SUMMARY"

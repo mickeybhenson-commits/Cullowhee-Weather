@@ -276,19 +276,37 @@ def stack_from_cache(cache: PairCache, cfg) -> DisplacementStack:
 
 
 def epoch_noise_mm(stack: DisplacementStack, usable: np.ndarray) -> list[float]:
-    """Robust spatial scatter of each epoch, in mm — the honest noise floor.
+    """Per-epoch noise floor in mm — the series behind the noise-by-epoch chart.
 
-    Median absolute deviation scaled to a Gaussian sigma, over the pixels the
-    detector is willing to use. This is the series behind the noise-by-epoch
-    chart, which stays on the page because it is the context for every call:
-    leaf-on summer runs about twice as noisy as leaf-off winter.
+    Measured on the epoch-to-epoch INCREMENT, not on cumulative displacement.
+    That distinction is the whole point. Over a year the cumulative field spreads
+    out because different parts of the watershed really do move differently, so
+    its spatial scatter measures terrain, not radar: on the first real 31-epoch
+    stack it read 14.7 mm in leaf-off against 16.1 mm in leaf-on — a 1.10x
+    ratio that erases the seasonal signal PLAN.md calls the honest context for
+    every detection, and puts a ~15 mm "noise floor" on the page that would make
+    a genuine 25 mm detection look like nothing.
+
+    Between two adjacent epochs, twelve days apart, real creep is sub-millimetre
+    and decorrelation is not. So: robust spatial scatter (MAD scaled to a
+    Gaussian sigma) of the difference field, divided by sqrt(2) because
+    differencing two independently noisy epochs inflates the noise by that much.
+    On the same stack that reads 1.5 mm leaf-off against 3.4 mm leaf-on — the
+    ~2x the plan describes, quiet from November to February and peaking in the
+    late-May canopy.
+
+    Epoch 0 has no predecessor and borrows epoch 1's value.
     """
-    out = []
-    for k in range(stack.shape[0]):
-        v = stack.disp[k][usable]
+    def scatter(field: np.ndarray) -> float:
+        v = field[usable]
         v = v[np.isfinite(v)]
         if v.size < 20:
-            out.append(float("nan"))
-            continue
-        out.append(round(float(1.4826 * np.median(np.abs(v - np.median(v)))), 2))
+            return float("nan")
+        return float(1.4826 * np.median(np.abs(v - np.median(v))))
+
+    T = stack.shape[0]
+    out = [float("nan")]
+    for k in range(1, T):
+        out.append(round(scatter(stack.disp[k] - stack.disp[k - 1]) / np.sqrt(2.0), 2))
+    out[0] = out[1] if T > 1 else float("nan")
     return out

@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-09-02T01:50:15.949901+00:00",
+  "fetched_utc": "2026-09-02T02:21:48.136614+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
-    "ffg_in": "ok",
-    "nwm": "ok",
+    "ffg_in": "empty",
+    "nwm": "empty",
     "cucn7": "ok",
     "flash": "ok"
   },
@@ -42,14 +42,6 @@
     },
     "local_inflow_cfs": 272.9,
     "stage_series_up": [
-      [
-        1788292800,
-        4.04
-      ],
-      [
-        1788293700,
-        4.04
-      ],
       [
         1788294600,
         4.03
@@ -132,14 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1788292800,
-        4.01
-      ],
-      [
-        1788293700,
-        3.96
-      ],
       [
         1788294600,
         3.92
@@ -224,84 +208,15 @@
     "provenance": "MEASURED"
   },
   "alerts": [],
-  "ffg_in": {},
+  "ffg_in": {
+    "ffg1h": null,
+    "ffg3h": null,
+    "ffg6h": null
+  },
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
-    "series": [
-      [
-        1788307200,
-        70.3
-      ],
-      [
-        1788310800,
-        80.9
-      ],
-      [
-        1788314400,
-        95.3
-      ],
-      [
-        1788318000,
-        113.7
-      ],
-      [
-        1788321600,
-        134.2
-      ],
-      [
-        1788325200,
-        154.7
-      ],
-      [
-        1788328800,
-        173.0
-      ],
-      [
-        1788332400,
-        187.9
-      ],
-      [
-        1788336000,
-        199.2
-      ],
-      [
-        1788339600,
-        207.3
-      ],
-      [
-        1788343200,
-        212.6
-      ],
-      [
-        1788346800,
-        215.8
-      ],
-      [
-        1788350400,
-        217.9
-      ],
-      [
-        1788354000,
-        219.3
-      ],
-      [
-        1788357600,
-        220.4
-      ],
-      [
-        1788361200,
-        220.7
-      ],
-      [
-        1788364800,
-        221.1
-      ],
-      [
-        1788368400,
-        221.1
-      ]
-    ]
+    "series": []
   },
   "cucn7": {
     "site_id": "25380",
@@ -313,14 +228,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 77.3,
+    "age_min": 78.8,
     "fresh": false,
-    "last_updated_utc": "2026-09-02T00:33:00+00:00",
+    "last_updated_utc": "2026-09-02T01:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 77.3 min, limit 75)"
+    "note": "NOT driving posture: stale/invalid (age 78.8 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -361,7 +276,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260901_2200.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260902_0200.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -377,15 +292,14 @@
         "name": "Mountain",
         "unit_streamflow": 0.1,
         "unit_streamflow_units": "",
-        "streamflow_m3s": null,
-        "soil_sat_pct": null,
+        "streamflow_m3s": 0.2,
+        "soil_sat_pct": 38.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-MS-1100": {
         "name": "Mtn. Lower",
@@ -398,8 +312,7 @@
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-TIL-705": {
         "name": "Tilley Creek",
@@ -412,8 +325,7 @@
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-SPD-1830": {
         "name": "Speedwell",
@@ -426,8 +338,7 @@
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-COX-097": {
         "name": "Cox Branch",
@@ -440,8 +351,7 @@
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-LB-171": {
         "name": "Long Branch",
@@ -454,22 +364,20 @@
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-WCU-2260": {
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 6.3,
+        "streamflow_m3s": 6.2,
         "soil_sat_pct": 31.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       },
       "CC-MOUTH-2340": {
         "name": "Mouth",
@@ -482,15 +390,14 @@
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
-        "error": null,
-        "stale": true
+        "error": null
       }
     },
     "headline": "BELOW",
-    "fresh": false,
-    "age_min": 180.3,
-    "valid_utc": "2026-09-01T22:50:00+00:00",
-    "note": "stale \u2014 newest FLASH step is 180 min old",
+    "fresh": true,
+    "age_min": 0.0,
+    "valid_utc": "2026-09-02T02:21:50.630233+00:00",
+    "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }
 }

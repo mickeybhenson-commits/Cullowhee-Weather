@@ -219,6 +219,13 @@
   </div>
 </header>
 
+<section id="howmuch" class="section reveal">
+  <p class="eyebrow">The operator's question</p>
+  <h2>How much rain would it actually take?</h2>
+  <p class="section-lede">A rainfall total on its own says very little. Ten inches over three days is survivable here; the same ten inches in six hours is not. What decides it is <em>how long the rain lasts</em> and <em>how much water the ground can still absorb</em> — and the second one changes week to week. Helene delivered roughly two-hundred-year rainfall onto drought-dry soil and produced about a nine-year peak. The rain was extreme; the ground was merciful.</p>
+  <p class="section-lede">This panel answers the question directly, live: given today's soil and a storm of the length you choose, how many inches would it take to reach watch, warning or emergency in each sub-basin. Rain is delivered in the hourly pattern Helene actually had, not a synthetic design curve — because the difference between those two is a factor of one-and-a-half to four.</p>
+  <p class="caption"><b>A planning aid, not a warning</b> — thresholds are modelled, and for seven of eight reaches the stage behind them is not yet survey-validated · wetness is held constant through the storm, so long events are under-predicted · <a href="https://mickeybhenson-commits.github.io/Cullowhee-Weather/rain_to_trip.html" target="_blank" rel="noopener">open the rainfall panel full screen</a></p>
+</section>
 <section id="what" class="section reveal">
   <p class="eyebrow">Three layers, one system</p>
   <div class="two-col">
@@ -240,6 +247,15 @@
   </div>
 </section>
 
+<section id="watch" class="section reveal">
+  <p class="eyebrow">Storm track watch</p>
+  <h2>Watching the Atlantic and Gulf before it reaches the mountains.</h2>
+  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion.</p>
+  <div class="frame frame-live frame-breakout">
+    <iframe id="stormWatch" title="NOAH storm track watch — live NHC guidance for the Cullowhee corridor" loading="lazy"></iframe>
+  </div>
+  <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="https://mickeybhenson-commits.github.io/Cullowhee-Weather/storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
+</section>
 <section id="now" class="section reveal">
   <p class="eyebrow">Current conditions</p>
   <h2>What the creek is doing right now</h2>
@@ -255,29 +271,10 @@
   <p class="caption">Right now this runs on <b>forecast rainfall and NEXRAD radar</b>. The in-stream sensors deploy over the 2026–27 season; until then, some thresholds stay deliberately cautious.</p>
 </section>
 
-
-<section id="howmuch" class="section reveal">
-  <p class="eyebrow">The operator's question</p>
-  <h2>How much rain would it actually take?</h2>
-  <p class="section-lede">A rainfall total on its own says very little. Ten inches over three days is survivable here; the same ten inches in six hours is not. What decides it is <em>how long the rain lasts</em> and <em>how much water the ground can still absorb</em> — and the second one changes week to week. Helene delivered roughly two-hundred-year rainfall onto drought-dry soil and produced about a nine-year peak. The rain was extreme; the ground was merciful.</p>
-  <p class="section-lede">This panel answers the question directly, live: given today's soil and a storm of the length you choose, how many inches would it take to reach watch, warning or emergency in each sub-basin. Rain is delivered in the hourly pattern Helene actually had, not a synthetic design curve — because the difference between those two is a factor of one-and-a-half to four.</p>
-  <p class="caption"><b>A planning aid, not a warning</b> — thresholds are modelled, and for seven of eight reaches the stage behind them is not yet survey-validated · wetness is held constant through the storm, so long events are under-predicted · <a href="https://mickeybhenson-commits.github.io/Cullowhee-Weather/rain_to_trip.html" target="_blank" rel="noopener">open the rainfall panel full screen</a></p>
-</section>
-
-<section id="watch" class="section reveal">
-  <p class="eyebrow">Storm track watch</p>
-  <h2>Watching the Atlantic and Gulf before it reaches the mountains.</h2>
-  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion.</p>
-  <div class="frame frame-live frame-breakout">
-    <iframe id="stormWatch" title="NOAH storm track watch — live NHC guidance for the Cullowhee corridor" loading="lazy"></iframe>
-  </div>
-  <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="https://mickeybhenson-commits.github.io/Cullowhee-Weather/storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
-</section>
-
 <section id="ground" class="section reveal">
   <p class="eyebrow">TERRA · the ground layer</p>
   <h2>Watching the hillsides the way NOAH watches the creek.</h2>
-  <p class="section-lede">Helene didn't only flood these mountains — it broke them loose. The USGS mapped more than 2,000 landslides across western North Carolina, and the slopes above Cullowhee Creek carry the same geology. This layer reads them from orbit: ESA's Sentinel-1 radar measures millimetre-scale ground creep across the whole watershed every twelve days, looking for the hillside that starts moving <em>before</em> it fails — then hands its verdict to the same sub-basin roster the flood system runs on.</p>
+  <p class="section-lede">Helene didn't only flood these mountains — it broke them loose. The USGS has mapped more than 2,200 landslides across western North Carolina from that one storm, and they killed 23 people. The worst of them came down Garren Creek in Fairview, Buncombe County, on the morning of September 27, 2024: converging debris flows swept through the community known as Craigtown and killed thirteen people, eleven of them from the Craig family that had lived there for generations. The slopes above Cullowhee Creek carry the same geology. This layer reads them from orbit: ESA's Sentinel-1 radar measures millimetre-scale ground creep across the whole watershed every twelve days, looking for the hillside that starts moving <em>before</em> it fails — then hands its verdict to the same sub-basin roster the flood system runs on.</p>
   <div class="frame frame-tall frame-breakout">
     <iframe id="slopeMonitor" title="Interactive slope motion map — satellite radar ground-motion for the Cullowhee Creek watershed; click any outlined area for its motion history" loading="lazy"></iframe>
   </div>
@@ -308,9 +305,9 @@
 <section id="hubble" class="section reveal">
   <p class="eyebrow">Sensor to satellite</p>
   <h2>Some readings can skip the gateway entirely.</h2>
-  <p class="section-lede">FRESHET is working with <b>Hubble Network</b>, whose low-orbit satellites listen for sensors directly — the node talks to the satellite with nothing in between. No gateway, no tower, no power line. A satellite passes overhead a few times a day and collects whatever the sensor has to say.</p>
-  <p class="section-lede">That makes it the wrong path for a rising creek, where minutes matter, and the right path for the things that change slowly and matter enormously: <em>soil moisture</em> above all. How wet the ground already is decides how much of the next storm becomes runoff, and it moves over days, not minutes. Soil probes that report by satellite keep the model fed even if a gateway is gone — and they can sit anywhere in the watershed, not only within radio reach of one.</p>
-  <p class="caption"><b>In development</b> — sensor-to-satellite is being built with Hubble, not yet deployed · suited to soil moisture, rain totals and battery health; never to stream stage · the Hubble fleet is one of the constellations in the tracker above</p>
+  <p class="section-lede">FRESHET is working with <b>Hubble Network</b>, whose low-orbit satellites listen for sensors directly — the node talks to the satellite with nothing in between. No gateway, no tower, no power line. For now a Hubble satellite passes over Cullowhee about every twelve days and collects whatever the sensor has stored; Hubble is adding satellites every quarter, and each launch shortens that gap.</p>
+  <p class="section-lede">A twelve-day pass is no use for a rising creek, where minutes matter — but it is the right path for the things that change slowly and matter enormously: <em>soil moisture</em> above all. How wet the ground already is decides how much of the next storm becomes runoff, and it moves over days, not minutes. Soil probes that report by satellite keep the model fed even if a gateway is gone — and they can sit anywhere in the watershed, not only within radio reach of one.</p>
+  <p class="caption"><b>In development</b> — sensor-to-satellite is being built with Hubble, not yet deployed · revisit ~12 days today, shrinking as the fleet grows · suited to soil moisture and battery health; never to stream stage · the Hubble fleet is one of the constellations in the tracker above</p>
 </section>
 
 <section id="why" class="section section-narrow reveal prose">
@@ -387,7 +384,6 @@
     var w = document.getElementById('stormWatch');
     if(w){ w.src = bust('https://mickeybhenson-commits.github.io/Cullowhee-Weather/storm_watch.html'); }
   })();
-
 
   // ---- slope motion map embed (same cache-busting) ----
   (function(){

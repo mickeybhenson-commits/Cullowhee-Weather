@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-02T00:29:26.044149+00:00",
+  "fetched_utc": "2026-09-02T00:35:38.194228+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
@@ -17,13 +17,13 @@
     "CC-MOUTH-2340": 0.03
   },
   "nws_note": "api.weather.gov gridded forecast, next 24 h",
-  "wetness_note": "live_rainfall ladder (soil percentile > p5)",
+  "wetness_note": "live_rainfall unavailable; ARC-II default (JSONDecodeError)",
   "basins": {
     "CC-UP-503": {
       "basin": "CC-UP-503",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -52,8 +52,8 @@
     "CC-MS-1100": {
       "basin": "CC-MS-1100",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -82,8 +82,8 @@
     "CC-TIL-705": {
       "basin": "CC-TIL-705",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -112,8 +112,8 @@
     "CC-SPD-1830": {
       "basin": "CC-SPD-1830",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -142,8 +142,8 @@
     "CC-COX-097": {
       "basin": "CC-COX-097",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -172,8 +172,8 @@
     "CC-LB-171": {
       "basin": "CC-LB-171",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -202,8 +202,8 @@
     "CC-WCU-2260": {
       "basin": "CC-WCU-2260",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,
@@ -232,8 +232,8 @@
     "CC-MOUTH-2340": {
       "basin": "CC-MOUTH-2340",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.01,
         "p50": 0.046,

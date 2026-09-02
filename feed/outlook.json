@@ -1,10 +1,10 @@
 {
-  "fetched_utc": "2026-09-02T16:03:43.398904+00:00",
+  "fetched_utc": "2026-09-02T17:36:14.655213+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
   "source": "wn2-openmeteo",
-  "issued_utc": "2026-09-02T16:00:00Z",
+  "issued_utc": "2026-09-02T17:00:00Z",
   "n_members": 64,
   "nws_qpf24_in": {
     "CC-UP-503": 0.03,
@@ -17,17 +17,17 @@
     "CC-MOUTH-2340": 0.03
   },
   "nws_note": "api.weather.gov gridded forecast, next 24 h",
-  "wetness_note": "live_rainfall ladder (soil percentile > p5)",
+  "wetness_note": "live_rainfall unavailable; ARC-II default (JSONDecodeError)",
   "basins": {
     "CC-UP-503": {
       "basin": "CC-UP-503",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 0.13,
@@ -43,21 +43,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-MS-1100": {
       "basin": "CC-MS-1100",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 0.2,
@@ -73,21 +73,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-TIL-705": {
       "basin": "CC-TIL-705",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 0.17,
@@ -103,21 +103,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-SPD-1830": {
       "basin": "CC-SPD-1830",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 0.25,
@@ -133,21 +133,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-COX-097": {
       "basin": "CC-COX-097",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 0.07,
@@ -163,21 +163,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-LB-171": {
       "basin": "CC-LB-171",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 0.1,
@@ -193,21 +193,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-WCU-2260": {
       "basin": "CC-WCU-2260",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": {
         "p10": 4.0,
@@ -223,21 +223,21 @@
       "outlook_level": "NORMAL",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     },
     "CC-MOUTH-2340": {
       "basin": "CC-MOUTH-2340",
       "n_members": 64,
-      "wetness": 1.0,
-      "wetness_src": "soil_percentile",
+      "wetness": 0.5,
+      "wetness_src": "default_ARC_II",
       "qpf24_in": {
         "p10": 0.024,
         "p50": 0.096,
-        "p90": 0.295
+        "p90": 0.296
       },
       "stage_ft": null,
       "p_exceed": {
@@ -249,11 +249,11 @@
       "outlook_level": "N/A",
       "bias_mult": 1.0,
       "qpf72_in": {
-        "p10": 0.04,
+        "p10": 0.042,
         "p50": 0.144,
         "p90": 0.373
       },
-      "worst24_start_utc": "2026-09-03T10:00:00Z"
+      "worst24_start_utc": "2026-09-03T11:00:00Z"
     }
   },
   "campus_wetness_projection": [
@@ -262,12 +262,12 @@
       "api": {
         "p10": 0.0,
         "p50": 0.024,
-        "p90": 0.08
+        "p90": 0.078
       },
       "w": {
         "p10": 0.0,
         "p50": 0.004,
-        "p90": 0.015
+        "p90": 0.014
       }
     },
     {
@@ -275,7 +275,7 @@
       "api": {
         "p10": 0.022,
         "p50": 0.07,
-        "p90": 0.202
+        "p90": 0.201
       },
       "w": {
         "p10": 0.004,
@@ -286,40 +286,40 @@
     {
       "day": 3,
       "api": {
-        "p10": 0.037,
+        "p10": 0.04,
         "p50": 0.13,
-        "p90": 0.333
+        "p90": 0.336
       },
       "w": {
         "p10": 0.007,
         "p50": 0.024,
-        "p90": 0.062
+        "p90": 0.063
       }
     },
     {
       "day": 4,
       "api": {
-        "p10": 0.121,
-        "p50": 0.25,
-        "p90": 0.635
+        "p10": 0.122,
+        "p50": 0.253,
+        "p90": 0.637
       },
       "w": {
         "p10": 0.023,
         "p50": 0.047,
-        "p90": 0.118
+        "p90": 0.119
       }
     },
     {
       "day": 5,
       "api": {
-        "p10": 0.181,
-        "p50": 0.545,
-        "p90": 1.067
+        "p10": 0.186,
+        "p50": 0.548,
+        "p90": 1.071
       },
       "w": {
-        "p10": 0.034,
+        "p10": 0.035,
         "p50": 0.102,
-        "p90": 0.199
+        "p90": 0.2
       }
     },
     {
@@ -327,7 +327,7 @@
       "api": {
         "p10": 0.212,
         "p50": 0.548,
-        "p90": 1.12
+        "p90": 1.123
       },
       "w": {
         "p10": 0.04,
@@ -338,14 +338,14 @@
     {
       "day": 7,
       "api": {
-        "p10": 0.206,
-        "p50": 0.541,
-        "p90": 1.071
+        "p10": 0.205,
+        "p50": 0.539,
+        "p90": 1.07
       },
       "w": {
         "p10": 0.038,
         "p50": 0.101,
-        "p90": 0.2
+        "p90": 0.199
       }
     }
   ],
@@ -357,7 +357,7 @@
       "qpf_in": {
         "p10": 0.0,
         "p50": 0.024,
-        "p90": 0.08
+        "p90": 0.078
       }
     },
     {
@@ -366,7 +366,7 @@
       "p_watch": 0.0,
       "qpf_in": {
         "p10": 0.0,
-        "p50": 0.036,
+        "p50": 0.04,
         "p90": 0.137
       }
     },
@@ -376,7 +376,7 @@
       "p_watch": 0.0,
       "qpf_in": {
         "p10": 0.0,
-        "p50": 0.042,
+        "p50": 0.044,
         "p90": 0.185
       }
     },
@@ -385,9 +385,9 @@
       "date_utc": "2026-09-06",
       "p_watch": 0.0,
       "qpf_in": {
-        "p10": 0.036,
-        "p50": 0.132,
-        "p90": 0.302
+        "p10": 0.032,
+        "p50": 0.136,
+        "p90": 0.317
       }
     },
     {
@@ -395,9 +395,9 @@
       "date_utc": "2026-09-07",
       "p_watch": 0.0,
       "qpf_in": {
-        "p10": 0.012,
-        "p50": 0.237,
-        "p90": 0.571
+        "p10": 0.016,
+        "p50": 0.241,
+        "p90": 0.602
       }
     },
     {
@@ -405,9 +405,9 @@
       "date_utc": "2026-09-08",
       "p_watch": 0.0,
       "qpf_in": {
-        "p10": 0.016,
-        "p50": 0.072,
-        "p90": 0.269
+        "p10": 0.01,
+        "p50": 0.064,
+        "p90": 0.242
       }
     },
     {
@@ -416,8 +416,8 @@
       "p_watch": 0.0,
       "qpf_in": {
         "p10": 0.0,
-        "p50": 0.012,
-        "p90": 0.08
+        "p50": 0.016,
+        "p90": 0.075
       }
     }
   ]

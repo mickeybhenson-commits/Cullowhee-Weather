@@ -158,7 +158,6 @@
     <p class="lede">After Hurricane Helene, the streams that flood fastest in these mountains still had no gauges. This puts sensors in the water and weather in the picture — to buy the one thing that matters in a flash flood: a little time.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#now">See current conditions</a>
-      <a class="btn btn-ghost" href="#crosscheck">Independent cross-check</a>
       <a class="btn btn-ghost" href="#watch">Storm track watch</a>
       <a class="btn btn-ghost" href="#ground">The ground layer</a>
       <a class="btn btn-ghost" href="#how">Explore the system</a>
@@ -240,17 +239,6 @@
   <p class="caption">Right now this runs on <b>forecast rainfall and NEXRAD radar</b>. The in-stream sensors deploy over the 2026–27 season; until then, some thresholds stay deliberately cautious.</p>
 </section>
 
-<section id="crosscheck" class="section reveal">
-  <p class="eyebrow">Independent cross-check</p>
-  <h2>A second opinion from a model that never heard of this creek.</h2>
-  <p class="section-lede">NOAA's National Severe Storms Laboratory runs FLASH — a hydrologic model over the whole country at one-kilometre resolution. It knows nothing about Cullowhee Creek in particular, which is exactly what makes it useful: when a national model and this system agree, that agreement means something. Each sub-basin below is coloured by what FLASH makes of it, on the same ladder the live map uses.</p>
-  <p class="section-lede">Its headline number is <em>unit streamflow</em> — flow per unit of drainage area. Because that is scale-free, a half-square-mile headwater and the whole watershed are judged against the same published threshold: <b>2.0</b> means flash flooding likely, <b>6.0</b> significant. Those are the National Weather Service's numbers, not ours.</p>
-  <div class="frame frame-tall frame-breakout">
-    <iframe id="flashWindow" title="NSSL FLASH flash-flood cross-check for the Cullowhee Creek sub-basins" loading="lazy"></iframe>
-  </div>
-  <p class="caption"><b>Modeled, not measured</b> — this can raise a watch, never a warning · FLASH is driven by radar rainfall, and these mountains sit in a known radar gap, so a quiet reading here is weaker evidence than a loud one · colour appears only where there is something to see, so a quiet watershed is meant to look quiet.<br>
-  <b>How current.</b> FLASH steps every ten minutes, but its files are packaged hourly and this site republishes every thirty, so the panel usually runs <b>under an hour behind</b>. On a creek whose headwaters reach campus in about half an hour, that makes this corroboration after the fact — not lead time. The window carries the age of the grid it is reading and dims the numbers when they go stale · <a href="flash.html" target="_blank" rel="noopener">open the cross-check full screen</a></p>
-</section>
 
 <section id="howmuch" class="section reveal">
   <p class="eyebrow">The operator's question</p>
@@ -364,11 +352,6 @@
     if(w){ w.src = bust('storm_watch.html'); }
   })();
 
-  // ---- NSSL FLASH cross-check embed (same cache-busting) ----
-  (function(){
-    var f = document.getElementById('flashWindow');
-    if(f){ f.src = bust('flash.html'); }
-  })();
 
   // ---- slope motion map embed (same cache-busting) ----
   (function(){

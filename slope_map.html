@@ -83,8 +83,10 @@ var BOUNDS = [[35.2, -83.25], [35.33, -83.13]];
 var map = L.map('map', {zoomSnap:0.25}).fitBounds(BOUNDS, {padding:[10,10]});
 var topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
   {maxZoom:17, attribution:'© OpenStreetMap, SRTM · © OpenTopoMap (CC-BY-SA)'});
-var voyager = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  {maxZoom:19, attribution:'© OpenStreetMap · © CARTO'});
+/* Streets basemap: Esri World Street Map (keyless). Replaced CARTO Voyager
+   2026-09-02 - CARTO now burns "API KEY REQUIRED" into free tiles. Esri tiles are {z}/{y}/{x}. */
+var voyager = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+  {maxZoom:19, maxNativeZoom:19, attribution:'&copy; Esri, &copy; OpenStreetMap contributors'});
 topo.addTo(map);
 
 var vel = L.imageOverlay(VEL_URI, BOUNDS, {opacity:0.8}).addTo(map);
@@ -326,7 +328,7 @@ var suspects   = mkLayer(function(p){return p.cls==='suspect';}).addTo(map);
 var lows       = mkLayer(function(p){return p.cls==='low';}).addTo(map);
 
 L.control.layers(
-  {"Terrain (OpenTopoMap)":topo, "Streets (Carto Voyager)":voyager},
+  {"Terrain (OpenTopoMap)":topo, "Streets (Esri)":voyager},
   {"Velocity wash":vel, "Sub-basins":basinLayer, "Candidates":candidates,
    "Suspect artifacts":suspects, "Low-confidence":lows},
   {collapsed:true}

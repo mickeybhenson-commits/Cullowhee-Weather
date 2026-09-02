@@ -346,8 +346,19 @@ const NHC_CURRENT = "https://www.nhc.noaa.gov/CurrentStorms.json";
 /* ---- map ---- */
 const map = L.map("map",{zoomControl:true}).setView([32.0,-83.0],5);
 map.zoomControl.setPosition("bottomleft");
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{
-  attribution:"&copy; OSM &copy; CARTO &middot; tracks: NOAA/NHC",maxZoom:12
+/* ---- Basemap: Esri World Dark Gray (keyless).
+   Replaced CARTO dark_all 2026-09-02. CARTO's free basemap CDN now requires an
+   API key and enforces it by answering HTTP 200 with "API KEY REQUIRED" burned
+   into every tile image. Same fix as live.html (2026-08-27).
+   Esri serves tiles as {z}/{y}/{x}, NOT {z}/{x}/{y}. The gray canvas carries no
+   place names, so labels ride in a second transparent layer above it. ---- */
+const ESRI_CANVAS="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
+L.tileLayer(ESRI_CANVAS+"World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",{
+  attribution:"&copy; Esri, &copy; OpenStreetMap contributors &middot; tracks: NOAA/NHC",
+  maxNativeZoom:16,maxZoom:12
+}).addTo(map);
+L.tileLayer(ESRI_CANVAS+"World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",{
+  maxNativeZoom:16,maxZoom:12
 }).addTo(map);
 
 /* ---- corridor overlay (signature layer) ---- */

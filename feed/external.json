@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-04T03:01:33.534096+00:00",
+  "fetched_utc": "2026-09-04T03:06:42.782907+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -305,7 +305,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 58.8,
+    "age_min": 63.8,
     "fresh": true,
     "last_updated_utc": "2026-09-04T02:03:00+00:00",
     "datum_verified": false,
@@ -367,10 +367,10 @@
     "basins": {
       "CC-UP-503": {
         "name": "Mountain",
-        "unit_streamflow": 0.1,
+        "unit_streamflow": null,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
-        "soil_sat_pct": 37.0,
+        "soil_sat_pct": null,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -472,7 +472,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 71.8,
+    "age_min": 76.8,
     "valid_utc": "2026-09-04T01:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

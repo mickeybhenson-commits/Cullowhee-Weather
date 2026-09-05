@@ -174,8 +174,19 @@ def soil_percentile(current_vwc, history_vwc):
 
 def wetness_from_soil_percentile(pct):
     """w = percentile, clamped. Median cell conditions = ARC-II by design.
-    Supersedes the PROVISIONAL absolute-VWC bands (arc_from_soil)."""
-    return max(0.0, min(1.0, pct))
+    Supersedes the PROVISIONAL absolute-VWC bands (arc_from_soil).
+
+    Units guard (2026-09-05): the value may arrive as a 0-1 fraction (soil_percentile,
+    TEROS-derived rank) or as 0-100 percent (live_rainfall.soil_moisture_pct, percent of
+    bucket capacity, whose 50 % start is ARC-II by construction; probes reporting %).
+    Anything above 1.0 is percent and is divided by 100. Without this every feed since
+    2026-08-15 clamped 17 % to w = 1.0 - saturated - and every trip line was too low."""
+    if pct is None:
+        return 0.5
+    p = float(pct)
+    if p > 1.0:
+        p = p / 100.0
+    return max(0.0, min(1.0, p))
 
 
 def resolve_wetness(soil_pct=None, api_in=None, p5_in=None, month=None):

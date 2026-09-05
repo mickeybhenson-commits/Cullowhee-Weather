@@ -489,3 +489,12 @@ class TestReadinessChain(unittest.TestCase):
         out, _ = self._build(sources.NullBackend(), floor_level="NONE", qpf=(4.0, 6.0))
         self.assertEqual(out["mode"], "STORM")                              # p50 reaches WATCH
         self.assertTrue(all(r["ceiling"] == "WATCH" for r in out["basins"].values()))
+
+    def test_soil_percent_is_not_read_as_saturated(self):
+        import wetness as wet
+        self.assertAlmostEqual(wet.wetness_from_soil_percentile(0.17), 0.17)     # fraction
+        self.assertAlmostEqual(wet.wetness_from_soil_percentile(17), 0.17)       # percent (live_rainfall bucket)
+        self.assertAlmostEqual(wet.wetness_from_soil_percentile(100), 1.0)
+        self.assertAlmostEqual(wet.wetness_from_soil_percentile(1.0), 1.0)
+        w, tag = wet.resolve_wetness(soil_pct=21)                                 # the feed_runner path
+        self.assertEqual((round(w, 2), tag), (0.21, "soil_percentile"))

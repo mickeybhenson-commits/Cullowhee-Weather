@@ -67,11 +67,32 @@ reach), `soil_moisture_pct` (TEROS — this moves the inches-to-trip line), `rai
 Basin ids: `CC-COX-097  CC-LB-171  CC-UP-503  CC-TIL-705  CC-MS-1100  CC-SPD-1830  CC-WCU-2260  CC-MOUTH-2340`.
 Quantity names: `stage_ft  soil_moisture_pct  rain_1h  rain_storm  rain_5day  wind_speed_mph  wind_dir_deg  temp_c  rh_pct  press_hpa`.
 
+## Downlink — the node listens for the mode
+
+Uplink is the file/Firestore contract above. Downlink is one number. Each feed cycle
+`feed/readiness.json` carries `mode` (`QUIET` / `ATTENTION` / `STORM`) and `cadence`:
+
+```json
+{ "mode": "ATTENTION", "mode_since": "2026-10-03T13:00:00Z",
+  "cadence": { "feed": 15, "fiman": 15, "node_stage": 10, "node_soil": 60, "node_rain": "on tip" } }
+```
+
+The gateway (Starlink primary, cellular backup, GEO secondary) reads that file — or the
+same document mirrored to Firestore `system/readiness` — once per cycle and re-programs
+its LoRa nodes: stage every `node_stage` minutes, soil every `node_soil` minutes, rain on
+every bucket tip regardless. Rules: a node that has not heard a mode for 6 h falls back to
+**STORM** cadence, not QUIET (silence is never read as calm); a mode change takes effect at
+the node's next check-in, never by interrupting a reading in progress; and the mode never
+alters what the node measures or how it reports — only how often. A bench node
+(`BENCH*` / `test: true`) follows the cadence too, so the bench test exercises the downlink.
+
 ## Suggested acceptance for the Speedwell install
 
 1. Three consecutive feed cycles show `env` reporting for CC-SPD-1830 with no rejections.
 2. BME280 pressure trend agrees with K24A (Jackson County Airport) within ~2 hPa after
    elevation correction — the first sanity check on the sensor and on the timestamp path.
-3. Then the radar stage: compare against FIMAN 25380 at the same minute for 48 h before
+3. The gateway's log shows a cadence change within one feed cycle of a mode change
+   (force one on the bench by editing `feed/readiness.json` locally).
+4. Then the radar stage: compare against FIMAN 25380 at the same minute for 48 h before
    the Speedwell row is allowed to confirm — that is the datum tie the whole system has
    been waiting for.

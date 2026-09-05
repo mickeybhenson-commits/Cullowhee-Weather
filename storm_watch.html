@@ -70,7 +70,12 @@
   #rdy .m-neg{color:var(--pend);font-weight:600}
   #rdy .m-low{color:var(--elev)}
   #rdy .foot{font-size:10px;color:var(--dim);margin-top:5px;line-height:1.35}
-  #rdy.collapsed table,#rdy.collapsed .foot{display:none}
+  #rdy.collapsed table,#rdy.collapsed .foot,#rdy.collapsed #rdyAlarms{display:none}
+  #rdy .mode{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;letter-spacing:.04em;margin-left:4px;vertical-align:1px}
+  #rdy .mode.QUIET{background:#16321f;color:var(--ok)} #rdy .mode.ATTENTION{background:#3a2e10;color:var(--elev)} #rdy .mode.STORM{background:#3d1717;color:var(--pend)}
+  #rdyAlarms{font-size:10.5px;line-height:1.4;margin:0 0 6px}
+  #rdyAlarms .al{margin:1px 0} #rdyAlarms .al b{font-weight:600}
+  #rdyAlarms .cad{color:var(--dim);font-size:10px;margin-top:3px}
   #wnstrip.dimmed{opacity:.45}
   #wnstrip.dimmed:after{content:'live outlook · not part of the simulation';display:block;color:var(--sim);font-size:11px;margin-top:4px;opacity:1}
   #quiet{color:var(--ok);padding:6px 0}
@@ -253,6 +258,7 @@
   </div>
   <div id="rdy" class="collapsed" style="display:none">
     <h2 style="margin:0 0 6px">Readiness <span id="rdyMeta" style="text-transform:none;letter-spacing:0;font-weight:400"></span><span class="tog" id="rdyTog">show</span></h2>
+    <div id="rdyAlarms"></div>
     <table><thead><tr><th>basin</th><th>wet</th><th>to WATCH</th><th>qpf24</th><th>margin</th></tr></thead><tbody id="rdyRows"></tbody></table>
     <div class="foot" id="rdyFoot"></div>
   </div>
@@ -875,7 +881,15 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
   function render(j){
     var card=$("rdy"); card.style.display="block";
     var fl=(j.floor||{}), lvl=fl.level||"?";
-    $("rdyMeta").textContent = "· floor "+lvl+(fl.latched?" (held)":"")+" · "+((j.fetched_utc||"").slice(5,16).replace("T"," ")+"Z");
+    var mode=j.mode||"?";
+    $("rdyMeta").innerHTML = '<span class="mode '+mode+'" title="wake-up mode: QUIET = nothing ringing · ATTENTION = start looking · STORM = sample fast. A mode is not a posture; it only changes how often the system looks.">'+mode+'</span> · floor '+lvl+(fl.latched?" (held)":"")+" · "+((j.fetched_utc||"").slice(5,16).replace("T"," ")+"Z");
+    var al=j.alarms||[], cad=j.cadence||{}, ero=j.ero||{};
+    var alHtml = al.length ? al.map(function(a){ return '<div class="al"><b style="color:'+(a.mode==="STORM"?"var(--pend)":"var(--elev)")+'">'+a.name.replace("_"," ")+'</b> → '+a.mode+' · '+a.detail+'</div>'; }).join("")
+                           : '<div class="al" style="color:var(--dim)">no alarm ringing — corridor, WPC excessive-rainfall (5 d), wetness trend, forecast margin all quiet</div>';
+    if(ero.status==="ok"){ alHtml += '<div class="cad">WPC excessive-rainfall days 1–5: '+(ero.days||[]).map(function(d){ return d.dn? '<b>'+d.label+'</b>' : 'none'; }).join(" · ")+'</div>'; }
+    else if(ero.status){ alHtml += '<div class="cad">WPC excessive-rainfall outlook: '+ero.status+'</div>'; }
+    if(j.mode_since){ alHtml += '<div class="cad">mode since '+j.mode_since.slice(5,16).replace("T"," ")+'Z'+(cad.feed? ' · cadence: feed '+cad.feed+' min · FIMAN '+cad.fiman+' min · node stage '+cad.node_stage+' min · soil '+cad.node_soil+' min · rain '+cad.node_rain:'')+(cad.backhaul? ' · '+cad.backhaul:'')+'</div>'; }
+    $("rdyAlarms").innerHTML = alHtml;
     if(j.status!=="ok"){ $("rdyRows").innerHTML='<tr><td colspan="5" style="text-align:left;color:var(--pend)">readiness feed: '+j.status+'</td></tr>'; $("rdyFoot").textContent=""; return; }
     var rows=[], deployed=0, planned=0, order=["CC-COX-097","CC-LB-171","CC-UP-503","CC-TIL-705","CC-MS-1100","CC-SPD-1830","CC-WCU-2260","CC-MOUTH-2340"];
     order.forEach(function(bid){
@@ -897,7 +911,7 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
     $("rdyFoot").innerHTML = 'wet = wetness 0–1, tag = its source (MEAS sensor · GOV agency estimate · MOD model) · qpf24 = forecast p50 in, GOV · to WATCH = 24-h rain to trip at that wetness · margin = to-WATCH − qpf24 (negative = forecast rain exceeds the trip line). '+
       'Sensors: <b>'+deployed+'</b> reporting, '+planned+' planned. <b>Forecast tier — capped at WATCH; only a measured stage (green rows) can confirm.</b>'+seq+
       (j.notes&&j.notes.length? ' · '+j.notes.join(' · ') : '');
-    var want = (open===null) ? (lvl!=="NONE" && lvl!=="UNKNOWN") : open;
+    var want = (open===null) ? ((lvl!=="NONE" && lvl!=="UNKNOWN") || (mode!=="QUIET" && mode!=="?")) : open;
     card.classList.toggle("collapsed", !want); $("rdyTog").textContent = want ? "hide" : "show";
   }
   function load(){

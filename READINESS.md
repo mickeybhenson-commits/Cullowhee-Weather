@@ -39,6 +39,42 @@ A reading that is stale (`FRESH_S`) or out of range (`RANGE`) falls through to t
 source and the card's tooltip says why (`sensor rejected (stale: 32400s old > 21600s limit)`).
 Nothing is ever rendered as calm because it is unknown.
 
+## The wake-up call — alarms → mode (added 2026-09-05)
+
+The storm track is not a posture; it is a reason to start looking. `readiness.build()`
+now publishes a **mode** with the list of alarms that put it there, so the card and the
+operator message both say *why*:
+
+| alarm | source | rings ATTENTION | rings STORM |
+|---|---|---|---|
+| `corridor` | NHC track + HURDAT2 analogs (step 1) | ANALOG | ELEVATED, WATCH_PENDING |
+| `wpc_ero` | WPC Excessive Rainfall Outlook days 1–5 over the watershed envelope (`wpc_ero.py`, GOV EST) | Marginal, Slight | Moderate, High |
+| `wetness_trend` | campus wetness history kept in `feed/readiness_state.json` | rising ≥ 0.04/day for 3 days and now ≥ 0.6 | — |
+| `forecast_margin` | to-WATCH minus forecast 24-h rain (step 4) | p90 reaches the line | p50 reaches the line |
+
+Mode = the highest rung any alarm asks for: **QUIET** (nothing ringing) → **ATTENTION**
+(start looking) → **STORM** (sample fast). The WPC outlook is the broad one — it covers
+stalled fronts, training cells, upslope and predecessor rain, cut-off lows and tropical
+remnants, so a system that only watched named storms is no longer blind to the rain types
+that actually flood this creek. A mode changes **only how often the system looks**; it never
+moves the posture ladder, never lowers a threshold and never lifts the WATCH cap. Output
+fields: `mode`, `mode_since`, `prev_mode`, `alarms[{name,mode,detail}]`, `cadence`, `ero`,
+`wetness_trend`. `notify_posture.check_mode()` sends one ntfy message per mode change
+("FRESHET STORM — start looking" / "FRESHET QUIET — standing down") with the alarms, the
+campus ground state and the cadence.
+
+Recommended cadence per mode (`readiness.CADENCE`, minutes):
+
+| mode | feed / FIMAN poll | node stage | node soil | rain |
+|---|---|---|---|---|
+| QUIET | 30 / 30 | 15 | 360 | on tip |
+| ATTENTION | 15 / 15 | 10 | 60 | on tip |
+| STORM | 15 / 15 | 5 | 60 | on tip; satellite backhaul reserved for stage exceedances |
+
+The feed side follows this today by re-reading `readiness.json`; the node side is the
+downlink clause in `BENCH_TO_SPEEDWELL.md` (the gateway reads the mode and re-programs its
+nodes).
+
 ## Rules carried through
 
 - Forecast evidence tops out at **WATCH**. `outlook_level` is the rung the p50 rain would
@@ -52,15 +88,20 @@ Nothing is ever rendered as calm because it is unknown.
 
 ## Verification
 
-`test_improvements.TestReadinessChain` (6 tests, in the CI suite): default everything
+`test_improvements.TestReadinessChain` (13 tests, in the CI suite): default everything
 MODELED and capped; trip inches ordered and monotone in wetness; a measured soil reading
 flips the tag, moves the trip line and unlocks the ceiling for that basin only; a stale
 sensor falls back and says why; the file backend contract; the in-corridor hold and the
-Helene-shaped segment test. `test_wired.py` passes with `readiness.py`, `noah_readings.py`
+Helene-shaped segment test; the bench/test guard; QUIET when nothing rings; the corridor,
+WPC-ERO, wetness-trend and forecast-margin alarms each set the mode they should and never
+touch the ceiling; `mode_since` survives cycles; `wpc_ero.fetch` never raises. `test_wired.py` passes with `readiness.py`, `noah_readings.py`
 and `corridor_analogs.py` reachable from `feed_runner`.
 
 ## Open
 
+- A rain-versus-forecast alarm (MRMS observed vs QPF / flash-flood-guidance ratio) is the
+  one alarm still missing from the table above; it needs an MRMS reader the repo does not
+  have yet.
 - The floor here is computed by `readiness.py` from NHC directly (the VM's
   `synoptic_watch.py` is not in this repo). Until the two are reconciled the card's floor
   and the badge's floor come from two implementations of the same rule; they agree by

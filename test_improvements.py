@@ -285,20 +285,21 @@ class TestReadinessChain(unittest.TestCase):
     """readiness.py: the four-step chain with provenance. Sensors fill gaps through
     sources backends; the chain itself is never edited when hardware arrives."""
 
-    def _build(self, backend, floor_level="ELEVATED"):
+    def _build(self, backend, floor_level="ELEVATED", ero=None, feed_dir=None, now=None, qpf=(2.0, 4.0)):
         import readiness, sources, json, tempfile
         from datetime import datetime, timezone
         from pathlib import Path
-        now = datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
-        d = Path(tempfile.mkdtemp())
+        now = now or datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
+        d = Path(feed_dir) if feed_dir else Path(tempfile.mkdtemp())
         (d / "outlook.json").write_text(json.dumps({
             "status": "ok", "nws_qpf24_in": {b: 1.0 for b in BASINS},
-            "basins": {b: {"qpf24_in": {"p50": 2.0, "p90": 4.0}, "qpf72_in": {"p50": 3.0, "p90": 6.0}}
+            "basins": {b: {"qpf24_in": {"p50": qpf[0], "p90": qpf[1]}, "qpf72_in": {"p50": qpf[0] * 1.5, "p90": qpf[1] * 1.5}}
                        for b in BASINS}}))
         sources.set_backend(backend)
         try:
             floor = dict(level=floor_level, why="test", storms=[], latched=False, sequence=None, status="ok")
-            return readiness.build(now, feed_dir=d, modeled_rows={}, floor=floor), now
+            ero = ero if ero is not None else {"status": "unavailable (test)"}
+            return readiness.build(now, feed_dir=d, modeled_rows={}, floor=floor, ero=ero), now
         finally:
             sources.set_backend(sources.NullBackend())
 
@@ -405,3 +406,86 @@ class TestReadinessChain(unittest.TestCase):
             self.assertFalse(bad.valid)                                        # range guard
         finally:
             sources.set_backend(sources.NullBackend())
+
+    # ---- wake-up call: alarms → mode ------------------------------------------------
+    def test_quiet_when_nothing_rings(self):
+        import sources
+        out, _ = self._build(sources.NullBackend(), floor_level="NONE", qpf=(0.3, 0.8))
+        self.assertEqual(out["mode"], "QUIET")
+        self.assertEqual(out["alarms"], [])
+        self.assertEqual(out["cadence"], __import__("readiness").CADENCE["QUIET"])
+        self.assertTrue(any("excessive-rainfall" in n for n in out["notes"]))   # absent source is named
+
+    def test_corridor_floor_sets_mode_and_names_the_alarm(self):
+        import sources
+        out, _ = self._build(sources.NullBackend(), floor_level="ANALOG", qpf=(0.3, 0.8))
+        self.assertEqual(out["mode"], "ATTENTION")
+        self.assertEqual([a["name"] for a in out["alarms"]], ["corridor"])
+        out, _ = self._build(sources.NullBackend(), floor_level="WATCH_PENDING", qpf=(0.3, 0.8))
+        self.assertEqual(out["mode"], "STORM")
+
+    def test_wpc_ero_is_the_broad_alarm(self):
+        import sources
+        def ero(dn, day=2):
+            days = [dict(day=i, dn=(dn if i == day else 0), label="x", pct=(70 if dn == 4 else 15)) for i in range(1, 6)]
+            return dict(status="ok", tier="gov_estimate", days=days, max_dn=dn, max_day=day)
+        out, _ = self._build(sources.NullBackend(), floor_level="NONE", ero=ero(2), qpf=(0.3, 0.8))
+        self.assertEqual(out["mode"], "ATTENTION")            # Slight: start looking
+        self.assertEqual(out["alarms"][0]["name"], "wpc_ero")
+        out, _ = self._build(sources.NullBackend(), floor_level="NONE", ero=ero(4, day=3), qpf=(0.3, 0.8))
+        self.assertEqual(out["mode"], "STORM")                # High on day 3: sample fast
+        self.assertIn("day 3", out["alarms"][0]["detail"])
+        for r in out["basins"].values():                       # a wake-up call never touches posture
+            self.assertEqual(r["ceiling"], "WATCH")
+            self.assertNotIn(r["outlook_level"], ("WARNING", "EMERGENCY"))
+
+    def test_wetness_trend_rings_on_rising_ground_not_on_level(self):
+        import readiness
+        from datetime import datetime, timezone, timedelta
+        now = datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
+        def run(ws):
+            state = {}
+            t = None
+            for i, w in enumerate(ws):
+                t = now - timedelta(days=len(ws) - 1 - i)
+                t = readiness.wetness_trend(state, {"CC-WCU-2260": {"wetness": {"w": w}}}, t)
+            return t
+        self.assertTrue(run([0.45, 0.55, 0.65, 0.75])["ringing"])        # +0.1/day, above floor
+        self.assertFalse(run([0.75, 0.75, 0.75, 0.75])["ringing"])       # wet but level
+        self.assertFalse(run([0.20, 0.30, 0.40, 0.50])["ringing"])       # rising but still dry
+        self.assertIsNone(run([0.7]))                                     # no history yet
+
+    def test_mode_since_persists_across_cycles(self):
+        import sources, json, tempfile
+        from datetime import datetime, timezone, timedelta
+        from pathlib import Path
+        d = Path(tempfile.mkdtemp())
+        t0 = datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
+        a, _ = self._build(sources.NullBackend(), floor_level="ANALOG", feed_dir=d, now=t0, qpf=(0.3, 0.8))
+        b, _ = self._build(sources.NullBackend(), floor_level="ANALOG", feed_dir=d, now=t0 + timedelta(minutes=30), qpf=(0.3, 0.8))
+        self.assertEqual(a["mode_since"], b["mode_since"])                # same mode: clock keeps running
+        self.assertEqual(b["prev_mode"], "ATTENTION")
+        c, _ = self._build(sources.NullBackend(), floor_level="NONE", feed_dir=d, now=t0 + timedelta(hours=1), qpf=(0.3, 0.8))
+        self.assertEqual(c["mode"], "QUIET"); self.assertNotEqual(c["mode_since"], a["mode_since"])
+
+    def test_wpc_ero_fetch_never_raises(self):
+        import wpc_ero
+        from unittest import mock
+        with mock.patch.object(wpc_ero, "_query", side_effect=OSError("no network")):
+            r = wpc_ero.fetch()
+        self.assertTrue(r["status"].startswith("unavailable"))
+        self.assertEqual(r["max_dn"], 0)
+        feats = lambda dn: {"features": [{"attributes": {"dn": dn, "outlook": "x", "issue_time": None, "start_time": None, "end_time": None}}] if dn else []}
+        with mock.patch.object(wpc_ero, "_query", side_effect=[feats(1), feats(3), feats(0), feats(0), feats(0)]):
+            r = wpc_ero.fetch()
+        self.assertEqual((r["status"], r["max_dn"], r["max_day"]), ("ok", 3, 2))
+        self.assertEqual(r["days"][1]["label"], "Moderate")
+
+    def test_forecast_margin_alarm_rings_when_forecast_rain_reaches_the_trip_line(self):
+        import sources
+        out, _ = self._build(sources.NullBackend(), floor_level="NONE", qpf=(0.5, 4.0))
+        self.assertEqual(out["mode"], "ATTENTION")                          # p90 only
+        self.assertEqual(out["alarms"][0]["name"], "forecast_margin")
+        out, _ = self._build(sources.NullBackend(), floor_level="NONE", qpf=(4.0, 6.0))
+        self.assertEqual(out["mode"], "STORM")                              # p50 reaches WATCH
+        self.assertTrue(all(r["ceiling"] == "WATCH" for r in out["basins"].values()))

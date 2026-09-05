@@ -26,6 +26,21 @@ Steps
   Ceiling       — WATCH unless a measured stage exists for the basin (sources Q_STAGE,
                   or Q_STAGE_GOV at Speedwell). Forecast evidence never confirms.
 
+Mode — the wake-up call (Mickey, 2026-09-05: "it doesn't need to be a warning; it is a wake-up
+call for the system to start looking at soil moisture and stream depths and discharge")
+  The floor was only ever one alarm. The mode is the highest alarm ringing, and it changes
+  how closely the system LOOKS, never what posture it shows:
+    QUIET      nothing ringing
+    ATTENTION  a storm is on the belt (ANALOG), or WPC has a Marginal/Slight excessive-rain
+               risk over the watershed, or the ground has been wetting for days, or forecast
+               rain at p90 reaches a basin's WATCH line
+    STORM      a forecast track crosses the corridor (ELEVATED / WATCH_PENDING), or WPC
+               Moderate/High, or forecast rain at p50 reaches a WATCH line
+  Each alarm names itself in `alarms` so the card and the operator message say WHY. The mode
+  publishes a cadence recommendation the gateway/nodes and the feed loop can honour. Nothing in
+  the mode raises a posture; WATCH still needs forecast rain against the trip line and
+  WARNING still needs a measured rise.
+
 Two-tier rule and the absent-data rule apply throughout: a sensor that is missing, stale
 or out of range falls down the ladder and the readout SAYS SO in `note`; nothing is
 silently substituted, and nothing is ever rendered as calm because it is unknown.
@@ -72,6 +87,16 @@ NHC_CURRENT = "https://www.nhc.noaa.gov/CurrentStorms.json"
 NHC_MAPSERVER = ("https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/"
                  "NHC_tropical_weather_summary/MapServer")
 LATCH_HOURS = 36            # a met floor holds this long after the last forecast crossing time
+MODES = ["QUIET", "ATTENTION", "STORM"]
+CADENCE = {                 # recommended sampling / polling per mode (minutes)
+    "QUIET":     dict(feed=30, fiman=30, node_stage=15, node_soil=360, node_rain="on tip"),
+    "ATTENTION": dict(feed=15, fiman=15, node_stage=10, node_soil=60,  node_rain="on tip"),
+    "STORM":     dict(feed=15, fiman=15, node_stage=5,  node_soil=60,  node_rain="on tip",
+                      backhaul="satellite rung reserved for stage exceedances"),
+}
+WET_TREND_DAYS = 3          # wetness rising over this many days rings ATTENTION
+WET_TREND_MIN = 0.04        # ... if the mean daily rise is at least this (w units/day)
+WET_TREND_FLOOR = 0.6       # ... and the current wetness is at least this
 PLANNED = {                 # what NOAH is expected to deploy per basin (for the pending list)
     "stage": [sources.Q_STAGE], "soil": [sources.Q_SOIL], "rain": [sources.Q_RAIN_1H, sources.Q_RAIN_STORM]}
 
@@ -394,11 +419,65 @@ def sensor_status(bid: str, now: datetime) -> dict:
 
 
 # --------------------------------------------------------------------------------------
+# Alarms → mode
+# --------------------------------------------------------------------------------------
+def wetness_trend(state: dict, basins_out: dict, now: datetime) -> Optional[dict]:
+    """Keep a 10-day history of campus wetness in the state file; ring when it has been
+    rising for WET_TREND_DAYS at >= WET_TREND_MIN/day and sits above WET_TREND_FLOOR.
+    Helene's ground went from half-charged to saturated in the two days before the main
+    rain; a system that only reads the level would not have seen it coming."""
+    hist = state.setdefault("wetness_hist", [])
+    w = ((basins_out.get("CC-WCU-2260") or {}).get("wetness") or {}).get("w")
+    if w is not None:
+        hist.append([_iso(now), w])
+    cutoff = now - timedelta(days=10)
+    hist[:] = [h for h in hist if datetime.fromisoformat(h[0].replace("Z", "+00:00")) >= cutoff][-400:]
+    if len(hist) < 2:
+        return None
+    t0 = now - timedelta(days=WET_TREND_DAYS)
+    old = [h for h in hist if datetime.fromisoformat(h[0].replace("Z", "+00:00")) <= t0]
+    if not old:
+        return None
+    w_old, w_now = old[-1][1], hist[-1][1]
+    rate = (w_now - w_old) / WET_TREND_DAYS
+    ring = w_now >= WET_TREND_FLOOR and rate >= WET_TREND_MIN
+    return dict(w_now=round(w_now, 3), w_then=round(w_old, 3), rate_per_day=round(rate, 3), ringing=ring)
+
+
+def alarms_and_mode(floor: dict, ero: Optional[dict], basins_out: dict, trend: Optional[dict]) -> tuple[list, str]:
+    alarms = []
+    lvl = floor.get("level")
+    if lvl in ("ELEVATED", "WATCH_PENDING"):
+        alarms.append(dict(name="corridor", mode="STORM", detail=f"{lvl}: {floor.get('why','')}"))
+    elif lvl == "ANALOG":
+        alarms.append(dict(name="corridor", mode="ATTENTION", detail=f"ANALOG: {floor.get('why','')}"))
+    if ero and ero.get("status") == "ok" and ero.get("max_dn", 0) > 0:
+        d = ero["max_dn"]; day = ero["max_day"]
+        lab = {1: "Marginal", 2: "Slight", 3: "Moderate", 4: "High"}[d]
+        alarms.append(dict(name="wpc_ero", mode="STORM" if d >= 3 else "ATTENTION",
+                           detail=f"WPC excessive-rainfall risk {lab} on day {day} (>= {ero['days'][day-1]['pct']} %)"))
+    if trend and trend.get("ringing"):
+        alarms.append(dict(name="wetness_trend", mode="ATTENTION",
+                           detail=f"campus wetness {trend['w_then']} → {trend['w_now']} over {WET_TREND_DAYS} d (+{trend['rate_per_day']}/d)"))
+    neg50 = [b for b, r in basins_out.items() if (r.get("margin_in") or {}).get("p50") is not None and r["margin_in"]["p50"] <= 0]
+    neg90 = [b for b, r in basins_out.items() if (r.get("margin_in") or {}).get("p90") is not None and r["margin_in"]["p90"] <= 0]
+    if neg50:
+        alarms.append(dict(name="forecast_margin", mode="STORM", detail="forecast rain (p50) reaches the WATCH line: " + ", ".join(neg50)))
+    elif neg90:
+        alarms.append(dict(name="forecast_margin", mode="ATTENTION", detail="forecast rain (p90) reaches the WATCH line: " + ", ".join(neg90)))
+    mode = "QUIET"
+    for a in alarms:
+        if MODES.index(a["mode"]) > MODES.index(mode):
+            mode = a["mode"]
+    return alarms, mode
+
+
+# --------------------------------------------------------------------------------------
 # Publish
 # --------------------------------------------------------------------------------------
 def build(now: Optional[datetime] = None, feed_dir: Path = Path("feed"),
           modeled_rows: Optional[dict] = None, floor: Optional[dict] = None,
-          outlook: Optional[dict] = None) -> dict:
+          outlook: Optional[dict] = None, ero: Optional[dict] = None) -> dict:
     """Assemble the readout. Every external fetch is optional and labelled when absent."""
     now = now or _utcnow()
     notes = []
@@ -417,6 +496,14 @@ def build(now: Optional[datetime] = None, feed_dir: Path = Path("feed"),
     if floor is None:
         floor = compute_floor(now, feed_dir, feed_dir / "readiness_state.json")
         notes += floor.pop("notes", [])
+    if ero is None:
+        try:
+            import wpc_ero
+            ero = wpc_ero.fetch(now)
+        except Exception as e:                        # noqa: BLE001
+            ero = {"status": f"unavailable ({type(e).__name__})"}
+    if ero.get("status") != "ok":
+        notes.append(f"WPC excessive-rainfall outlook: {ero.get('status')}")
 
     basins_out = {}
     for bid, b in B.BASINS.items():
@@ -437,7 +524,25 @@ def build(now: Optional[datetime] = None, feed_dir: Path = Path("feed"),
             outlook_level=outlook_level(trip, rain50),
             ceiling=("WARNING/EMERGENCY via measured stage" if confirmed else CAP),
             stage=stage, sensors=sensor_status(bid, now))
+    # alarms → mode (state file carries the wetness history)
+    state_path = feed_dir / "readiness_state.json"
+    try:
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+    except Exception:                                 # noqa: BLE001
+        state = {}
+    trend = wetness_trend(state, basins_out, now)
+    alarms, mode = alarms_and_mode(floor, ero, basins_out, trend)
+    prev_mode = state.get("mode")
+    state["mode"] = mode
+    state["mode_since"] = state.get("mode_since") if prev_mode == mode else _iso(now)
+    try:
+        state_path.parent.mkdir(parents=True, exist_ok=True)
+        state_path.write_text(json.dumps(state, indent=1), encoding="utf-8")
+    except OSError:
+        pass
     return dict(fetched_utc=_iso(now), status="ok", tier="readiness",
+                mode=mode, mode_since=state["mode_since"], prev_mode=prev_mode, alarms=alarms,
+                cadence=CADENCE[mode], ero=ero, wetness_trend=trend,
                 ladder=LADDER, cap=CAP, floor=floor, basins=basins_out, notes=notes,
                 rule="forecast evidence tops out at WATCH; only measured stage earns WARNING/EMERGENCY; "
                      "absent data renders as absent")
@@ -454,7 +559,8 @@ def publish(outdir: Path, now: Optional[datetime] = None) -> dict:
                    tier="readiness", ladder=LADDER, cap=CAP)
     path.write_text(json.dumps(out, indent=1), encoding="utf-8")
     print(f"readiness feed: {out['status']}"
-          + (f" · floor {out['floor']['level']}" if out.get("floor") else ""))
+          + (f" · floor {out['floor']['level']} · mode {out.get('mode')}" if out.get("floor") else "")
+          + (" · " + "; ".join(a["detail"] for a in out.get("alarms", [])) if out.get("alarms") else ""))
     return out
 
 

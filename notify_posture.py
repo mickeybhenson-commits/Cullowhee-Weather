@@ -286,6 +286,32 @@ def check_blind(meta, prev, topic, now):
                 (prev or {}).get("blind_alert_utc"), True)
 
 
+def check_mode(rdy, prev, topic, now):
+    """Operator wake-up on a readiness MODE change (readiness.py). Not a warning: the
+    system has started looking harder, and the message says why and what the ground
+    looks like. Edge-triggered on the mode value; a failed POST leaves the edge in place."""
+    mode = (rdy or {}).get("mode")
+    if not mode or rdy.get("status") != "ok":
+        return prev.get("mode"), True
+    last = prev.get("mode")
+    if mode == last:
+        return mode, True
+    order = {"QUIET": 0, "ATTENTION": 1, "STORM": 2}
+    up = order.get(mode, 0) > order.get(last or "QUIET", 0)
+    why = "; ".join(a.get("detail", "") for a in rdy.get("alarms", [])) or "no alarms ringing"
+    camp = (rdy.get("basins") or {}).get("CC-WCU-2260") or {}
+    w = (camp.get("wetness") or {}); t = (camp.get("trip_in") or {}); m = (camp.get("margin_in") or {})
+    ground = (f"campus wetness {w.get('w')} ({(w.get('tier') or 'modeled').upper()}), "
+              f"{t.get('WATCH')} in to WATCH, margin {m.get('p50')} in vs forecast p50")
+    cad = rdy.get("cadence") or {}
+    body = (f"{why}. {ground}. Cadence: feed {cad.get('feed')} min, stage {cad.get('node_stage')} min, "
+            f"soil {cad.get('node_soil')} min. Readiness mode — not a warning; posture unchanged.")
+    title = f"FRESHET {mode}" + (" - start looking" if up else " - standing down")   # ASCII: HTTP header
+    ok = _post(topic, title, body, PRIORITY.get("WATCH", "3") if up else "2",
+               "eyes" if up else "white_check_mark")
+    return (mode if ok else last), ok
+
+
 def main():
     topic = os.getenv("NTFY_TOPIC")
     if not topic and not os.getenv("NTFY_DRY"):
@@ -302,6 +328,8 @@ def main():
     notified_lvl, op_ok = check_operative(state, prev, topic)
     outlook_ts, ol_ok = check_outlook(outlook, prev, topic, now)
     blind, blind_ts, bl_ok = check_blind(meta, prev, topic, now)
+    rdy = _load(os.path.join(os.path.dirname(STATE_IN) or ".", "readiness.json"), {})
+    mode_rec, md_ok = check_mode(rdy, prev, topic, now)
 
     cur_p = (((outlook.get("basins") or {}).get("CC-WCU-2260") or {})
              .get("p_exceed") or {}).get("WATCH") if outlook.get("status") == "ok" else None
@@ -320,6 +348,7 @@ def main():
         outlook_p_rec = prev.get("outlook_p")   # holding the ts alone is not enough
 
     new_state = {
+        "mode": mode_rec,
         "level": level_rec,
         "outlook_p": outlook_p_rec,
         "outlook_alert_utc": outlook_ts or prev.get("outlook_alert_utc"),

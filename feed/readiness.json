@@ -1,5 +1,5 @@
 {
- "fetched_utc": "2026-09-05T17:38:46Z",
+ "fetched_utc": "2026-09-05T17:43:15Z",
  "status": "ok",
  "tier": "readiness",
  "ladder": [
@@ -10,12 +10,58 @@
  ],
  "cap": "WATCH",
  "floor": {
-  "level": "UNKNOWN",
-  "why": "seed file \u2014 first live publish pending",
-  "storms": [],
+  "level": "NONE",
+  "why": "no corridor criterion met",
+  "storms": [
+   {
+    "name": "Marie",
+    "cls": "HU",
+    "wind": "80",
+    "floor": "NONE",
+    "tau": null,
+    "inside": false,
+    "analog": {
+     "n": 0,
+     "hits": 0,
+     "frac": 0.0,
+     "pool": "insufficient",
+     "heading": 310.0
+    }
+   },
+   {
+    "name": "Lowell",
+    "cls": "HU",
+    "wind": "130",
+    "floor": "NONE",
+    "tau": null,
+    "inside": false,
+    "analog": {
+     "n": 0,
+     "hits": 0,
+     "frac": 0.0,
+     "pool": "insufficient",
+     "heading": 275.0
+    }
+   },
+   {
+    "name": "Karina",
+    "cls": "HU",
+    "wind": "65",
+    "floor": "NONE",
+    "tau": null,
+    "inside": false,
+    "analog": {
+     "n": 0,
+     "hits": 0,
+     "frac": 0.0,
+     "pool": "insufficient",
+     "heading": 305.0
+    }
+   }
+  ],
   "latched": false,
   "sequence": null,
-  "status": "seed"
+  "status": "ok"
  },
  "basins": {
   "CC-UP-503": {
@@ -23,17 +69,17 @@
    "lead_min": 40,
    "role": "warning_point",
    "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
+    "w": 1.0,
+    "soil_pct": 15.0,
     "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
    },
    "trip_in": {
-    "WATCH": 4.8,
-    "WARNING": 6.97,
-    "EMERGENCY": 9.55
+    "WATCH": 3.08,
+    "WARNING": 4.95,
+    "EMERGENCY": 7.18
    },
    "forecast": {
     "qpf24_p50": 0.187,
@@ -46,8 +92,8 @@
     "status": "ok"
    },
    "margin_in": {
-    "p50": 4.61,
-    "p90": 4.32
+    "p50": 2.89,
+    "p90": 2.6
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -75,17 +121,17 @@
    "lead_min": 86,
    "role": "warning_point",
    "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
+    "w": 1.0,
+    "soil_pct": 16.0,
     "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
    },
    "trip_in": {
-    "WATCH": 3.54,
-    "WARNING": 5.36,
-    "EMERGENCY": 9.7
+    "WATCH": 2.05,
+    "WARNING": 3.49,
+    "EMERGENCY": 7.35
    },
    "forecast": {
     "qpf24_p50": 0.187,
@@ -93,6 +139,214 @@
     "qpf72_p50": 0.276,
     "qpf72_p90": 0.626,
     "nws_qpf24": 0.02,
+    "tier": "gov_estimate",
+    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
+    "status": "ok"
+   },
+   "margin_in": {
+    "p50": 1.86,
+    "p90": 1.57
+   },
+   "outlook_level": "NORMAL",
+   "ceiling": "WATCH",
+   "stage": {
+    "value": null,
+    "tier": "modeled",
+    "source": null,
+    "ts": null,
+    "note": "no source",
+    "quantity": "stage_ft",
+    "valid": false
+   },
+   "sensors": {
+    "deployed": [],
+    "pending": [
+     "stage_ft",
+     "soil_moisture_pct",
+     "rain_1h",
+     "rain_storm"
+    ]
+   }
+  },
+  "CC-TIL-705": {
+   "name": "Tilley Creek",
+   "lead_min": 62,
+   "role": "warning_point",
+   "wetness": {
+    "w": 1.0,
+    "soil_pct": 15.0,
+    "tier": "modeled",
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
+   },
+   "trip_in": {
+    "WATCH": 2.43,
+    "WARNING": 3.34,
+    "EMERGENCY": 7.71
+   },
+   "forecast": {
+    "qpf24_p50": 0.187,
+    "qpf24_p90": 0.48,
+    "qpf72_p50": 0.276,
+    "qpf72_p90": 0.626,
+    "nws_qpf24": 0.01,
+    "tier": "gov_estimate",
+    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
+    "status": "ok"
+   },
+   "margin_in": {
+    "p50": 2.24,
+    "p90": 1.95
+   },
+   "outlook_level": "NORMAL",
+   "ceiling": "WATCH",
+   "stage": {
+    "value": null,
+    "tier": "modeled",
+    "source": null,
+    "ts": null,
+    "note": "no source",
+    "quantity": "stage_ft",
+    "valid": false
+   },
+   "sensors": {
+    "deployed": [],
+    "pending": [
+     "stage_ft",
+     "soil_moisture_pct",
+     "rain_1h",
+     "rain_storm"
+    ]
+   }
+  },
+  "CC-SPD-1830": {
+   "name": "Speedwell",
+   "lead_min": 91,
+   "role": "warning_point",
+   "wetness": {
+    "w": 1.0,
+    "soil_pct": 21.0,
+    "tier": "modeled",
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
+   },
+   "trip_in": {
+    "WATCH": 1.64,
+    "WARNING": 2.93,
+    "EMERGENCY": 5.92
+   },
+   "forecast": {
+    "qpf24_p50": 0.187,
+    "qpf24_p90": 0.48,
+    "qpf72_p50": 0.276,
+    "qpf72_p90": 0.626,
+    "nws_qpf24": 0.02,
+    "tier": "gov_estimate",
+    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
+    "status": "ok"
+   },
+   "margin_in": {
+    "p50": 1.45,
+    "p90": 1.16
+   },
+   "outlook_level": "NORMAL",
+   "ceiling": "WATCH",
+   "stage": {
+    "value": null,
+    "tier": "modeled",
+    "source": null,
+    "ts": null,
+    "note": "no source",
+    "quantity": "stage_ft",
+    "valid": false
+   },
+   "sensors": {
+    "deployed": [],
+    "pending": [
+     "stage_ft",
+     "soil_moisture_pct",
+     "rain_1h",
+     "rain_storm"
+    ]
+   }
+  },
+  "CC-COX-097": {
+   "name": "Cox Branch (flashiest)",
+   "lead_min": 29,
+   "role": "warning_point",
+   "wetness": {
+    "w": 1.0,
+    "soil_pct": 17.0,
+    "tier": "modeled",
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
+   },
+   "trip_in": {
+    "WATCH": 4.51,
+    "WARNING": 5.54,
+    "EMERGENCY": 7.38
+   },
+   "forecast": {
+    "qpf24_p50": 0.187,
+    "qpf24_p90": 0.48,
+    "qpf72_p50": 0.276,
+    "qpf72_p90": 0.626,
+    "nws_qpf24": 0.02,
+    "tier": "gov_estimate",
+    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
+    "status": "ok"
+   },
+   "margin_in": {
+    "p50": 4.32,
+    "p90": 4.03
+   },
+   "outlook_level": "NORMAL",
+   "ceiling": "WATCH",
+   "stage": {
+    "value": null,
+    "tier": "modeled",
+    "source": null,
+    "ts": null,
+    "note": "no source",
+    "quantity": "stage_ft",
+    "valid": false
+   },
+   "sensors": {
+    "deployed": [],
+    "pending": [
+     "stage_ft",
+     "soil_moisture_pct",
+     "rain_1h",
+     "rain_storm"
+    ]
+   }
+  },
+  "CC-LB-171": {
+   "name": "Long Branch",
+   "lead_min": 36,
+   "role": "warning_point",
+   "wetness": {
+    "w": 1.0,
+    "soil_pct": 17.0,
+    "tier": "modeled",
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
+   },
+   "trip_in": {
+    "WATCH": 3.54,
+    "WARNING": 6.09,
+    "EMERGENCY": 7.5
+   },
+   "forecast": {
+    "qpf24_p50": 0.187,
+    "qpf24_p90": 0.48,
+    "qpf72_p50": 0.276,
+    "qpf72_p90": 0.626,
+    "nws_qpf24": 0.01,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
@@ -122,230 +376,22 @@
     ]
    }
   },
-  "CC-TIL-705": {
-   "name": "Tilley Creek",
-   "lead_min": 62,
-   "role": "warning_point",
-   "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
-    "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
-   },
-   "trip_in": {
-    "WATCH": 4.04,
-    "WARNING": 5.16,
-    "EMERGENCY": 10.14
-   },
-   "forecast": {
-    "qpf24_p50": 0.187,
-    "qpf24_p90": 0.48,
-    "qpf72_p50": 0.276,
-    "qpf72_p90": 0.626,
-    "nws_qpf24": 0.01,
-    "tier": "gov_estimate",
-    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
-    "status": "ok"
-   },
-   "margin_in": {
-    "p50": 3.85,
-    "p90": 3.56
-   },
-   "outlook_level": "NORMAL",
-   "ceiling": "WATCH",
-   "stage": {
-    "value": null,
-    "tier": "modeled",
-    "source": null,
-    "ts": null,
-    "note": "no source",
-    "quantity": "stage_ft",
-    "valid": false
-   },
-   "sensors": {
-    "deployed": [],
-    "pending": [
-     "stage_ft",
-     "soil_moisture_pct",
-     "rain_1h",
-     "rain_storm"
-    ]
-   }
-  },
-  "CC-SPD-1830": {
-   "name": "Speedwell",
-   "lead_min": 91,
-   "role": "warning_point",
-   "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
-    "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
-   },
-   "trip_in": {
-    "WATCH": 2.96,
-    "WARNING": 4.66,
-    "EMERGENCY": 8.12
-   },
-   "forecast": {
-    "qpf24_p50": 0.187,
-    "qpf24_p90": 0.48,
-    "qpf72_p50": 0.276,
-    "qpf72_p90": 0.626,
-    "nws_qpf24": 0.02,
-    "tier": "gov_estimate",
-    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
-    "status": "ok"
-   },
-   "margin_in": {
-    "p50": 2.77,
-    "p90": 2.48
-   },
-   "outlook_level": "NORMAL",
-   "ceiling": "WATCH",
-   "stage": {
-    "value": null,
-    "tier": "modeled",
-    "source": null,
-    "ts": null,
-    "note": "no source",
-    "quantity": "stage_ft",
-    "valid": false
-   },
-   "sensors": {
-    "deployed": [],
-    "pending": [
-     "stage_ft",
-     "soil_moisture_pct",
-     "rain_1h",
-     "rain_storm"
-    ]
-   }
-  },
-  "CC-COX-097": {
-   "name": "Cox Branch (flashiest)",
-   "lead_min": 29,
-   "role": "warning_point",
-   "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
-    "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
-   },
-   "trip_in": {
-    "WATCH": 6.39,
-    "WARNING": 7.5,
-    "EMERGENCY": 9.46
-   },
-   "forecast": {
-    "qpf24_p50": 0.187,
-    "qpf24_p90": 0.48,
-    "qpf72_p50": 0.276,
-    "qpf72_p90": 0.626,
-    "nws_qpf24": 0.02,
-    "tier": "gov_estimate",
-    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
-    "status": "ok"
-   },
-   "margin_in": {
-    "p50": 6.2,
-    "p90": 5.91
-   },
-   "outlook_level": "NORMAL",
-   "ceiling": "WATCH",
-   "stage": {
-    "value": null,
-    "tier": "modeled",
-    "source": null,
-    "ts": null,
-    "note": "no source",
-    "quantity": "stage_ft",
-    "valid": false
-   },
-   "sensors": {
-    "deployed": [],
-    "pending": [
-     "stage_ft",
-     "soil_moisture_pct",
-     "rain_1h",
-     "rain_storm"
-    ]
-   }
-  },
-  "CC-LB-171": {
-   "name": "Long Branch",
-   "lead_min": 36,
-   "role": "warning_point",
-   "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
-    "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
-   },
-   "trip_in": {
-    "WATCH": 5.27,
-    "WARNING": 8.29,
-    "EMERGENCY": 9.79
-   },
-   "forecast": {
-    "qpf24_p50": 0.187,
-    "qpf24_p90": 0.48,
-    "qpf72_p50": 0.276,
-    "qpf72_p90": 0.626,
-    "nws_qpf24": 0.01,
-    "tier": "gov_estimate",
-    "source": "WeatherNext-2 ensemble + NWS gridded QPF",
-    "status": "ok"
-   },
-   "margin_in": {
-    "p50": 5.08,
-    "p90": 4.79
-   },
-   "outlook_level": "NORMAL",
-   "ceiling": "WATCH",
-   "stage": {
-    "value": null,
-    "tier": "modeled",
-    "source": null,
-    "ts": null,
-    "note": "no source",
-    "quantity": "stage_ft",
-    "valid": false
-   },
-   "sensors": {
-    "deployed": [],
-    "pending": [
-     "stage_ft",
-     "soil_moisture_pct",
-     "rain_1h",
-     "rain_storm"
-    ]
-   }
-  },
   "CC-WCU-2260": {
    "name": "WCU Campus (warning point)",
    "lead_min": 127,
    "role": "warning_point",
    "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
+    "w": 1.0,
+    "soil_pct": 17.0,
     "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
    },
    "trip_in": {
-    "WATCH": 3.57,
-    "WARNING": 5.3,
-    "EMERGENCY": 7.91
+    "WATCH": 2.11,
+    "WARNING": 3.49,
+    "EMERGENCY": 5.74
    },
    "forecast": {
     "qpf24_p50": 0.187,
@@ -358,8 +404,8 @@
     "status": "ok"
    },
    "margin_in": {
-    "p50": 3.38,
-    "p90": 3.09
+    "p50": 1.92,
+    "p90": 1.63
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -387,12 +433,12 @@
    "lead_min": 147,
    "role": "warning_point",
    "wetness": {
-    "w": 0.5,
-    "soil_pct": null,
+    "w": 1.0,
+    "soil_pct": 17.0,
     "tier": "modeled",
-    "source": "default_ARC_II",
-    "ts": null,
-    "note": "no source"
+    "source": "live_rainfall ladder (Open-Meteo soil percentile)",
+    "ts": "2026-09-05T17:43:15Z",
+    "note": ""
    },
    "trip_in": null,
    "forecast": {
@@ -428,8 +474,6 @@
    }
   }
  },
- "notes": [
-  "seed written offline; feed_runner overwrites on its next cycle"
- ],
+ "notes": [],
  "rule": "forecast evidence tops out at WATCH; only measured stage earns WARNING/EMERGENCY; absent data renders as absent"
 }

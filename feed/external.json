@@ -1,15 +1,245 @@
 {
-  "fetched_utc": "2026-09-05T17:20:57.934777+00:00",
+  "fetched_utc": "2026-09-05T17:43:15.014501+00:00",
   "status": {
-    "usgs": "HTTPError",
+    "usgs": "ok",
     "alerts": "ok",
     "ffg_in": "empty",
     "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
   },
-  "usgs": null,
+  "usgs": {
+    "upstream": {
+      "site": "03508050",
+      "lid": "TKRN7",
+      "00060": [
+        1788628500,
+        82.2
+      ],
+      "00065": [
+        1788628500,
+        4.11
+      ],
+      "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
+      "flood_categories_ft": {
+        "action": 13,
+        "minor": 16,
+        "moderate": 19,
+        "major": 22
+      }
+    },
+    "downstream": {
+      "site": "03510577",
+      "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
+      "00060": [
+        1788628500,
+        897.0
+      ],
+      "00065": [
+        1788628500,
+        4.33
+      ]
+    },
+    "local_inflow_cfs": 814.8,
+    "stage_series_up": [
+      [
+        1788608700,
+        6.17
+      ],
+      [
+        1788609600,
+        6.17
+      ],
+      [
+        1788610500,
+        6.1
+      ],
+      [
+        1788611400,
+        5.89
+      ],
+      [
+        1788612300,
+        5.59
+      ],
+      [
+        1788613200,
+        5.29
+      ],
+      [
+        1788614100,
+        5.02
+      ],
+      [
+        1788615000,
+        4.81
+      ],
+      [
+        1788615900,
+        4.65
+      ],
+      [
+        1788616800,
+        4.54
+      ],
+      [
+        1788617700,
+        4.45
+      ],
+      [
+        1788618600,
+        4.39
+      ],
+      [
+        1788619500,
+        4.33
+      ],
+      [
+        1788620400,
+        4.29
+      ],
+      [
+        1788621300,
+        4.25
+      ],
+      [
+        1788622200,
+        4.22
+      ],
+      [
+        1788623100,
+        4.19
+      ],
+      [
+        1788624000,
+        4.17
+      ],
+      [
+        1788624900,
+        4.16
+      ],
+      [
+        1788625800,
+        4.14
+      ],
+      [
+        1788626700,
+        4.13
+      ],
+      [
+        1788627600,
+        4.12
+      ],
+      [
+        1788628500,
+        4.11
+      ]
+    ],
+    "stage_series_down": [
+      [
+        1788608700,
+        3.18
+      ],
+      [
+        1788609600,
+        3.17
+      ],
+      [
+        1788610500,
+        3.16
+      ],
+      [
+        1788611400,
+        3.15
+      ],
+      [
+        1788612300,
+        3.15
+      ],
+      [
+        1788613200,
+        3.14
+      ],
+      [
+        1788614100,
+        3.14
+      ],
+      [
+        1788615000,
+        3.14
+      ],
+      [
+        1788615900,
+        3.14
+      ],
+      [
+        1788616800,
+        3.15
+      ],
+      [
+        1788617700,
+        3.9
+      ],
+      [
+        1788618600,
+        4.26
+      ],
+      [
+        1788619500,
+        4.31
+      ],
+      [
+        1788620400,
+        4.32
+      ],
+      [
+        1788621300,
+        4.31
+      ],
+      [
+        1788622200,
+        4.31
+      ],
+      [
+        1788623100,
+        4.32
+      ],
+      [
+        1788624000,
+        4.32
+      ],
+      [
+        1788624900,
+        4.32
+      ],
+      [
+        1788625800,
+        4.33
+      ],
+      [
+        1788626700,
+        4.33
+      ],
+      [
+        1788627600,
+        4.33
+      ],
+      [
+        1788628500,
+        4.33
+      ]
+    ],
+    "provenance": "MEASURED"
+  },
   "alerts": [
+    {
+      "event": "Severe Thunderstorm Watch",
+      "severity": "Severe",
+      "onset": "2026-09-05T13:25:00-04:00",
+      "ends": "2026-09-05T20:00:00-04:00",
+      "headline": "Severe Thunderstorm Watch issued September 5 at 1:25PM EDT until September 5 at 8:00PM EDT by NWS Greenville-Spartanburg SC",
+      "id": "urn:oid:2.49.0.1.840.0.62c5f726aa30b77c01896cb99f34dd9315a50c11.001.1"
+    },
     {
       "event": "Special Weather Statement",
       "severity": "Moderate",
@@ -112,14 +342,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 78.0,
-    "fresh": false,
-    "last_updated_utc": "2026-09-05T16:03:00+00:00",
+    "age_min": 40.3,
+    "fresh": true,
+    "last_updated_utc": "2026-09-05T17:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 78.0 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -279,7 +509,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 31.1,
+    "age_min": 53.3,
     "valid_utc": "2026-09-05T16:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

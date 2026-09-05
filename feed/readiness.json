@@ -1,5 +1,5 @@
 {
- "fetched_utc": "2026-09-05T17:43:15Z",
+ "fetched_utc": "2026-09-05T17:50:39Z",
  "status": "ok",
  "tier": "readiness",
  "ladder": [
@@ -73,7 +73,7 @@
     "soil_pct": 15.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -112,7 +112,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -125,7 +128,7 @@
     "soil_pct": 16.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -164,7 +167,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -177,7 +183,7 @@
     "soil_pct": 15.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -216,7 +222,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -229,7 +238,7 @@
     "soil_pct": 21.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -268,7 +277,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -281,7 +293,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -320,7 +332,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -333,7 +348,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -372,7 +387,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -385,7 +403,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": {
@@ -424,7 +442,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   },
@@ -437,7 +458,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T17:43:15Z",
+    "ts": "2026-09-05T17:50:39Z",
     "note": ""
    },
    "trip_in": null,
@@ -469,7 +490,10 @@
      "stage_ft",
      "soil_moisture_pct",
      "rain_1h",
-     "rain_storm"
+     "rain_storm",
+     "temp_c",
+     "rh_pct",
+     "press_hpa"
     ]
    }
   }

@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-05T17:43:15.014501+00:00",
+  "fetched_utc": "2026-09-05T17:50:39.857974+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,10 +42,6 @@
     },
     "local_inflow_cfs": 814.8,
     "stage_series_up": [
-      [
-        1788608700,
-        6.17
-      ],
       [
         1788609600,
         6.17
@@ -136,10 +132,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1788608700,
-        3.18
-      ],
       [
         1788609600,
         3.17
@@ -239,14 +231,6 @@
       "ends": "2026-09-05T20:00:00-04:00",
       "headline": "Severe Thunderstorm Watch issued September 5 at 1:25PM EDT until September 5 at 8:00PM EDT by NWS Greenville-Spartanburg SC",
       "id": "urn:oid:2.49.0.1.840.0.62c5f726aa30b77c01896cb99f34dd9315a50c11.001.1"
-    },
-    {
-      "event": "Special Weather Statement",
-      "severity": "Moderate",
-      "onset": "2026-09-05T13:19:00-04:00",
-      "ends": null,
-      "headline": "Special Weather Statement issued September 5 at 1:19PM EDT by NWS Greenville-Spartanburg SC",
-      "id": "urn:oid:2.49.0.1.840.0.6d4ec8e2118855f76905f067438695231a066723.001.1"
     }
   ],
   "ffg_in": {
@@ -342,7 +326,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 40.3,
+    "age_min": 47.7,
     "fresh": true,
     "last_updated_utc": "2026-09-05T17:03:00+00:00",
     "datum_verified": false,
@@ -509,7 +493,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 53.3,
+    "age_min": 60.7,
     "valid_utc": "2026-09-05T16:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

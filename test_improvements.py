@@ -279,3 +279,102 @@ class TestOutlookFeedPath(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestReadinessChain(unittest.TestCase):
+    """readiness.py: the four-step chain with provenance. Sensors fill gaps through
+    sources backends; the chain itself is never edited when hardware arrives."""
+
+    def _build(self, backend, floor_level="ELEVATED"):
+        import readiness, sources, json, tempfile
+        from datetime import datetime, timezone
+        from pathlib import Path
+        now = datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
+        d = Path(tempfile.mkdtemp())
+        (d / "outlook.json").write_text(json.dumps({
+            "status": "ok", "nws_qpf24_in": {b: 1.0 for b in BASINS},
+            "basins": {b: {"qpf24_in": {"p50": 2.0, "p90": 4.0}, "qpf72_in": {"p50": 3.0, "p90": 6.0}}
+                       for b in BASINS}}))
+        sources.set_backend(backend)
+        try:
+            floor = dict(level=floor_level, why="test", storms=[], latched=False, sequence=None, status="ok")
+            return readiness.build(now, feed_dir=d, modeled_rows={}, floor=floor), now
+        finally:
+            sources.set_backend(sources.NullBackend())
+
+    def test_default_everything_modeled_and_capped(self):
+        import sources
+        out, _ = self._build(sources.NullBackend())
+        for bid, r in out["basins"].items():
+            self.assertEqual(r["wetness"]["tier"], sources.MODELED, bid)
+            self.assertEqual(r["ceiling"], "WATCH", bid)
+            self.assertEqual(r["sensors"]["deployed"], [], bid)
+            self.assertNotIn(r["outlook_level"], ("WARNING", "EMERGENCY"), bid)  # forecast cap
+        self.assertIsNone(out["basins"]["CC-MOUTH-2340"]["trip_in"])          # no ladder by decision
+
+    def test_trip_inches_are_ordered_and_monotone_in_wetness(self):
+        import readiness
+        for bid in NON_CAMPUS + ["CC-WCU-2260"]:
+            dry, wetter = readiness.trip_inches(bid, 0.3), readiness.trip_inches(bid, 0.8)
+            for t in (dry, wetter):
+                if t["WARNING"] is not None and t["WATCH"] is not None:
+                    self.assertGreaterEqual(t["WARNING"], t["WATCH"], bid)
+                if t["EMERGENCY"] is not None and t["WARNING"] is not None:
+                    self.assertGreaterEqual(t["EMERGENCY"], t["WARNING"], bid)
+            self.assertLess(wetter["WATCH"], dry["WATCH"], bid)   # wetter ground trips sooner
+
+    def test_measured_soil_flips_tag_and_moves_trip(self):
+        import sources
+        from datetime import timedelta
+        from datetime import datetime, timezone
+        now = datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
+        be = sources.DictBackend()
+        be.put(sources.Reading(88.0, sources.MEASURED, "NOAH SPD-01 TEROS", now - timedelta(minutes=20), sources.Q_SOIL), "CC-SPD-1830")
+        be.put(sources.Reading(2.31, sources.MEASURED, "NOAH SPD-01 radar", now - timedelta(minutes=4), sources.Q_STAGE), "CC-SPD-1830")
+        out, _ = self._build(be)
+        spd, cox = out["basins"]["CC-SPD-1830"], out["basins"]["CC-COX-097"]
+        self.assertEqual(spd["wetness"]["tier"], sources.MEASURED)
+        self.assertEqual(cox["wetness"]["tier"], sources.MODELED)          # untouched basin
+        self.assertIn("measured stage", spd["ceiling"])                     # confirmation unlocked
+        self.assertEqual(cox["ceiling"], "WATCH")
+        self.assertIn("stage_ft", spd["sensors"]["deployed"])
+        base, _ = self._build(sources.NullBackend())
+        self.assertLess(spd["trip_in"]["WATCH"], base["basins"]["CC-SPD-1830"]["trip_in"]["WATCH"])
+
+    def test_stale_sensor_falls_back_and_says_why(self):
+        import sources
+        from datetime import datetime, timezone, timedelta
+        now = datetime(2026, 10, 3, 14, 0, tzinfo=timezone.utc)
+        be = sources.DictBackend()
+        be.put(sources.Reading(88.0, sources.MEASURED, "NOAH COX-01 TEROS", now - timedelta(hours=9), sources.Q_SOIL), "CC-COX-097")
+        out, _ = self._build(be)
+        cox = out["basins"]["CC-COX-097"]
+        self.assertEqual(cox["wetness"]["tier"], sources.MODELED)
+        self.assertIn("stale", cox["wetness"]["note"])
+
+    def test_file_backend_is_the_deployment_contract(self):
+        import sources, noah_readings, json, tempfile
+        from datetime import datetime, timezone, timedelta
+        from pathlib import Path
+        now = datetime.now(timezone.utc)
+        p = Path(tempfile.mkdtemp()) / "readings.json"
+        p.write_text(json.dumps({"readings": [
+            {"basin": "CC-SPD-1830", "quantity": "soil_moisture_pct", "value": 61.0,
+             "ts": (now - timedelta(minutes=10)).isoformat(), "source": "NOAH SPD-01"}]}))
+        r = noah_readings.FileBackend(p).latest(sources.Q_SOIL, "CC-SPD-1830")
+        self.assertIsNotNone(r); self.assertEqual(r.tier, sources.MEASURED); self.assertEqual(r.value, 61.0)
+        self.assertIsNone(noah_readings.FileBackend(p).latest(sources.Q_SOIL, "CC-COX-097"))
+        self.assertIsNone(noah_readings.FileBackend(p / "missing.json").latest(sources.Q_SOIL, "CC-SPD-1830"))
+
+    def test_floor_holds_top_rung_inside_corridor_and_segment_test(self):
+        import readiness
+        # a decayed storm already inside the box holds WATCH_PENDING
+        r = readiness.eval_storm(dict(cls="Tropical Depression", lat=35.0, lon=-83.9, heading=20, points=[]), None)
+        self.assertEqual(r["floor"], "WATCH_PENDING"); self.assertTrue(r["inside"])
+        # Helene-shaped forecast: points straddle the box; segment test must catch it
+        st = dict(cls="Hurricane", lat=30.1, lon=-83.6, heading=10,
+                  points=[dict(lat=31.3, lon=-83.3, tau=6, status="HU"),
+                          dict(lat=34.4, lon=-83.2, tau=12, status="TS"),   # on the line, not west of it
+                          dict(lat=36.8, lon=-84.9, tau=18, status="TD")])  # north of the box
+        r = readiness.eval_storm(st, None)
+        self.assertTrue(r["met"]); self.assertEqual(r["floor"], "WATCH_PENDING")

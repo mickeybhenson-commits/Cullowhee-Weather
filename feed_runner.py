@@ -326,6 +326,15 @@ def main() -> None:
     except Exception as e:                                   # belt and braces
         print(f"outlook feed skipped: {e}")
 
+    # Readiness readout — floor → wetness → inches-to-trip → forecast margin, per basin,
+    # with provenance on every number (readiness.py). Reads outlook.json, so it runs after
+    # publish_outlook; best effort for the same reason as the two above.
+    try:
+        import readiness
+        readiness.publish(OUTDIR, now)
+    except Exception as e:                                   # belt and braces
+        print(f"readiness feed skipped: {e}")
+
     # 1. Resolve the best available stage. sources.resolve() already applies
     #    its own freshness and plausibility gates and will reject a sensor
     #    that has gone quiet or is reporting nonsense, falling back down the

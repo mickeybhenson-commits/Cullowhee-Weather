@@ -184,6 +184,9 @@ TOOLS = {
                                     # harness — not because it cannot run in CI. It exits
                                     # 1 on a mismatch, so it drops straight into a step.
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
+    "nisar_slope_motion",   # argparse CLI: reads ~2.3 GB NISAR L2 GUNW .h5 files from ASF and
+                            # reports LOS motion on the NC 107 slope. Needs the files and h5py, so
+                            # it is a workstation tool; it landed 2026-09-03 without this entry.
 }
 
 
@@ -197,6 +200,7 @@ TOOLS = {
 # app needs to boot; the geospatial and GRIB names below belong to batch and analysis
 # tools that are expected to be absent on a bare runner and guard their own imports.
 THIRD_PARTY = {
+    "h5py", "matplotlib", "matplotlib.pyplot",   # nisar_slope_motion.py (workstation tool)
     # requirements.txt (the console)
     "streamlit", "streamlit_autorefresh", "streamlit_folium", "folium",
     "requests", "pandas", "numpy", "plotly", "pydeck",

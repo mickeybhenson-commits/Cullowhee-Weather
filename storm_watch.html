@@ -38,7 +38,7 @@
   #floorBadge.pending .lvl{color:var(--pend)}
 
   /* storm list panel */
-  #storms{position:fixed;right:14px;top:calc(var(--bannerH,54px) + 44px);z-index:1100;width:290px;
+  #storms{position:fixed;right:14px;top:calc(var(--bannerH,54px) + 44px);z-index:1100;width:330px;
     max-height:calc(100% - 120px);overflow:auto;background:var(--panel);
     border:1px solid var(--line);border-radius:6px;padding:10px 12px}
   #storms h2{margin:0 0 6px;font-size:12px;color:var(--dim);
@@ -56,6 +56,21 @@
   .storm .ana b{color:var(--analog);font-weight:600}
   .storm.simrow{border-left:2px solid var(--sim);padding-left:8px}
   .seqchip{display:inline-block;margin-top:4px;font-size:11px;padding:1px 6px;border:1px solid var(--pend);color:var(--pend);border-radius:4px;letter-spacing:.04em}
+  #rdy{border-top:1px solid var(--line);margin-top:8px;padding-top:8px}
+  #rdy h2 .tog{float:right;cursor:pointer;color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0}
+  #rdy table{width:100%;border-collapse:collapse;font-size:10.5px;font-variant-numeric:tabular-nums}
+  #rdy th{color:var(--dim);font-weight:400;text-align:right;padding:2px 3px;border-bottom:1px solid var(--line)}
+  #rdy th:first-child,#rdy td:first-child{text-align:left}
+  #rdy td{padding:2px 3px;text-align:right;white-space:nowrap}
+  #rdy tr.confirm td:first-child{color:var(--ok)}
+  .tag{display:inline-block;font-size:8.5px;letter-spacing:.05em;padding:0 4px;border-radius:3px;border:1px solid;margin-left:3px;vertical-align:1px}
+  .tag.measured{color:var(--ok);border-color:var(--ok)}
+  .tag.gov_estimate{color:var(--elev);border-color:var(--elev)}
+  .tag.modeled{color:var(--dim);border-color:var(--line)}
+  #rdy .m-neg{color:var(--pend);font-weight:600}
+  #rdy .m-low{color:var(--elev)}
+  #rdy .foot{font-size:10px;color:var(--dim);margin-top:5px;line-height:1.35}
+  #rdy.collapsed table,#rdy.collapsed .foot{display:none}
   #wnstrip.dimmed{opacity:.45}
   #wnstrip.dimmed:after{content:'live outlook · not part of the simulation';display:block;color:var(--sim);font-size:11px;margin-top:4px;opacity:1}
   #quiet{color:var(--ok);padding:6px 0}
@@ -235,6 +250,11 @@
       P(WATCH-level rain) per day, WeatherNext&#8209;2 ensemble on projected soil state.
       <b>Forecast tier &mdash; capped at WATCH; not a warning.</b>
     </div>
+  </div>
+  <div id="rdy" class="collapsed" style="display:none">
+    <h2 style="margin:0 0 6px">Readiness <span id="rdyMeta" style="text-transform:none;letter-spacing:0;font-weight:400"></span><span class="tog" id="rdyTog">show</span></h2>
+    <table><thead><tr><th>basin</th><th>wet</th><th>to WATCH</th><th>qpf24</th><th>margin</th></tr></thead><tbody id="rdyRows"></tbody></table>
+    <div class="foot" id="rdyFoot"></div>
   </div>
 </div>
 
@@ -842,6 +862,53 @@ $("simStorm").addEventListener("change",()=>{
 function tickClock(){ $("clock").textContent = fmtZ(new Date()); }
 tickClock(); setInterval(tickClock,1000);
 loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAnalogs, 6*60*60*1000);
+
+/* ===== READINESS CARD (feed/readiness.json, written by readiness.py) =====
+   floor → wetness → inches-to-trip at that wetness → forecast rain → margin, per basin,
+   every number tagged MEASURED / GOV EST / MODELED. Opens itself when the floor is above
+   NONE; otherwise collapsed to one line. A missing feed says so — it is never rendered
+   as calm. */
+(function(){
+  var open = null;                        /* null = follow the floor; true/false = user choice */
+  function tag(t){ t=(t||"modeled").toLowerCase(); var L={measured:"MEAS",gov_estimate:"GOV",modeled:"MOD"}; return '<span class="tag '+t+'">'+(L[t]||t)+'</span>'; }
+  function num(v,d){ return (v==null||isNaN(v)) ? "—" : Number(v).toFixed(d==null?2:d); }
+  function render(j){
+    var card=$("rdy"); card.style.display="block";
+    var fl=(j.floor||{}), lvl=fl.level||"?";
+    $("rdyMeta").textContent = "· floor "+lvl+(fl.latched?" (held)":"")+" · "+((j.fetched_utc||"").slice(5,16).replace("T"," ")+"Z");
+    if(j.status!=="ok"){ $("rdyRows").innerHTML='<tr><td colspan="5" style="text-align:left;color:var(--pend)">readiness feed: '+j.status+'</td></tr>'; $("rdyFoot").textContent=""; return; }
+    var rows=[], deployed=0, planned=0, order=["CC-COX-097","CC-LB-171","CC-UP-503","CC-TIL-705","CC-MS-1100","CC-SPD-1830","CC-WCU-2260","CC-MOUTH-2340"];
+    order.forEach(function(bid){
+      var r=(j.basins||{})[bid]; if(!r) return;
+      deployed += (r.sensors&&r.sensors.deployed||[]).length; planned += (r.sensors&&r.sensors.pending||[]).length;
+      var w=r.wetness||{}, t=(r.trip_in||{}), f=r.forecast||{}, m=(r.margin_in||{}).p50;
+      var mcls = m==null ? "" : m<=0 ? "m-neg" : m<1 ? "m-low" : "";
+      var confirm = r.stage && r.stage.valid && r.stage.tier!=="modeled";
+      var nm=(r.name||bid).replace(/ \(.*$/,"").replace("Mainstem above Speedwell","Mainstem").replace("Upper Cullowhee","Upper Cull.").replace("Cullowhee Creek at ","").slice(0,13);
+      rows.push('<tr'+(confirm?' class="confirm" title="measured stage '+num(r.stage.value,2)+' ft · '+r.stage.source+'"':'')+'>'+
+        '<td title="'+bid+'">'+nm+'</td>'+
+        '<td title="'+(w.note||w.source||"")+'">'+num(w.w,2)+tag(w.tier)+'</td>'+
+        '<td>'+(r.trip_in? num(t.WATCH,1)+' in' : '<span style="color:var(--dim)">n/a</span>')+'</td>'+
+        '<td title="'+(f.source||"")+'">'+num(f.qpf24_p50,1)+'</td>'+
+        '<td class="'+mcls+'">'+(m==null?"—":(m>0?"+":"")+num(m,1))+'</td></tr>');
+    });
+    $("rdyRows").innerHTML = rows.join("");
+    var seq = fl.sequence ? ' · <b style="color:var(--pend)">SEQUENCE</b> — '+fl.sequence : '';
+    $("rdyFoot").innerHTML = 'wet = wetness 0–1, tag = its source (MEAS sensor · GOV agency estimate · MOD model) · qpf24 = forecast p50 in, GOV · to WATCH = 24-h rain to trip at that wetness · margin = to-WATCH − qpf24 (negative = forecast rain exceeds the trip line). '+
+      'Sensors: <b>'+deployed+'</b> reporting, '+planned+' planned. <b>Forecast tier — capped at WATCH; only a measured stage (green rows) can confirm.</b>'+seq+
+      (j.notes&&j.notes.length? ' · '+j.notes.join(' · ') : '');
+    var want = (open===null) ? (lvl!=="NONE" && lvl!=="UNKNOWN") : open;
+    card.classList.toggle("collapsed", !want); $("rdyTog").textContent = want ? "hide" : "show";
+  }
+  function load(){
+    fetch("feed/readiness.json?t="+Date.now(),{cache:"no-store"})
+      .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
+      .then(render)
+      .catch(function(e){ var card=$("rdy"); card.style.display="block"; $("rdyMeta").textContent="· feed not available ("+e.message+")"; $("rdyRows").innerHTML=""; $("rdyFoot").textContent="readiness.json has not been published yet — not the same as calm."; });
+  }
+  $("rdyTog").addEventListener("click",function(){ open = $("rdy").classList.contains("collapsed"); $("rdy").classList.toggle("collapsed", !open); $("rdyTog").textContent = open ? "hide" : "show"; });
+  load(); setInterval(load, 15*60*1000);
+})();
 
 /* ===== WEATHERNEXT-2 DAILY OUTLOOK STRIP (feed/outlook.json) =====
    Render-only, same contract as the live.html chips: the Python engine

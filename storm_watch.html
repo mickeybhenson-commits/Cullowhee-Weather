@@ -9,7 +9,7 @@
   :root{
     --bg:#0b0e12; --panel:rgba(10,14,18,.86); --line:rgba(255,255,255,.12);
     --txt:#e8edf2; --dim:#8a94a0; --ok:#5dd08a;
-    --elev:#e6b34d; --pend:#e8734d; --gate:#e6b34d;
+    --elev:#e6b34d; --pend:#e8734d; --gate:#e6b34d; --analog:#5fb8d4;
   }
   html,body{height:100%;margin:0;background:var(--bg);
     font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;color:var(--txt)}
@@ -30,6 +30,8 @@
   #floorBadge .lvl{font-size:16px;font-weight:700;letter-spacing:.06em}
   #floorBadge .why{color:var(--dim);margin-top:3px;font-size:12px}
   #floorBadge.none .lvl{color:var(--ok)}
+  #floorBadge.analog{border-color:var(--analog)}
+  #floorBadge.analog .lvl{color:var(--analog)}
   #floorBadge.elevated{border-color:var(--elev)}
   #floorBadge.elevated .lvl{color:var(--elev)}
   #floorBadge.pending{border-color:var(--pend)}
@@ -49,6 +51,13 @@
   .storm .met.hit{color:var(--elev)}
   .storm .met.hit48{color:var(--pend)}
   .storm .met.miss{color:var(--dim)}
+  .storm .met.analog{color:var(--analog)}
+  .storm .ana{margin-top:2px;font-size:11.5px;color:var(--dim)}
+  .storm .ana b{color:var(--analog);font-weight:600}
+  .storm.simrow{border-left:2px solid var(--sim);padding-left:8px}
+  .seqchip{display:inline-block;margin-top:4px;font-size:11px;padding:1px 6px;border:1px solid var(--pend);color:var(--pend);border-radius:4px;letter-spacing:.04em}
+  #wnstrip.dimmed{opacity:.45}
+  #wnstrip.dimmed:after{content:'live outlook · not part of the simulation';display:block;color:var(--sim);font-size:11px;margin-top:4px;opacity:1}
   #quiet{color:var(--ok);padding:6px 0}
 
   /* status line */
@@ -66,7 +75,12 @@
     vertical-align:middle;margin-right:6px}
 
   /* what-if simulation mode */
-  #whatifBtn{margin-left:14px;background:none;border:1px solid var(--line);
+  #liveBtn{margin-left:14px;background:none;border:1px solid var(--line);
+    border-radius:5px;color:var(--dim);font:12px ui-monospace,Menlo,monospace;
+    padding:3px 9px;cursor:pointer;letter-spacing:.05em}
+  #liveBtn:hover{color:var(--txt);border-color:var(--txt)}
+  #liveBtn.on{color:var(--ok);border-color:var(--ok)}
+  #whatifBtn{margin-left:6px;background:none;border:1px solid var(--line);
     border-radius:5px;color:var(--dim);font:12px ui-monospace,Menlo,monospace;
     padding:3px 9px;cursor:pointer;letter-spacing:.05em}
   #whatifBtn:hover{color:var(--txt);border-color:var(--txt)}
@@ -84,7 +98,7 @@
   #simTime{color:var(--sim);min-width:64px;text-align:right}
   #floorBadge.sim{border-color:var(--sim)}
   #floorBadge.sim .lvl{color:var(--sim)}
-  #simTag{display:none;position:fixed;top:44px;left:50%;transform:translateX(-50%);
+  #simTag{display:none;position:fixed;top:calc(var(--bannerH,54px) + 46px);left:50%;transform:translateX(-50%);
     z-index:1100;color:var(--sim);background:var(--panel);border:1px solid var(--sim);
     border-radius:6px;padding:4px 14px;font-weight:700;letter-spacing:.14em}
   #simTag.on{display:block}
@@ -148,6 +162,7 @@
   #introcard .f-none{color:var(--ok);border-color:var(--ok)}
   #introcard .f-elev{color:var(--elev);border-color:var(--elev)}
   #introcard .f-pend{color:var(--pend);border-color:var(--pend)}
+  #introcard .f-ana{color:var(--analog);border-color:var(--analog)}
   #introcard .contact{font-size:11.5px;color:var(--dim);margin-top:16px;
     border-top:1px solid var(--line);padding-top:11px}
   #introbtns{display:flex;justify-content:flex-end;position:sticky;bottom:0;
@@ -185,7 +200,8 @@
 <div id="hdr">
   <b>NOAH STORM TRACK WATCH</b>
   <span class="sub">Cullowhee Creek corridor &middot; NHC guidance</span>
-  <button id="whatifBtn">WHAT-IF</button>
+  <button id="liveBtn" class="on" title="Live NHC guidance (default)">LIVE</button>
+  <button id="whatifBtn" title="Replay a historical corridor storm">WHAT-IF</button>
   <button id="aboutbtn">ABOUT</button>
   <span id="clock"></span>
 </div>
@@ -197,7 +213,7 @@
     <option value="Helene 2024">Helene 2024</option>
     <option value="Frances 2004">Frances 2004</option>
     <option value="Ivan 2004">Ivan 2004</option>
-  </select>
+  </select><span id="simSrc" style="font-size:11px;color:var(--dim);margin-left:6px">schematic tracks</span>
   <button id="simPlay">▶ Play storm</button>
   <input type="range" id="simSlider" min="0" max="100" value="0" step="0.5">
   <span id="simTime">T+0 h</span>
@@ -251,14 +267,25 @@
 
     <div class="sect">The corridor test</div>
     <p>A storm counts when its forecast track crosses <b>west of &minus;83.2&deg;</b> longitude
-    between <b>33.0&deg; and 36.5&deg;N</b> at tropical&#8209;storm strength or greater. How soon
-    it gets there sets the readiness floor:</p>
+    between <b>33.0&deg; and 36.5&deg;N</b> while the storm is at tropical&#8209;storm strength or
+    greater. The test is run on the track <i>segments</i>, not only the forecast points, because a
+    fast storm can pass through the box between two points &mdash; Helene did. How soon it gets
+    there sets the readiness floor:</p>
     <div class="floorrow"><span class="fchip f-none">FLOOR: NONE</span>
       <span>no storm meets the corridor test</span></div>
+    <div class="floorrow"><span class="fchip f-ana">FLOOR: ANALOG</span>
+      <span>no forecast track reaches the gate yet, but of the historical storms that were where this
+      one is now, moving the way it is moving, at least a quarter went on to cross the corridor
+      (NOAA HURDAT2, 1900&ndash;2025). Earlier and weaker than a forecast track &mdash; a heads-up, not a
+      threat.</span></div>
     <div class="floorrow"><span class="fchip f-elev">FLOOR: ELEVATED</span>
       <span>gate crossing within 72 hours</span></div>
     <div class="floorrow"><span class="fchip f-pend">FLOOR: WATCH_PENDING</span>
       <span>gate crossing within 48 hours</span></div>
+    <p><b>SEQUENCE</b> is a separate flag: a corridor crossing within the last 14 days. The deadly
+    events here came in pairs &mdash; two storms in July 1916, Frances then Ivan nine days later in
+    2004, Helene's own predecessor rain &mdash; and the second storm falls on ground that is already
+    wet. The flag lowers rain thresholds through the wetness term; it raises no posture by itself.</p>
 
     <div class="sect">Reading the screen</div>
     <ul>
@@ -338,6 +365,60 @@ const CORRIDOR = { gateLon:-83.2, latMin:33.0, latMax:36.5, tauMax:72, tauPend:4
 const WATERSHED = { lat:35.31, lon:-83.19, name:"Cullowhee Creek watershed" };
 const REFRESH_MS = 15*60*1000;
 const STATUS_RANK = { TD:0, STD:0, PTC:0, TS:1, STS:1, HU:2, MH:3 };
+const FLOOR_RANK  = { NONE:0, ANALOG:1, ELEVATED:2, WATCH_PENDING:3 };
+
+/* ---- climatological ANALOG rung + SEQUENCE flag (feed/corridor_analogs.json,
+   built by corridor_analogs.py from NOAA HURDAT2). Display mirror: the
+   authoritative floor is synoptic_watch.py; until that adopts the analog rung,
+   ANALOG here is advisory and the badge says so. ---- */
+let ANALOG = null;          /* {grid, params, corridor_storms, ...} */
+let SEQUENCE = {on:false, why:""};
+const ANALOG_FEED = "feed/corridor_analogs.json";
+const EVENTS_FEED = "feed/corridor_events.json";   /* optional: {events:[{name,date:"YYYY-MM-DD"}]} written by the backend */
+
+function bearingDeg(lat1,lon1,lat2,lon2){
+  const r=Math.PI/180, p1=lat1*r, p2=lat2*r, dl=(lon2-lon1)*r;
+  const x=Math.sin(dl)*Math.cos(p2), y=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+  return (Math.atan2(x,y)*180/Math.PI+360)%360;
+}
+function analogLookup(lat,lon,brg){
+  if(!ANALOG||!ANALOG.grid) return null;
+  const c=ANALOG.params.cell_deg, S=ANALOG.params.sectors, minN=ANALOG.params.min_n;
+  const lat0=Math.floor(lat/c)*c, lon0=Math.floor(lon/c)*c, sec=Math.floor(((brg+22.5)%360)/45);
+  const key=(a,b,k)=>a+","+b+","+k;
+  const ring=[]; for(const i of [-1,0,1]) for(const j of [-1,0,1]) ring.push([lat0+i*c,lon0+j*c]);
+  const levels=[["cell",[[lat0,lon0]],[sec]],["ring",ring,[sec]],["ring+sectors",ring,[(sec+S-1)%S,sec,(sec+1)%S]]];
+  let n=0,h=0;
+  for(const [name,cells,secs] of levels){
+    n=0;h=0;
+    for(const [a,b] of cells) for(const k of secs){ const v=ANALOG.grid[key(+a.toFixed(6)*1,+b.toFixed(6)*1,k)]||ANALOG.grid[key(a,b,k)]; if(v){n+=v[0];h+=v[1];} }
+    if(n>=minN) return {n,hits:h,frac:n?h/n:0,pool:name};
+  }
+  return {n,hits:h,frac:n?h/n:0,pool:"insufficient"};
+}
+function analogFloor(lk){
+  if(!lk||!ANALOG) return "NONE";
+  return (lk.n>=ANALOG.params.min_n && lk.frac>=ANALOG.params.threshold) ? "ANALOG" : "NONE";
+}
+function inGate(lat,lon){ return lon<CORRIDOR.gateLon && lat>=CORRIDOR.latMin && lat<=CORRIDOR.latMax; }
+/* segment test: a track can pass through the box between two forecast points */
+function segmentGateTau(p,q,steps){
+  steps=steps||12;
+  for(let k=0;k<=steps;k++){ const f=k/steps;
+    if(inGate(p.lat+f*(q.lat-p.lat), p.lon+f*(q.lon-p.lon))) return p.tau+f*(q.tau-p.tau); }
+  return null;
+}
+async function loadAnalogs(){
+  try{ ANALOG = await (await fetch(ANALOG_FEED+"?t="+Date.now(),{cache:"no-store"})).json(); }
+  catch(e){ ANALOG=null; }
+  try{
+    const ev = await (await fetch(EVENTS_FEED+"?t="+Date.now(),{cache:"no-store"})).json();
+    const now=Date.now(), win=(ANALOG&&ANALOG.params.sequence_window_days||14)*864e5;
+    const recent=(ev.events||[]).filter(e=>{ const t=Date.parse(e.date); return !isNaN(t) && now-t>=0 && now-t<=win; });
+    SEQUENCE = recent.length ? {on:true, why:"SEQUENCE · corridor crossed "+recent.map(e=>e.name+" "+e.date).join(", ")} : {on:false, why:""};
+  }catch(e){ SEQUENCE={on:false,why:""}; }
+  if(ANALOG && ANALOG.corridor_storms) buildSimTracksFromFeed();
+}
 
 const NHC_MAPSERVER =
   "https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer";
@@ -471,26 +552,38 @@ function evalStorm(points, curStatus){
     for(const p of points) if(p.tau!=null && (mn===null||p.tau<mn.tau)) mn=p;
     curStatus = mn ? mn.status : "";
   }
-  if(statusRank(curStatus) < STATUS_RANK.TS) return {met:false, floor:"NONE", tau:null};
-  let best = null;
-  for(const p of points){
-    if(p.lon < CORRIDOR.gateLon &&
-       p.lat >= CORRIDOR.latMin && p.lat <= CORRIDOR.latMax &&
-       p.tau != null && p.tau <= CORRIDOR.tauMax){
-      if(best===null || p.tau < best.tau) best = p;
-    }
+  const seq = points.filter(p=>p.tau!=null).sort((a,b)=>a.tau-b.tau);
+  /* a storm already inside the corridor holds the top rung whatever it has decayed to —
+     the rain is arriving now; the status gate is for storms still on approach */
+  if(seq.length && seq[0].tau<=3 && inGate(seq[0].lat,seq[0].lon)) return {met:true, floor:"WATCH_PENDING", tau:0, analog:null, inside:true};
+  if(statusRank(curStatus) < STATUS_RANK.TS) return {met:false, floor:"NONE", tau:null, analog:null};
+  /* geometry on points AND on the segments between consecutive forecast points */
+  let bestTau = null;
+  for(let i=0;i<seq.length;i++){
+    const p=seq[i];
+    if(inGate(p.lat,p.lon) && p.tau<=CORRIDOR.tauMax){ if(bestTau===null||p.tau<bestTau) bestTau=p.tau; }
+    if(i+1<seq.length){ const t=segmentGateTau(p,seq[i+1]); if(t!=null && t<=CORRIDOR.tauMax && (bestTau===null||t<bestTau)) bestTau=t; }
   }
-  if(!best) return {met:false, floor:"NONE", tau:null};
-  return {met:true, tau:best.tau,
-          floor: best.tau <= CORRIDOR.tauPend ? "WATCH_PENDING" : "ELEVATED"};
+  if(bestTau!==null) return {met:true, tau:bestTau, analog:null,
+          floor: bestTau <= CORRIDOR.tauPend ? "WATCH_PENDING" : "ELEVATED"};
+  /* no forecast crossing: climatological analog from the current position and heading */
+  let analog=null;
+  if(ANALOG && seq.length){
+    const cur = seq[0];
+    let brg = (cur.movementDir!=null) ? cur.movementDir : (seq.length>1 ? bearingDeg(cur.lat,cur.lon,seq[1].lat,seq[1].lon) : null);
+    if(brg!=null) analog = Object.assign({brg}, analogLookup(cur.lat,cur.lon,brg));
+  }
+  return {met:false, floor: analogFloor(analog), tau:null, analog};
 }
-function applyFloorBadge(floor, storms){
+function applyFloorBadge(floor, storms, analogs){
   const b = $("floorBadge");
-  b.className = floor==="WATCH_PENDING" ? "pending" : floor==="ELEVATED" ? "elevated" : "none";
-  b.querySelector(".lvl").textContent = "FLOOR: "+(floor==="WATCH_PENDING"?"WATCH_PENDING":floor);
-  b.querySelector(".why").textContent =
-    floor==="NONE" ? "No corridor criterion met — display mirror only"
+  b.className = floor==="WATCH_PENDING" ? "pending" : floor==="ELEVATED" ? "elevated" : floor==="ANALOG" ? "analog" : "none";
+  b.querySelector(".lvl").textContent = "FLOOR: "+floor;
+  let why = floor==="NONE" ? "No corridor criterion met — display mirror only"
+    : floor==="ANALOG" ? (analogs||[]).join(", ")+" · climatological analog (HURDAT2) — advisory, display only; not yet in synoptic_watch.py"
     : storms.join(", ")+" meets corridor gates · authoritative floor: synoptic_watch.py";
+  if(SEQUENCE.on) why += " · "+SEQUENCE.why;
+  b.querySelector(".why").textContent = why;
 }
 
 /* ---- per-storm point extraction ---- */
@@ -527,14 +620,17 @@ function renderStormList(rows){
     return;
   }
   el.innerHTML = rows.map(r=>{
-    const cls = r.met ? (r.floor==="WATCH_PENDING"?"met hit48":"met hit") : "met miss";
-    const line = r.met
+    const cls = r.met ? (r.floor==="WATCH_PENDING"?"met hit48":"met hit") : (r.floor==="ANALOG"?"met analog":"met miss");
+    const line = r.inside ? "CORRIDOR: storm inside the corridor → "+r.floor : r.met
       ? "CORRIDOR: gate crossing ≤ "+Math.round(r.tau)+" h → "+r.floor
-      : "CORRIDOR: not met";
-    return '<div class="storm"><span class="nm">'+r.name+'</span> '+
+      : (r.floor==="ANALOG" ? "CORRIDOR: not met · ANALOG" : "CORRIDOR: not met");
+    const a = r.analog;
+    const ana = a && a.n ? '<div class="ana">analog: <b>'+Math.round(a.frac*100)+'%</b> of '+a.n+
+      ' similar storms reached the corridor ('+a.pool+', heading '+Math.round(a.brg)+'°)</div>' : '';
+    return '<div class="storm'+(r.sim?' simrow':'')+'"><span class="nm">'+r.name+'</span> '+
            '<span class="cls">'+r.cls+(r.wind?(" · "+r.wind+" kt"):"")+'</span>'+
-           '<div class="'+cls+'">'+line+'</div></div>';
-  }).join("");
+           '<div class="'+cls+'">'+line+'</div>'+ana+'</div>';
+  }).join("") + (SEQUENCE.on ? '<div class="seqchip">'+SEQUENCE.why+'</div>' : '');
 }
 
 async function refresh(){
@@ -574,7 +670,10 @@ async function refresh(){
       const cs = await (await fetch(NHC_CURRENT)).json();
       roster = (cs.activeStorms||[]).map(s=>({
         key:String(s.name||"").toUpperCase(),
-        name:s.name, cls:s.classification||"", wind:s.intensity||null
+        name:s.name, cls:s.classification||"", wind:s.intensity||null,
+        lat:(s.latitudeNumeric!=null?Number(s.latitudeNumeric):null),
+        lon:(s.longitudeNumeric!=null?Number(s.longitudeNumeric):null),
+        movementDir:(s.movementDir!=null?Number(s.movementDir):null)
       }));
     }catch(e){
       const seen = new Set();
@@ -588,16 +687,20 @@ async function refresh(){
     }
 
     /* evaluate corridor per storm */
-    let floor = "NONE"; const hits=[];
+    let floor = "NONE"; const hits=[], anas=[];
     const rows = roster.map(s=>{
-      const res = evalStorm(extractPoints(pointFeatures, s.key), s.cls || null);
-      if(res.met){
-        hits.push(s.name);
-        if(res.floor==="WATCH_PENDING" || floor==="NONE") floor = res.floor==="WATCH_PENDING"?"WATCH_PENDING":(floor==="WATCH_PENDING"?floor:"ELEVATED");
+      const pts = extractPoints(pointFeatures, s.key);
+      /* seed the current position/heading from the roster so the analog lookup has a heading */
+      if(s.lat!=null && s.lon!=null){
+        const cur = pts.find(p=>p.tau!=null && p.tau<=3);
+        if(cur){ cur.movementDir = s.movementDir; } else pts.push({lat:s.lat,lon:s.lon,tau:0,status:s.cls,wind:s.wind,movementDir:s.movementDir});
       }
+      const res = evalStorm(pts, s.cls || null);
+      if(res.met) hits.push(s.name); else if(res.floor==="ANALOG") anas.push(s.name);
+      if(FLOOR_RANK[res.floor]>FLOOR_RANK[floor]) floor=res.floor;
       return {...s, ...res};
     });
-    applyFloorBadge(floor, hits);
+    applyFloorBadge(floor, hits, anas);
     renderStormList(rows);
     stat.innerHTML = '<span class="live">●</span> NHC feed OK · updated '+fmtZ(new Date())+
       ' · next poll in 15 min';
@@ -613,9 +716,32 @@ async function refresh(){
    training/awareness overlay: never touches live data or the posture engine.
    ========================================================================== */
 let simActive=false, simPlaying=false, simT=0, simTimer=null;
+let simLatch=null, simWasInside=false;   /* readiness floor latches once met, until the storm has passed through */
 const simGroup = L.layerGroup();
 const SIM_COLORS = {TD:"#8a94a0",TS:"#e6b34d",HU:"#e8734d",MH:"#d94f6b"};
 
+/* replay set: the corridor storms people here remember, from HURDAT2 via the feed */
+const SIM_WANTED = [["AL092024","Helene 2024"],["AL062021","Fred 2021"],["AL092004","Ivan 2004"],["AL062004","Frances 2004"],["AL171995","Opal 1995"],["AL021916","July 1916"]];
+const HSTAT = {TD:"TD",SD:"TD",LO:"TD",WV:"TD",DB:"TD",EX:"TD",TS:"TS",SS:"TS",HU:"HU"};
+function buildSimTracksFromFeed(){
+  const byId = {}; for(const c of ANALOG.corridor_storms) byId[c.id]=c;
+  let n=0;
+  for(const [id,label] of SIM_WANTED){
+    const c = byId[id]; if(!c) continue;
+    /* start the replay ~5 days before the gate crossing so the analog rung has room to appear */
+    const gateH = (()=>{ const g=c.track.find(p=>p[5]===c.first_gate.date && p[6]===c.first_gate.time); return g?g[2]:c.track[c.track.length-1][2]; })();
+    const t0 = Math.max(0, gateH-144);
+    const pts = c.track.filter(p=>p[2]>=t0 && p[2]<=gateH+24).map(p=>{
+      let st = HSTAT[p[3]]||"TD"; if(st==="HU" && p[4]>=96) st="MH"; if(st==="TD" && p[4]>=34) st="TS";
+      return [p[0],p[1],+(p[2]-t0).toFixed(1),st,p[4]||0];
+    });
+    if(pts.length>=3){ SIM_TRACKS[label]=pts; n++; }
+  }
+  if(n){
+    const sel=$("simStorm"); sel.innerHTML = SIM_WANTED.filter(w=>SIM_TRACKS[w[1]]).map(w=>'<option value="'+w[1]+'">'+w[1]+'</option>').join("");
+    $("simSrc").textContent = "NOAA HURDAT2 best tracks";
+  }
+}
 function simTrack(){ return SIM_TRACKS[$("simStorm").value]; }
 function simMaxH(){ const t=simTrack(); return t[t.length-1][2]; }
 function simStateAt(h){
@@ -651,13 +777,23 @@ function simDraw(){
     fillColor:SIM_COLORS[cur.status]||"#b48ce6",fillOpacity:.55,
     interactive:false}).addTo(simGroup);
 
-  const res = evalStorm(fpts, cur.status);
+  /* heading of the replayed storm from its own track */
+  const nxt = simStateAt(Math.min(simT+6, simMaxH()));
+  fpts[0].movementDir = bearingDeg(cur.lat,cur.lon,nxt.lat,nxt.lon);
+  let res = evalStorm(fpts, cur.status);
+  if(res.inside) simWasInside=true;
+  if(res.met) simLatch = {floor:res.floor, at:simT};
+  else if(simLatch && !simWasInside){ res = Object.assign({}, res, {floor:simLatch.floor, held:true}); }
+  else if(simWasInside && !res.inside){ simLatch=null; }
   const b = $("floorBadge");
   b.className = "sim";
   b.querySelector(".lvl").textContent = "SIM FLOOR: "+res.floor;
   b.querySelector(".why").textContent =
     $("simStorm").value+" · T+"+Math.round(simT)+" h · "+cur.status+" "+cur.wind+" kt"+
-    (res.met ? " · zone crossing ≤ "+Math.round(res.tau)+" h" : "");
+    (res.held ? " · holding — corridor test met at T+"+Math.round(simLatch.at)+" h" : res.inside ? " · IN CORRIDOR" : res.met ? " · zone crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? " · analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : ""));
+  /* the right-hand panel shows the replayed storm, tagged, instead of live data */
+  renderStormList([{name:$("simStorm").value+" (SIMULATION)", cls:cur.status, wind:cur.wind, sim:true, ...res}]);
+  const os=$("wnstrip"); if(os) os.classList.add("dimmed");
   $("simTime").textContent = "T+"+Math.round(simT)+" h";
   $("simSlider").value = simT;
 }
@@ -667,22 +803,25 @@ function simEnter(){
   simActive = true;
   [coneGroup,trackGroup,pastGroup].forEach(g=>map.removeLayer(g));
   simGroup.addTo(map);
-  $("whatifBtn").classList.add("on");
+  $("whatifBtn").classList.add("on"); $("liveBtn").classList.remove("on");
   $("simbar").classList.add("on");
   $("simTag").classList.add("on");
   $("statline").innerHTML = '<span style="color:var(--sim)">●</span> SIMULATION — live NHC display suspended';
-  simT = 0; $("simSlider").max = simMaxH(); simDraw();
+  simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH(); simDraw();
 }
 function simExit(){
   simStop(); simActive = false;
+  const os=$("wnstrip"); if(os) os.classList.remove("dimmed");
   map.removeLayer(simGroup);
   coneGroup.addTo(map); trackGroup.addTo(map);
-  $("whatifBtn").classList.remove("on");
+  $("whatifBtn").classList.remove("on"); $("liveBtn").classList.add("on");
   $("simbar").classList.remove("on");
   $("simTag").classList.remove("on");
+  applyFloorBadge("NONE", [], []); $("stormList").innerHTML=""; /* clear the sim state immediately */
   refresh();  /* restore live badge, panel, layers */
 }
 $("whatifBtn").addEventListener("click",()=> simActive ? simExit() : simEnter());
+$("liveBtn").addEventListener("click",()=>{ if(simActive) simExit(); else refresh(); });
 $("simPlay").addEventListener("click",()=>{
   if(simPlaying){ simStop(); return; }
   if(simT >= simMaxH()) simT = 0;
@@ -694,15 +833,15 @@ $("simPlay").addEventListener("click",()=>{
   },120);
 });
 $("simSlider").addEventListener("input",e=>{
-  simStop(); simT = Number(e.target.value); simDraw();
+  simStop(); const nt=Number(e.target.value); if(nt<simT){ simLatch=null; simWasInside=false; } simT = nt; simDraw();
 });
 $("simStorm").addEventListener("change",()=>{
-  simStop(); simT = 0; $("simSlider").max = simMaxH(); simDraw();
+  simStop(); simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH(); simDraw();
 });
 
 function tickClock(){ $("clock").textContent = fmtZ(new Date()); }
 tickClock(); setInterval(tickClock,1000);
-refresh(); setInterval(refresh,REFRESH_MS);
+loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAnalogs, 6*60*60*1000);
 
 /* ===== WEATHERNEXT-2 DAILY OUTLOOK STRIP (feed/outlook.json) =====
    Render-only, same contract as the live.html chips: the Python engine

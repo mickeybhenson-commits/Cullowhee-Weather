@@ -387,7 +387,7 @@ def resolve_stage(bid: str, now: datetime) -> Optional[dict]:
 
 def sensor_status(bid: str, now: datetime) -> dict:
     deployed, pending = [], []
-    for q in (sources.Q_STAGE, sources.Q_SOIL, sources.Q_RAIN_1H, sources.Q_RAIN_STORM):
+    for q in (sources.Q_STAGE, sources.Q_SOIL, sources.Q_RAIN_1H, sources.Q_RAIN_STORM) + tuple(sources.ENV_QUANTITIES):
         r = sources.resolve(q, bid, None, now=now)
         (deployed if r.tier == sources.MEASURED else pending).append(q)
     return dict(deployed=deployed, pending=pending)

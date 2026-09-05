@@ -378,3 +378,30 @@ class TestReadinessChain(unittest.TestCase):
                           dict(lat=36.8, lon=-84.9, tau=18, status="TD")])  # north of the box
         r = readiness.eval_storm(st, None)
         self.assertTrue(r["met"]); self.assertEqual(r["floor"], "WATCH_PENDING")
+
+    def test_bench_and_test_rows_never_resolve_as_measured(self):
+        import sources, noah_readings, json, tempfile
+        from datetime import datetime, timezone, timedelta
+        from pathlib import Path
+        now = datetime.now(timezone.utc)
+        p = Path(tempfile.mkdtemp()) / "readings.json"
+        p.write_text(json.dumps({"readings": [
+            {"basin": "CC-WCU-2260", "quantity": "temp_c", "value": 22.4, "ts": (now - timedelta(minutes=5)).isoformat(),
+             "source": "BME280 bench Belk", "test": True},
+            {"basin": "BENCH-BELK", "quantity": "press_hpa", "value": 951.2, "ts": (now - timedelta(minutes=5)).isoformat(),
+             "source": "BME280 bench Belk"},
+            {"basin": "CC-SPD-1830", "quantity": "temp_c", "value": 21.0, "ts": (now - timedelta(minutes=5)).isoformat(),
+             "source": "BME280 SPD-01"}]}))
+        be = noah_readings.FileBackend(p)
+        self.assertIsNone(be.latest(sources.Q_TEMP_C, "CC-WCU-2260"))        # test flag
+        self.assertIsNone(be.latest(sources.Q_PRESS_HPA, "BENCH-BELK"))      # bench basin
+        r = be.latest(sources.Q_TEMP_C, "CC-SPD-1830")                        # the real one
+        self.assertIsNotNone(r); self.assertEqual(r.tier, sources.MEASURED)
+        sources.set_backend(be)
+        try:
+            g = sources.resolve(sources.Q_TEMP_C, "CC-SPD-1830", None, now=now)
+            self.assertEqual(g.tier, sources.MEASURED)
+            bad = sources.gate(sources.Reading(1500.0, sources.MEASURED, "x", now, sources.Q_PRESS_HPA), now)
+            self.assertFalse(bad.valid)                                        # range guard
+        finally:
+            sources.set_backend(sources.NullBackend())

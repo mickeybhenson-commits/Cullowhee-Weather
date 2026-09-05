@@ -74,6 +74,8 @@ class FileBackend(sources.SensorBackend):
         for r in data.get("readings", []):
             if r.get("basin") != basin_id or r.get("quantity") != quantity:
                 continue
+            if r.get(sources.TEST_FLAG) or str(r.get("basin", "")).upper().startswith("BENCH"):
+                continue          # bench / test packet: never MEASURED (sources.TEST_FLAG)
             ts = _ts(r.get("ts"))
             if best is None or (ts and best[0] and ts > best[0]) or (ts and not best[0]):
                 best = (ts, r)

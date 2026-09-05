@@ -81,6 +81,16 @@ Q_STAGE = "stage_ft"         # observed creek stage (NOAH sensors, 5-min cadence
 Q_STAGE_GOV = "stage_ft_gov" # state/partner gage stage (FIMAN: 30-min cadence)
 Q_WIND_SPEED = "wind_speed_mph"
 Q_WIND_DIR = "wind_dir_deg"
+Q_TEMP_C = "temp_c"          # air temperature (BME280 / node masthead)
+Q_RH_PCT = "rh_pct"          # relative humidity, 0-100
+Q_PRESS_HPA = "press_hpa"    # station barometric pressure (not sea-level corrected)
+ENV_QUANTITIES = (Q_TEMP_C, Q_RH_PCT, Q_PRESS_HPA)
+
+# Rows carrying this flag are bench / test packets and are NEVER resolved as MEASURED,
+# whatever basin they name. A BME280 on a bench in Belk sits inside the campus basin;
+# without this it would light the campus row green. (Node contract: "a test packet must
+# be impossible to mistake for real.")
+TEST_FLAG = "test"
 
 # Max acceptable age (seconds) before a sensor reading is considered STALE.
 FRESH_S = {
@@ -92,6 +102,9 @@ FRESH_S = {
     Q_STAGE_GOV: 75 * 60,    # 2.5 x FIMAN's 30-min service interval
     Q_WIND_SPEED: 30 * 60,
     Q_WIND_DIR: 30 * 60,
+    Q_TEMP_C: 60 * 60,
+    Q_RH_PCT: 60 * 60,
+    Q_PRESS_HPA: 60 * 60,
 }
 
 # Physically plausible [lo, hi] for each quantity. Outside -> reject sensor.
@@ -104,6 +117,9 @@ RANGE = {
     Q_STAGE_GOV: (0.0, 40.0),
     Q_WIND_SPEED: (0.0, 150.0),
     Q_WIND_DIR: (0.0, 360.0),
+    Q_TEMP_C: (-35.0, 50.0),
+    Q_RH_PCT: (0.0, 100.0),
+    Q_PRESS_HPA: (850.0, 1060.0),   # station pressure at 600-1300 m elevation
 }
 
 # Which sub-basins are expected to have a sensor for a given quantity.
@@ -264,6 +280,8 @@ class FirestoreBackend(SensorBackend):
             if not docs:
                 return None
             d = docs[0].to_dict()
+            if d.get(TEST_FLAG) or str(basin_id).upper().startswith("BENCH"):
+                return None       # bench / test packet: never MEASURED (see TEST_FLAG)
             val = d.get(self.fm["value"])
             if val is None:
                 return None

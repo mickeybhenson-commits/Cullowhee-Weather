@@ -166,7 +166,7 @@
       <span class="src">Merriam-Webster · <a href="https://forecast.weather.gov/glossary.php?word=freshet" target="_blank" rel="noopener">NWS glossary</a> · <a href="https://www.etymonline.com/word/freshet" target="_blank" rel="noopener">Etymonline</a></span></p>
     <p class="layers"><b>NOAH</b> in the water &nbsp;·&nbsp; <b>SKYE</b> in the sky &nbsp;·&nbsp; <b>TERRA</b> in the ground</p>
     <p class="thesis">A flood warning for a mountain creek that never had one.</p>
-    <p class="lede">After Hurricane Helene, the streams that flood fastest in these mountains still had no gauges. This puts sensors in the water and weather in the picture — to buy the one thing that matters in a flash flood: a little time.</p>
+    <p class="lede">A sensor-to-warning flood intelligence system. After Hurricane Helene, the streams that flood fastest in these mountains still had no gauges. This puts sensors in the water and weather in the picture — to buy the one thing that matters in a flash flood: a little time. It starts with eight nested sub-basins above WCU, then the rest of Jackson County, then all of Western North Carolina.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#now">See current conditions</a>
       <a class="btn btn-ghost" href="#watch">Storm track watch</a>
@@ -237,7 +237,7 @@
     <article>
       <span class="kicker">NOAH</span>
       <h3>In the water</h3>
-      <p>Solar-powered sensors along the creek measure how high and how fast it's running, and relay each reading out by radio, cellular, and satellite — so a measurement gets through even when the power is out and the roads are gone.</p>
+      <p>Over thirty solar-powered sensors across the watershed measure stream depth and discharge, rain, soil moisture at three depths, temperature, pressure, humidity and wind — and relay each reading out by radio, cellular, and satellite, so a measurement gets through even when the power is out and the roads are gone. Stream depth by 80 GHz radar to ±5 mm on a surveyed datum, at the inlet and outlet of every sub-basin.</p>
     </article>
     <article>
       <span class="kicker">TERRA</span>
@@ -247,14 +247,21 @@
   </div>
 </section>
 
+<section id="builton" class="section reveal">
+  <p class="eyebrow">Built on the federal and state models</p>
+  <h2>Not instead of them.</h2>
+  <p class="section-lede">FRESHET ingests National Weather Service forecasts and QPF, NOAA MRMS and FLASH, the National Water Model, USGS gages, NC Emergency Management’s FIMAN and NC FRIS flood profiles — and adds the one thing none of them have: <em>measurement inside this watershed at storm cadence, evaluated locally.</em></p>
+  <p class="section-lede">The gap is not hypothetical. During a measured <b>1.36 ft rise at Speedwell</b>, the National Water Model held <b>10.94 cfs for 47 hours</b>. That is the gap the sensor network closes. Combined, the two are a materially better warning than either alone.</p>
+</section>
+
 <section id="watch" class="section reveal">
   <p class="eyebrow">Storm track watch</p>
   <h2>Watching the Atlantic and Gulf before it reaches the mountains.</h2>
-  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion.</p>
+  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain — and 175 years of hurricane tracks give it an earlier, weaker <b>analog</b> signal before any forecast commits. The track is not a posture; it is a <b>wake-up call</b>. Four alarms — the corridor, the WPC five-day excessive-rainfall outlook, a rising wetness trend, and forecast rain reaching the trip line — set a mode that changes only how hard the system looks. A what-if mode replays Helene, Frances, Ivan, Opal, Fred and 1916 through the same criterion.</p>
   <div class="frame frame-live frame-breakout">
     <iframe id="stormWatch" title="NOAH storm track watch — live NHC guidance for the Cullowhee corridor" loading="lazy"></iframe>
   </div>
-  <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
+  <p class="caption">The <b>Readiness</b> card under the rain strip shows the mode, which alarms are ringing and why, and per basin the wetness, the 24-h rain to WATCH at that wetness, the forecast rain and the margin — every number tagged measured / agency estimate / modeled · floor and mode computed server-side each feed cycle · data: NOAA/NHC + WPC + HURDAT2, polled every 15 min · <a href="storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
 </section>
 <section id="now" class="section reveal">
   <p class="eyebrow">Current conditions</p>
@@ -304,7 +311,7 @@
 <section id="satellites" class="section reveal">
   <p class="eyebrow">The satellites overhead</p>
   <h2>From the watershed to the data center — three ways out.</h2>
-  <p class="section-lede">Sensors in the air, the stream, and the soil send their readings by LoRa radio to the FRESHET gateways. From each gateway the data has three ways out: <b>Starlink</b> is the primary backhaul, <b>cellular</b> the primary backup, and <b>geostationary satellite</b> the secondary backup — the last two on pre-paid service, so they work without anyone renewing a plan mid-storm. Helene took power and cell towers down together for weeks; no single path can be trusted to survive the storm the system is built for.</p>
+  <p class="section-lede">Sensors in the air, the stream, and the soil send their readings by LoRa radio to the FRESHET gateways. From each gateway the data has three ways out: <b>Starlink</b> is the primary backhaul, <b>cellular</b> the primary backup, and <b>geostationary satellite</b> the secondary backup — the last two on pre-paid service, so they work without anyone renewing a plan mid-storm. Helene took power and cell towers down together for weeks; no single path can be trusted to survive the storm the system is built for. Alongside the model, a Qwen language-model agent reads the store each cycle — reconciling measured stage against the threshold ladders, forecast rain against measured rain, and wetness against TERRA — and writes the per-reach explanation that goes out with a warning. It works inside the two rules and cannot raise a posture they forbid; if more than a third of the nodes go dark, a person is put in the loop before any public message.</p>
   <p class="section-lede">Every reading lands in a data center, where it is stored and where a virtual machine runs the FRESHET model — combining the real-time sensor data with internet feeds (forecast rainfall, radar, NHC guidance, soil state) to decide whether a warning should be issued. The tracker below shows the constellations that backhaul rides on, as seen from Cullowhee right now: Starlink and Skylo's geostationary partners. Orbits are computed in your browser from published element sets.</p>
   <div class="frame frame-tall frame-breakout">
     <iframe id="satTracker" title="Live satellite tracker — Hubble Network, Skylo and Starlink constellations as seen from Cullowhee" loading="lazy"></iframe>
@@ -324,6 +331,7 @@
   <p class="eyebrow">Why</p>
   <h2>The creeks that rise fastest are the ones nobody watches.</h2>
   <p>In September 2024, Helene turned quiet Appalachian streams into something unrecognizable. The big rivers everyone watches have gauges and warnings. The small headwater creeks — the ones that go from ankle-deep to over-the-bank in minutes — mostly don't. Cullowhee Creek is one of them.</p>
+  <p>And a second reason: the data the <em>NEMO</em> project needs does not exist. NEMO — EnergyTech University Prize 2025, U.S. Department of Energy Office of Water Technology regional winner — requires measured discharge, velocity and stage on small mountain streams at storm cadence, and no agency collects it. FRESHET builds the instrument for both.</p>
   <p class="dim">The approach comes out of a habit learned just up the road at the Coweeta Hydrologic Laboratory: <em>measure the ground truth, then trust what you measured.</em> Instruments in the field, checked against reality, carried into a job that's now about warning people in time.</p>
 </section>
 
@@ -331,7 +339,7 @@
   <p class="eyebrow">Where it stands</p>
   <h2>Honest about what's proven.</h2>
   <p>The forecast layer is live now. The sensor network is being built and calibrated over the coming field seasons. Until real floods pass real gauges, some thresholds stay cautious on purpose — the system would rather say <em>watch</em> early than promise more than it can yet prove.</p>
-  <p class="dim">FRESHET is developed under an agreement with <em>North Carolina Emergency Management</em>. That partnership connects the project to the state's flood-monitoring network and the people who issue warnings — it does not make this site an official warning source. Official watches and warnings come from the National Weather Service and NCEM.</p>
+  <p class="dim">FRESHET operates under an <em>executed MOA with North Carolina Emergency Management</em> and Adopt-a-Gauge for FIMAN gage 25380 at Speedwell — the watershed’s only measured stage today and the pilot’s validation reference; NC Geodetic Survey Helene high-water marks anchor the backtest. The Speedwell pilot will stream depth, discharge, temperature, pressure, humidity, rain, soil moisture and wind; the TERRA campaign runs October 2026 through July 2027, with two-gateway redundancy before next season. The team: four mechanical-engineering students — three of them <em>FLiTE Scholars</em> developing cost-efficient instruments for soil moisture and for stream depth and discharge, against two benchmarks: a commercial soil probe at about $250 and a used acoustic Doppler current profiler at about $20,000. Their devices will be validated side by side with the reference instruments at the Speedwell pilot, with the FIMAN gage as ground truth. Twenty-five construction-management students round out the team. None of this makes the site an official warning source — official watches and warnings come from the National Weather Service and NCEM.</p>
 </section>
 
 <footer class="foot">

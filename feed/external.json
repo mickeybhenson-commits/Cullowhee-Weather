@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-05T18:44:45.424876+00:00",
+  "fetched_utc": "2026-09-05T19:15:28.633208+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -42,18 +42,6 @@
     },
     "local_inflow_cfs": 780.4,
     "stage_series_up": [
-      [
-        1788612300,
-        5.59
-      ],
-      [
-        1788613200,
-        5.29
-      ],
-      [
-        1788614100,
-        5.02
-      ],
       [
         1788615000,
         4.81
@@ -136,18 +124,6 @@
       ]
     ],
     "stage_series_down": [
-      [
-        1788612300,
-        3.15
-      ],
-      [
-        1788613200,
-        3.14
-      ],
-      [
-        1788614100,
-        3.14
-      ],
       [
         1788615000,
         3.14
@@ -334,9 +310,9 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 71.8,
+    "age_min": 42.5,
     "fresh": true,
-    "last_updated_utc": "2026-09-05T17:33:00+00:00",
+    "last_updated_utc": "2026-09-05T18:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -382,7 +358,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260905_1800.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260905_1900.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -411,7 +387,7 @@
         "name": "Mtn. Lower",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 0.3,
+        "streamflow_m3s": 0.2,
         "soil_sat_pct": 32.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -438,7 +414,7 @@
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.0,
-        "soil_sat_pct": 46.0,
+        "soil_sat_pct": 45.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
@@ -450,7 +426,7 @@
         "name": "Cox Branch",
         "unit_streamflow": 0.2,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 1.1,
+        "streamflow_m3s": 1.0,
         "soil_sat_pct": 40.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -476,9 +452,9 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 11.0,
+        "streamflow_m3s": 9.5,
         "soil_sat_pct": 47.0,
-        "ffg_ratio_1h": 5.0,
+        "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
@@ -491,7 +467,7 @@
         "unit_streamflow_units": "",
         "streamflow_m3s": 0.2,
         "soil_sat_pct": 42.0,
-        "ffg_ratio_1h": 5.0,
+        "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 5.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
@@ -502,7 +478,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-09-05T18:44:48.525741+00:00",
+    "valid_utc": "2026-09-05T19:15:32.083976+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

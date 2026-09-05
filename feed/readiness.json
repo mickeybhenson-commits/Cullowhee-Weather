@@ -1,5 +1,5 @@
 {
- "fetched_utc": "2026-09-05T18:23:02Z",
+ "fetched_utc": "2026-09-05T18:44:45Z",
  "status": "ok",
  "tier": "readiness",
  "mode": "ATTENTION",
@@ -20,7 +20,7 @@
   "node_rain": "on tip"
  },
  "ero": {
-  "fetched_utc": "2026-09-05T18:23:02Z",
+  "fetched_utc": "2026-09-05T18:44:45Z",
   "status": "ok",
   "tier": "gov_estimate",
   "source": "WPC Excessive Rainfall Outlook (NOAA map services)",
@@ -147,17 +147,17 @@
    "lead_min": 40,
    "role": "warning_point",
    "wetness": {
-    "w": 0.15,
-    "soil_pct": 15.0,
+    "w": 0.16,
+    "soil_pct": 16.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
-    "WATCH": 6.88,
-    "WARNING": 9.38,
-    "EMERGENCY": 12.25
+    "WATCH": 6.8,
+    "WARNING": 9.29,
+    "EMERGENCY": 12.13
    },
    "forecast": {
     "qpf24_p50": 0.178,
@@ -170,8 +170,8 @@
     "status": "ok"
    },
    "margin_in": {
-    "p50": 6.7,
-    "p90": 6.4
+    "p50": 6.62,
+    "p90": 6.32
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -206,7 +206,7 @@
     "soil_pct": 16.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
@@ -257,17 +257,17 @@
    "lead_min": 62,
    "role": "warning_point",
    "wetness": {
-    "w": 0.15,
-    "soil_pct": 15.0,
+    "w": 0.16,
+    "soil_pct": 16.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
-    "WATCH": 5.98,
-    "WARNING": 7.35,
-    "EMERGENCY": 12.95
+    "WATCH": 5.92,
+    "WARNING": 7.27,
+    "EMERGENCY": 12.86
    },
    "forecast": {
     "qpf24_p50": 0.178,
@@ -280,8 +280,8 @@
     "status": "ok"
    },
    "margin_in": {
-    "p50": 5.8,
-    "p90": 5.5
+    "p50": 5.74,
+    "p90": 5.44
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -316,7 +316,7 @@
     "soil_pct": 21.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
@@ -371,7 +371,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
@@ -426,7 +426,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
@@ -481,7 +481,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": {
@@ -536,7 +536,7 @@
     "soil_pct": 17.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-05T18:23:02Z",
+    "ts": "2026-09-05T18:44:45Z",
     "note": ""
    },
    "trip_in": null,

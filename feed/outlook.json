@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-05T18:23:02.653863+00:00",
+  "fetched_utc": "2026-09-05T18:44:45.424876+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
@@ -22,7 +22,7 @@
     "CC-UP-503": {
       "basin": "CC-UP-503",
       "n_members": 64,
-      "wetness": 0.15,
+      "wetness": 0.16,
       "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.096,
@@ -82,7 +82,7 @@
     "CC-TIL-705": {
       "basin": "CC-TIL-705",
       "n_members": 64,
-      "wetness": 0.15,
+      "wetness": 0.16,
       "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.096,

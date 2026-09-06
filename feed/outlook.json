@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-06T22:00:18.824229+00:00",
+  "fetched_utc": "2026-09-06T22:06:48.948579+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
@@ -52,7 +52,7 @@
     "CC-MS-1100": {
       "basin": "CC-MS-1100",
       "n_members": 64,
-      "wetness": 0.15,
+      "wetness": 0.16,
       "wetness_src": "soil_percentile",
       "qpf24_in": {
         "p10": 0.156,

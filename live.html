@@ -1241,7 +1241,10 @@ setInterval(function(){ if(mode==="live") fetchLive(); }, 10*60000);   // auto-r
    falls back to a single live frame refreshed on the same cadence. */
 const LATEST_URL="https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q-900913/{z}/{x}/{y}.png";
 const FRAME_URL="https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/ridge::USCOMP-N0Q-{TS}/{z}/{x}/{y}.png";
-const NF=8, LAG=10, STEP_MS=550, DWELL_MS=1800, RREFRESH_MS=5*60000, ROP=0.35;   /* radar drawn light so the sub-basins read through it */
+const NF=8, LAG=10, STEP_MS=550, DWELL_MS=1800, RREFRESH_MS=5*60000, ROP=0.45;   /* radar drawn light so the sub-basins read through it */
+/* radar rides in its own pane ABOVE the sub-basin polygons (overlayPane is 400) but below markers and labels (600+),
+   so the rain is the top layer and the basins show through it; the pane ignores the mouse so basin hover still works */
+map.createPane("radar"); map.getPane("radar").style.zIndex=450; map.getPane("radar").style.pointerEvents="none";
 function tsUTC(d){const p=n=>String(n).padStart(2,"0");
   return d.getUTCFullYear()+p(d.getUTCMonth()+1)+p(d.getUTCDate())+p(d.getUTCHours())+p(d.getUTCMinutes());}
 function buildStamps(){ let a=new Date(Date.now()-LAG*60000);
@@ -1249,7 +1252,7 @@ function buildStamps(){ let a=new Date(Date.now()-LAG*60000);
   const s=[]; for(let i=NF-1;i>=0;i--) s.push(new Date(a.getTime()-i*5*60000)); return s; }
 function makeSet(){ const stamps=buildStamps();
   const layers=stamps.map(d=>L.tileLayer(FRAME_URL.replace("{TS}",tsUTC(d)),
-    {opacity:0,zIndex:400,maxZoom:19,errorTileUrl:TRANS,className:"radartiles"}));
+    {opacity:0,pane:"radar",maxZoom:19,errorTileUrl:TRANS,className:"radartiles"}));
   const set={stamps:stamps,layers:layers,ok:0};
   layers.forEach(l=>{ l.on("tileload",()=>set.ok++); l.addTo(map); });
   return set; }
@@ -1272,7 +1275,7 @@ let fbLayer=null;
 function fbStamp(){ document.getElementById("rtime").textContent="radar live \u00b7 "+
   new Date().toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})+" \u00b7 NEXRAD (IEM)"; }
 function fbRefresh(){
-  const nl=L.tileLayer(LATEST_URL+"?ts="+Date.now(),{opacity:0,zIndex:400,maxZoom:19,errorTileUrl:TRANS,className:"radartiles"});
+  const nl=L.tileLayer(LATEST_URL+"?ts="+Date.now(),{opacity:0,pane:"radar",maxZoom:19,errorTileUrl:TRANS,className:"radartiles"});
   let done=false;
   const swap=()=>{ if(done)return; done=true; nl.setOpacity(ROP);
     if(fbLayer)map.removeLayer(fbLayer); fbLayer=nl; fbStamp(); };

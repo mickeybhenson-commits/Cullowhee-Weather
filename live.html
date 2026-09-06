@@ -133,11 +133,12 @@
 <div id="map"></div>
 <div id="sbtable">
   <h4 id="sbhdr">Sub-basin status <span id="sbtog">&#9662;</span></h4>
-  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil + forecast rain; capped at WATCH until a stream gauge confirms">Outlook</th><th>Rain</th><th>~RP / stage</th><th>Lead</th></tr></thead>
+  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil wetness, 0 (dry) to 1 (saturated): Open-Meteo soil-moisture percentile against the cell's own 30-day history, falling back to the 30-day rainfall index. Modeled until the in-basin probes report. The uncapped forecast outlook that used to sit here is in the status pill's tooltip.">Soil moisture</th><th>Rain</th><th>~RP / stage</th><th>Lead</th></tr></thead>
   <tbody id="sbtbody"></tbody></table>
   <div class="sbleg">
     <div><b>Status</b> &mdash; severity posture: Normal &#9656; Watch &#9656; Warning &#9656; Emergency</div>
     <div><b>Outlook</b> &mdash; what soil + <i>forecast</i> rain alone imply. Forecast evidence buys lead time at lower confidence, so it can raise a <b>Watch</b> and no further; <b>Warning</b> and <b>Emergency</b> assert the flood is happening and need a measured stream rise. Where the forecast outruns that, this column shows the higher level <i>dashed</i> and the sub-basin is <b>ringed in that colour on the map</b> &mdash; storm coming, not yet confirmed.</div>
+    <div><b>Soil moisture</b> &mdash; the wetness the engine used for that sub-basin, 0 (dry) to 1 (saturated), from the Open-Meteo soil-moisture percentile or the 30-day rainfall index; <b>MOD</b> = modeled, replaced by the in-basin probes when NOAH deploys. Amber above 0.6, orange above 0.85.</div>
     <div><b>Rain</b> &mdash; rainfall driving the status, in inches. Live: peak 24-hr precipitation forecast (QPF) at that sub-basin. What-if: design-storm depth falling over that sub-basin.</div>
     <div><b>~RP / stage</b> &mdash; modeled flood magnitude. Tributaries: return period in years (e.g. ~100&nbsp;yr). WCU campus: creek stage in feet.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
@@ -971,13 +972,21 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
     /* OUTLOOK column. The status pill is the operative posture, honest about
        what measurement confirms. This column carries the uncapped forecast, so
        capping the pill never costs the reader the severity of what is coming. */
+    /* SOIL MOISTURE column (2026-09-06, replaces the outlook column at Mickey's request): the
+       wetness the engine actually used for this basin, 0-1, with its source. The uncapped forecast
+       outlook moved into the status pill's tooltip so nothing is lost. */
+    var wv=(r.wet!=null)?r.wet:((_cc&&_cc.wet!=null)?_cc.wet:null);
+    var wsrc=(r.wet!=null)?(r.wetsrc||"scenario wetness"):((_cc&&_cc.soilPct!=null)?"soil-moisture percentile "+Math.round(_cc.soilPct*100)+"% (Open-Meteo, modeled)":"30-day rainfall index (modeled)");
+    var wcol=(wv==null)?"#8fa0b2":(wv>=0.85?"#e8734d":wv>=0.6?"#e6b34d":"#8fa0b2");
+    var sm=(wv==null)?"\u2014":"<span title='"+wsrc+"' style='color:"+wcol+";font-variant-numeric:tabular-nums'>"+(+wv).toFixed(2)+"</span> <span style='color:#6b7a8a;font-size:9px'>MOD</span>";
     var oc="\u2014";
     if(_cc&&_cc.fcLvl){ oc=(_cc.capped)
         ? "<span class='sbpill' style='background:"+(SEV[_cc.fcLvl]||"#9AA5B1")
           +";opacity:.55;border:1px dashed #fff' title='forecast alone reads "+_cc.fcLvl
           +"; held at "+OUTLOOK_CAP+" until a gauge confirms'>"+_cc.fcLvl+"</span>"
         : "<span style='color:#8fa0b2'>"+_cc.outlookLvl+"</span>"; }
-    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+meas+"</td><td><span class='sbpill' style='background:"+col+"'>"+r.lv+"</span></td><td>"+oc+"</td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
+    var pillTitle=(_cc&&_cc.fcLvl)?("forecast outlook: "+_cc.fcLvl+(_cc.capped?" (held at "+OUTLOOK_CAP+" until a gauge confirms)":"")):"";
+    html+="<tr><td>"+(SBNAME[r.bid]||r.bid)+meas+"</td><td><span class='sbpill' style='background:"+col+"' title='"+pillTitle+"'>"+r.lv+"</span></td><td>"+sm+"</td><td>"+rainS+"</td><td>"+rpS+"</td><td>"+lead+"</td></tr>"; }
   tb.innerHTML=html; }
 (function(){ var h=document.getElementById("sbhdr"); if(h)h.addEventListener("click",function(){
   var p=document.getElementById("sbtable"); p.classList.toggle("collapsed");
@@ -1015,6 +1024,12 @@ function basinRain(slat,slon,R,P){ var cosl=Math.cos(slat*Math.PI/180), sum={},c
       out[b]= P*_sfall(d,R); } }); return out; }
 function _arcw(a){ return ({1:0.2,2:0.5,3:0.85})[a]||0.5; }
 function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,stormLL.lng,stormR,SCEN[idx].qpf);
+  if(curPath().recall){ /* recall: the animation owns the map and the table; here only the pre-play state */
+    var recw=(STORM_REC&&STORM_REC.storms&&STORM_REC.storms[curPath().recall]&&STORM_REC.storms[curPath().recall].hydro)?STORM_REC.storms[curPath().recall].hydro.wetness_used:null;
+    ORDER.forEach(function(b){ var col=SEV.NORMAL||"#9AA5B1"; if(layerByBid[b]) layerByBid[b].setStyle({color:col,fillColor:col}); if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col}); });
+    if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ return {bid:b,lv:"NORMAL",rain:0,rp:null,stage:stageTotalFromQ(0,b),wet:recw,wetsrc:"ERA5 record wetness at the storm's start"}; }));
+    var rd0=document.getElementById("read"); if(rd0) rd0.innerHTML='<b>'+curPath().recall+' recall</b> <span style="opacity:.7">&middot; the storm\'s own ERA5 rain on every basin &middot; slider and radius not used &middot; press &#9658; Play storm</span>';
+    return; }
   var rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}, ww="NORMAL",wb=null;
   var _rows=[];
   ORDER.forEach(function(b){ var pr=(rain[b]||0)*ORO[b], a=assessBasin(b,pr,w), lv=(a.posture), col=SEV[lv]||"#9AA5B1";
@@ -1028,7 +1043,6 @@ function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,st
      returns early to paintStorm), so the design-storm caveat has to live HERE,
      not on the dead #read branch. SCS Type II, 24 h: overpredicts a long
      tropical event's peak 2.5-3x. */
-  if(rd && curPath().recall){ rd.innerHTML='<b>'+curPath().recall+' recall</b> <span style="opacity:.7">&middot; the storm\'s own ERA5 rain on every basin &middot; slider and radius not used &middot; press &#9658; Play storm</span>'; return; }
   if(rd) rd.innerHTML="storm "+SCEN[idx].qpf.toFixed(0)+"&Prime; peak &middot; R "+stormR.toFixed(1)+" mi &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"")+
     ' <span style="opacity:.7">&middot; 24&#8209;h design storm</span>'; }
 var _animReset=null;
@@ -1161,7 +1175,8 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
         rd.innerHTML="<b>"+R.name+" recall</b> &middot; "+when.toISOString().slice(5,16).replace("T"," ")+"Z &middot; rain "+rain+"/"+R.total.toFixed(1)+"&Prime; &middot; campus "+(cst==null?"—":cst.toFixed(1)+" ft")+(ob?" <span style=\"opacity:.7\">(obs peak "+ob.stage_ft+")</span>":"")+" &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":""); } }
     else if(rd) rd.innerHTML="hr "+hr+" &middot; "+curPath().name+" "+curPath().arrow+" &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
     if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var cq=(t<hydros[b].length?hydros[b][t]:0);
-      return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b)}; }));
+      return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b),
+              wet:(hydros.__recall?hydros.__recall.w:(ARCW[SCEN[idx].arc]||0.5)), wetsrc:(hydros.__recall?"ERA5 record wetness (30-day rainfall index at the storm's start)":"scenario wetness (ARC "+SCEN[idx].arc+")")}; }));
     const sc=document.getElementById("stormscrub"); if(sc && +sc.value!==t) sc.value=t; }
   function stop(){ clearInterval(timer); timer=null;
     const p=document.getElementById("stormplay"); if(p)p.innerHTML="&#9658; Play storm"; }
@@ -1185,7 +1200,8 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
     if(pw.set){   /* historical analog: suggest depth + radius (user can still override) */
       if(pw.set.idx!=null){ idx=pw.set.idx; var s=document.getElementById("sld"); if(s)s.value=idx; }
       if(pw.set.R!=null){ stormR=pw.set.R; stormCircle.setRadius(stormR*1609.34); var rr=document.getElementById("stormrad"); if(rr)rr.value=pw.set.R; } }
-    reset(); });
+    reset();
+    if(pw.recall){ build(); }   /* recall: build now so the scrub bar spans the whole record before the first drag */ });
   document.getElementById("sld").addEventListener("input",function(){ reset(); });
   document.getElementById("m-live").addEventListener("click",reset);
   _animReset=reset;

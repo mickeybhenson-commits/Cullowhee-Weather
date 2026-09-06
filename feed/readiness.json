@@ -1,5 +1,5 @@
 {
- "fetched_utc": "2026-09-06T16:02:28Z",
+ "fetched_utc": "2026-09-06T16:23:19Z",
  "status": "ok",
  "tier": "readiness",
  "mode": "ATTENTION",
@@ -20,7 +20,7 @@
   "node_rain": "on tip"
  },
  "ero": {
-  "fetched_utc": "2026-09-06T16:02:28Z",
+  "fetched_utc": "2026-09-06T16:23:19Z",
   "status": "ok",
   "tier": "gov_estimate",
   "source": "WPC Excessive Rainfall Outlook (NOAA map services)",
@@ -31,8 +31,8 @@
     "label": "Marginal",
     "pct": 5,
     "outlook": "Marginal (At Least 5%)",
-    "issue_time": "2026-09-06 08:04:00",
-    "start_time": "2026-09-06 12:00:00",
+    "issue_time": "2026-09-06 15:56:00",
+    "start_time": "2026-09-06 16:00:00",
     "end_time": "2026-09-07 12:00:00"
    },
    {
@@ -151,7 +151,7 @@
     "soil_pct": 15.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -206,7 +206,7 @@
     "soil_pct": 15.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -261,7 +261,7 @@
     "soil_pct": 15.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -316,7 +316,7 @@
     "soil_pct": 20.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -371,7 +371,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -426,7 +426,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -481,7 +481,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": {
@@ -536,7 +536,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-06T16:02:28Z",
+    "ts": "2026-09-06T16:23:19Z",
     "note": ""
    },
    "trip_in": null,

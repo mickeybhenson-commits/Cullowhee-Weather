@@ -38,7 +38,7 @@
   #floorBadge.pending .lvl{color:var(--pend)}
 
   /* storm list panel */
-  #storms{position:fixed;right:14px;top:calc(var(--bannerH,54px) + 44px);z-index:1100;width:330px;
+  #storms{position:fixed;right:14px;top:calc(var(--bannerH,54px) + 44px);z-index:1100;width:352px;
     max-height:calc(100% - 120px);overflow:auto;background:var(--panel);
     border:1px solid var(--line);border-radius:6px;padding:10px 12px}
   #storms h2{margin:0 0 6px;font-size:12px;color:var(--dim);
@@ -75,6 +75,7 @@
   #rdy .mode.QUIET{background:#16321f;color:var(--ok)} #rdy .mode.ATTENTION{background:#3a2e10;color:var(--elev)} #rdy .mode.STORM{background:#3d1717;color:var(--pend)}
   #rdyAlarms{font-size:10.5px;line-height:1.4;margin:0 0 6px}
   #rdy.sim{border-top-color:var(--sim);box-shadow:inset 3px 0 0 var(--sim)}
+  #rdy.sim table{font-size:10px} #rdy.sim td,#rdy.sim th{padding:2px 2px}
   #rdy .simtag{display:inline-block;padding:1px 6px;border:1px solid var(--sim);color:var(--sim);border-radius:3px;font-size:9.5px;font-weight:700;letter-spacing:.06em;margin-right:6px;vertical-align:1px}
   #rdyAlarms .al{margin:1px 0} #rdyAlarms .al b{font-weight:600}
   #rdyAlarms .cad{color:var(--dim);font-size:10px;margin-top:3px}
@@ -240,6 +241,7 @@
   </select><span id="simSrc" style="font-size:11px;color:var(--dim);margin-left:6px">schematic tracks</span>
   <button id="simPlay">▶ Play storm</button>
   <span id="simSpeed" title="replay speed — seminar default is 2.5×, about 20 s per storm" style="font-size:11px;color:var(--dim);margin-left:6px">speed <button data-rate="1">1×</button><button data-rate="2.5" class="on">2.5×</button><button data-rate="5">5×</button></span>
+  <span id="simRainWrap" title="Assumed storm-total rain over the watershed for this replay. Approximate defaults from the historical record — edit to what you want to test. The Readiness card applies it as the storm arrives." style="font-size:11px;color:var(--dim);margin-left:8px">rain at Cullowhee ≈ <input type="number" id="simRain" min="0" max="40" step="0.5" style="width:44px;background:none;border:1px solid var(--line);color:var(--txt);border-radius:4px;padding:0 3px;font:inherit;font-size:11px;text-align:right"> in</span>
   <input type="range" id="simSlider" min="0" max="100" value="0" step="0.5">
   <span id="simTime">T+0 h</span>
 </div>
@@ -755,6 +757,11 @@ const SIM_COLORS = {TD:"#8a94a0",TS:"#e6b34d",HU:"#e8734d",MH:"#d94f6b"};
 /* replay set: the corridor storms people here remember, from HURDAT2 via the feed */
 const SIM_WANTED = [["AL092024","Helene 2024"],["AL062021","Fred 2021"],["AL092004","Ivan 2004"],["AL062004","Frances 2004"],["AL171995","Opal 1995"],["AL021916","July 1916"]];
 const HSTAT = {TD:"TD",SD:"TD",LO:"TD",WV:"TD",DB:"TD",EX:"TD",TS:"TS",SS:"TS",HU:"HU"};
+/* approximate storm-total rain over the Cullowhee watershed, inches — editable in the sim bar.
+   Rough figures from the regional record (Helene: Jackson Co. 8–14 in; Fred: Cruso 10–17 but ~5 here;
+   Frances/Ivan 2004: 6–10 in the Balsams; Opal: ~5; July 1916: 22 at Altapass, less here). Planning inputs, not measurements. */
+const SIM_RAIN = {"Helene 2024":11, "Fred 2021":5, "Ivan 2004":6, "Frances 2004":8, "Opal 1995":5, "July 1916":8};
+const SIM_GATE = {};   /* replay hour at which the track first reaches the gate, per storm */
 function buildSimTracksFromFeed(){
   const byId = {}; for(const c of ANALOG.corridor_storms) byId[c.id]=c;
   let n=0;
@@ -767,7 +774,7 @@ function buildSimTracksFromFeed(){
       let st = HSTAT[p[3]]||"TD"; if(st==="HU" && p[4]>=96) st="MH"; if(st==="TD" && p[4]>=34) st="TS";
       return [p[0],p[1],+(p[2]-t0).toFixed(1),st,p[4]||0];
     });
-    if(pts.length>=3){ SIM_TRACKS[label]=pts; n++; }
+    if(pts.length>=3){ SIM_TRACKS[label]=pts; SIM_GATE[label]=+(gateH-t0).toFixed(1); n++; }
   }
   if(n){
     const sel=$("simStorm"); sel.innerHTML = SIM_WANTED.filter(w=>SIM_TRACKS[w[1]]).map(w=>'<option value="'+w[1]+'">'+w[1]+'</option>').join("");
@@ -823,7 +830,10 @@ function simDraw(){
   b.querySelector(".why").textContent =
     $("simStorm").value+" · T+"+Math.round(simT)+" h · "+cur.status+" "+cur.wind+" kt"+
     (res.held ? " · holding — corridor test met at T+"+Math.round(simLatch.at)+" h" : res.inside ? " · IN CORRIDOR" : res.met ? " · zone crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? " · analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : ""));
-  if(window.rdySim) rdySim({level:res.floor, held:!!res.held,
+  /* storm rain arriving: none until 36 h before the gate, all of it 6 h after (the main rain falls ahead of and through passage) */
+  const gH = SIM_GATE[$("simStorm").value]; const tot = Number($("simRain").value)||0;
+  const frac = gH==null ? 0 : Math.max(0, Math.min(1, (simT-(gH-36))/42));
+  if(window.rdySim) rdySim({level:res.floor, held:!!res.held, rain:+(tot*frac).toFixed(2), rainTotal:tot, rainFrac:frac,
     why:$("simStorm").value+" T+"+Math.round(simT)+" h · "+(res.held ? "holding since T+"+Math.round(simLatch.at)+" h" : res.inside ? "in corridor" : res.met ? "gate crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? "analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : "no criterion met"))});
   /* the right-hand panel shows the replayed storm, tagged, instead of live data */
   renderStormList([{name:$("simStorm").value+" (SIMULATION)", cls:cur.status, wind:cur.wind, sim:true, ...res}]);
@@ -841,7 +851,8 @@ function simEnter(){
   $("simbar").classList.add("on");
   $("simTag").classList.add("on");
   $("statline").innerHTML = '<span style="color:var(--sim)">●</span> SIMULATION — live NHC display suspended';
-  simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH(); simDraw();
+  simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH();
+  $("simRain").value = SIM_RAIN[$("simStorm").value] ?? 8; simDraw();
 }
 function simExit(){
   simStop(); simActive = false;
@@ -874,8 +885,9 @@ document.querySelectorAll("#simSpeed button").forEach(b=>b.addEventListener("cli
 $("simSlider").addEventListener("input",e=>{
   simStop(); const nt=Number(e.target.value); if(nt<simT){ simLatch=null; simWasInside=false; } simT = nt; simDraw();
 });
+$("simRain").addEventListener("change",()=>{ if(simActive) simDraw(); });
 $("simStorm").addEventListener("change",()=>{
-  simStop(); simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH(); simDraw();
+  simStop(); simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH(); $("simRain").value = SIM_RAIN[$("simStorm").value] ?? 8; simDraw();
 });
 
 function tickClock(){ $("clock").textContent = fmtZ(new Date()); }
@@ -907,6 +919,7 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
     else if(ov.level==="ANALOG") alarms.unshift({name:"corridor",mode:"ATTENTION",detail:"ANALOG: "+(ov.why||"")});
     var mode="QUIET"; alarms.forEach(function(a){ if(MODES.indexOf(a.mode)>MODES.indexOf(mode)) mode=a.mode; });
     c.alarms=alarms; c.mode=mode; c.cadence=CADENCE[mode]; c.mode_since=null; c.sim=true; c.fetched_utc=j.fetched_utc;
+    c.sim_rain = ov.rain||0; c.sim_rain_total = ov.rainTotal||0; c.sim_rain_frac = ov.rainFrac||0;
     return c;
   }
   function render(j){
@@ -920,15 +933,22 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
                            : '<div class="al" style="color:var(--dim)">no alarm ringing — corridor, WPC excessive-rainfall (5 d), wetness trend, forecast margin all quiet</div>';
     if(ero.status==="ok"){ alHtml += '<div class="cad">WPC excessive-rainfall days 1–5: '+(ero.days||[]).map(function(d){ return d.dn? '<b>'+d.label+'</b>' : 'none'; }).join(" · ")+'</div>'; }
     else if(ero.status){ alHtml += '<div class="cad">WPC excessive-rainfall outlook: '+ero.status+'</div>'; }
-    if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — corridor alarm from the replay; everything else live · press LIVE to return</div>'; }
+    if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — corridor alarm from the replay · storm rain '+num(j.sim_rain,1)+' of ≈'+num(j.sim_rain_total,1)+' in arrived ('+Math.round(j.sim_rain_frac*100)+'%) · <b>rung = the engine\'s rung for that rain at today\'s wetness — a replay, modeled, not a posture</b> · press LIVE to return</div>'; }
     if(j.mode_since){ alHtml += '<div class="cad">mode since '+j.mode_since.slice(5,16).replace("T"," ")+'Z'+(cad.feed? ' · cadence: feed '+cad.feed+' min · FIMAN '+cad.fiman+' min · node stage '+cad.node_stage+' min · soil '+cad.node_soil+' min · rain '+cad.node_rain:'')+(cad.backhaul? ' · '+cad.backhaul:'')+'</div>'; }
     $("rdyAlarms").innerHTML = alHtml;
     if(j.status!=="ok"){ $("rdyRows").innerHTML='<tr><td colspan="5" style="text-align:left;color:var(--pend)">readiness feed: '+j.status+'</td></tr>'; $("rdyFoot").textContent=""; return; }
+    var thead=$("rdy").querySelector("thead tr");
+    thead.innerHTML = j.sim ? '<th>basin</th><th>wet</th><th>to WATCH</th><th>storm rain</th><th>margin</th><th>rung</th>'
+                            : '<th>basin</th><th>wet</th><th>to WATCH</th><th>qpf24</th><th>margin</th>';
+    var RUNG_COLOR={NORMAL:"var(--ok)",WATCH:"var(--elev)",WARNING:"var(--pend)",EMERGENCY:"#ff5c7a"};
     var rows=[], deployed=0, planned=0, order=["CC-COX-097","CC-LB-171","CC-UP-503","CC-TIL-705","CC-MS-1100","CC-SPD-1830","CC-WCU-2260","CC-MOUTH-2340"];
     order.forEach(function(bid){
       var r=(j.basins||{})[bid]; if(!r) return;
       deployed += (r.sensors&&r.sensors.deployed||[]).length; planned += (r.sensors&&r.sensors.pending||[]).length;
       var w=r.wetness||{}, t=(r.trip_in||{}), f=r.forecast||{}, m=(r.margin_in||{}).p50;
+      var rung=null, rain=null;
+      if(j.sim){ rain=j.sim_rain; if(r.trip_in && t.WATCH!=null){ m=+(t.WATCH-rain).toFixed(2);
+          rung = (t.EMERGENCY!=null && rain>=t.EMERGENCY) ? "EMERGENCY" : (t.WARNING!=null && rain>=t.WARNING) ? "WARNING" : (rain>=t.WATCH) ? "WATCH" : "NORMAL"; } else { m=null; } }
       var mcls = m==null ? "" : m<=0 ? "m-neg" : m<1 ? "m-low" : "";
       var confirm = r.stage && r.stage.valid && r.stage.tier!=="modeled";
       var nm=(r.name||bid).replace(/ \(.*$/,"").replace("Mainstem above Speedwell","Mainstem").replace("Upper Cullowhee","Upper Cull.").replace("Cullowhee Creek at ","").slice(0,13);
@@ -936,8 +956,9 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
         '<td title="'+bid+'">'+nm+'</td>'+
         '<td title="'+(w.note||w.source||"")+'">'+num(w.w,2)+tag(w.tier)+'</td>'+
         '<td>'+(r.trip_in? num(t.WATCH,1)+' in' : '<span style="color:var(--dim)">n/a</span>')+'</td>'+
-        '<td title="'+(f.source||"")+'">'+num(f.qpf24_p50,1)+'</td>'+
-        '<td class="'+mcls+'">'+(m==null?"—":(m>0?"+":"")+num(m,1))+'</td></tr>');
+        (j.sim ? '<td title="assumed storm total '+num(j.sim_rain_total,1)+' in × arrival '+Math.round(j.sim_rain_frac*100)+'%">'+num(rain,1)+'</td>' : '<td title="'+(f.source||"")+'">'+num(f.qpf24_p50,1)+'</td>')+
+        '<td class="'+mcls+'">'+(m==null?"—":(m>0?"+":"")+num(m,1))+'</td>'+
+        (j.sim ? '<td style="font-weight:600;color:'+(rung?RUNG_COLOR[rung]:"var(--dim)")+'">'+(rung||"n/a")+'</td>' : '')+'</tr>');
     });
     $("rdyRows").innerHTML = rows.join("");
     var seq = fl.sequence ? ' · <b style="color:var(--pend)">SEQUENCE</b> — '+fl.sequence : '';

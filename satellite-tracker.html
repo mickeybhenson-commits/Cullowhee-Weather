@@ -1831,7 +1831,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
   var sitePos = latLonToVec3(SITE.lat, SITE.lon, 1.004);
 
   function makeVisuals(s) {
-    var baseScale = s.isGeo ? 0.14 : (s.constellation === 'starlink' ? 0.07 : 0.085);
+    var baseScale = (s.isGeo ? 0.14 : (s.constellation === 'starlink' ? 0.07 : 0.085)) * 0.5;   // halved 2026-09-06
     var m = new THREE.Sprite(new THREE.SpriteMaterial({
       map: markerTex[s.meta.group], transparent: true, depthWrite: false
     }));

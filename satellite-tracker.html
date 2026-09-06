@@ -279,8 +279,8 @@
       accuracy degrades over weeks, so positions drift the further this is opened from that date.
       Skylo flies no satellites of its own &mdash; shown are its partner GEOs covering North
       America (Ligado SkyTerra 1, TerreStar 1, Viasat Inmarsat 4-F3).
-      The Starlink layer draws <b>only</b> the cataloged satellites currently above the user
-      terminal&rsquo;s 25&deg; mask at Cullowhee, from the CelesTrak element set refreshed every
+      The Starlink layer draws <b>only the four likeliest</b> of the cataloged satellites currently
+      above the user terminal&rsquo;s 25&deg; mask at Cullowhee (tick &ldquo;show all&rdquo; for the rest), from the CelesTrak element set refreshed every
       feed cycle (<code>feed/starlink_overhead.json</code>). The <b>likely link</b> block is an
       educated guess: the dish never reports which satellite serves it, so candidates are ranked
       by elevation, offset from the dish boresight and time left in the cone. The modeled
@@ -2340,6 +2340,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
   // scheduler is known to prefer them — high elevation, near the dish boresight, and not
   // about to leave the cone before the next 15-second re-plan. It is a guess and says so.
   var likelyTop = null, likelyList = [], starlinkFeed = null;
+  var SHOW_N = 4, showAll = false;   // draw only the four best candidates unless asked for all
   var bore = { az: 0, el: 70 };            // NC default: dish tilted north, ~70° up
   try { var sb = JSON.parse(localStorage.getItem('freshet_boresight') || 'null'); if (sb && isFinite(sb.az) && isFinite(sb.el)) bore = sb; } catch (e) {}
   function angSep(az1, el1, az2, el2) {
@@ -2387,9 +2388,10 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     var html = '<div class="lk-head">Likely link <span class="tag" title="The terminal never reports its serving satellite. Ranked by elevation, offset from the dish boresight, and time left before it leaves the cone.">educated guess</span></div>' +
       '<div>' + cands.length + ' in view ≥' + mask + '° · <b>' + inCone.length + '</b> inside the dish cone (±' + fov + '° of boresight) · re-plan in ' + Math.ceil(replanPhase()) + ' s</div>';
     if (!inCone.length) html += '<div class="lk-note">' + (cands.length ? 'none inside the cone — check the boresight below' : 'nothing above the mask right now') + '</div>';
-    inCone.slice(0, 3).forEach(function (s, i) {
+    inCone.slice(0, SHOW_N).forEach(function (s, i) {
       html += '<div class="lk-row' + (i === 0 ? ' top' : '') + '" data-norad="' + s.meta.norad + '"><b>' + (i + 1) + '. ' + s.meta.name + '</b><span>elev ' + Math.round(s.elev) + '° · ' + Math.round(s.offBore) + '° off · ' + (s.secLeft >= 180 ? '>3 min' : s.secLeft + ' s') + ' left</span></div>';
     });
+    html += '<div class="lk-in"><label><input type="checkbox" id="lk-all"' + (showAll ? ' checked' : '') + '> show all ' + cands.length + ' in view (default: the ' + SHOW_N + ' best)</label></div>';
     html += '<div class="lk-in">dish boresight az <input id="lk-az" type="number" min="0" max="359" step="1" value="' + Math.round(bore.az) + '">° · up <input id="lk-el" type="number" min="25" max="90" step="1" value="' + Math.round(bore.el) + '">°</div>' +
       '<div class="lk-note">Boresight from the dish: <code>boresightAzimuthDeg / boresightElevationDeg</code> at 192.168.100.1. Catalog ' + (age < 1 ? 'just now' : age + ' min ago') + ' · ' + starlinkFeed.n_operational + ' operational of ' + starlinkFeed.n_catalog + ' cataloged.</div>';
     var azF = document.activeElement && (document.activeElement.id === 'lk-az' || document.activeElement.id === 'lk-el');
@@ -2401,6 +2403,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     lk.querySelectorAll('.lk-row').forEach(function (r) {
       r.addEventListener('click', function () { var n = +r.dataset.norad; var t = sats.filter(function (s) { return s.meta.norad === n; })[0]; if (t) select(t); });
     });
+    var chk = lk.querySelector('#lk-all'); if (chk) chk.addEventListener('change', function () { showAll = chk.checked; rankLikely(true); });
     ['lk-az', 'lk-el'].forEach(function (id) {
       var inp = lk.querySelector('#' + id);
       inp.addEventListener('change', function () {
@@ -2437,7 +2440,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
           sats.push(s); if (window.__makeStarlinkRow) window.__makeStarlinkRow(s);   // visuals are made when its pass begins
           s.row.style.display = 'none';
         });
-        if (sub) sub.textContent = j.sats.length + ' reach ≥' + j.mask_deg + '° in the next ' + j.window_min + ' min · drawn only while in view';
+        if (sub) sub.textContent = j.sats.length + ' reach ≥' + j.mask_deg + '° in the next ' + j.window_min + ' min · the ' + SHOW_N + ' likeliest drawn';
         updateTracks(true); rankLikely(true);
       })
       .catch(function (e) {
@@ -2501,7 +2504,9 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
       var p = latLonToVec3(s.lat, s.lon, r);
       s.marker.position.copy(p);
       // Starlink: only shown while actually reaching Cullowhee (>=10 deg elevation)
-      s.marker.visible = s.visible && !s.retired && (s.constellation !== 'starlink' || s.elev > (s.mask || 10) || selected === s);
+      var shown = s.fromFeed ? (selected === s || (s.elev > s.mask && (showAll || (likelyList.indexOf(s) > -1 && likelyList.indexOf(s) < SHOW_N)))) : (s.elev > (s.mask || 10) || selected === s);
+      s.marker.visible = s.visible && !s.retired && (s.constellation !== 'starlink' || shown);
+      s.shown = shown;
       if (s.track && s.constellation !== 'starlink') s.track.visible = s.visible;
       var sel = selected === s;
       // GEOs keep growing as you pull back, so they stay findable from 6.6 Earth radii out
@@ -2511,7 +2516,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
       if (s.track) s.track.material.opacity = sel ? 0.9 : (selected ? 0.25 : 0.5);
 
       // sight line to Cullowhee
-      var linkOn = s.visible && !s.retired && s.elev > (s.mask || 10) && (speed <= 60);
+      var linkOn = s.visible && !s.retired && s.elev > (s.mask || 10) && (speed <= 60) && (!s.fromFeed || s.shown);
       if (s.link && linkOn) s.link.material.color.set(s === likelyTop ? '#f0c440' : s.group.color);
       s.link.visible = linkOn;
       if (linkOn) {
@@ -2523,7 +2528,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
       }
 
       // label
-      var wantLabel = !s.retired && (s.constellation !== 'starlink' || sel || (s.fromFeed ? (likelyList.indexOf(s) > -1 && likelyList.indexOf(s) < 3) : s.elev > (s.mask || 10)));
+      var wantLabel = !s.retired && (s.constellation !== 'starlink' || sel || (s.fromFeed ? (likelyList.indexOf(s) > -1 && likelyList.indexOf(s) < SHOW_N) : s.elev > (s.mask || 10)));
       var front = p.clone().normalize().dot(camDir) > (s.isGeo ? -0.2 : horizon);
       if (s.visible && front && wantLabel) {
         tmp.copy(p).project(camera);
@@ -2567,7 +2572,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
         } else if (s.fromFeed) {
           s.row.querySelector('[data-pass]').textContent = s.nextPassText;
         }
-        if (s.fromFeed) s.row.style.display = (s.elev > s.mask || selected === s) ? '' : 'none';
+        if (s.fromFeed) s.row.style.display = (s.shown || selected === s) ? '' : 'none';
         if (s.retired) return;
       });
       if (selected) {

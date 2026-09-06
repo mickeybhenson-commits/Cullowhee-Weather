@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-06T23:17:30.665567+00:00",
+  "fetched_utc": "2026-09-06T23:22:02.721552+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -230,75 +230,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1788728400,
-        73.8
-      ],
-      [
         1788732000,
-        84.0
+        72.0
       ],
       [
         1788735600,
-        98.2
+        82.3
       ],
       [
         1788739200,
-        115.8
+        96.8
       ],
       [
         1788742800,
-        135.6
+        114.4
       ],
       [
         1788746400,
-        155.7
+        134.6
       ],
       [
         1788750000,
-        173.4
+        155.0
       ],
       [
         1788753600,
-        188.2
+        173.0
       ],
       [
         1788757200,
-        199.2
+        187.9
       ],
       [
         1788760800,
-        206.6
+        198.8
       ],
       [
         1788764400,
-        211.9
+        206.6
       ],
       [
         1788768000,
-        215.1
+        211.9
       ],
       [
         1788771600,
-        217.2
+        215.1
       ],
       [
         1788775200,
-        218.6
+        217.2
       ],
       [
         1788778800,
-        219.3
+        218.6
       ],
       [
         1788782400,
-        220.0
+        219.3
       ],
       [
         1788786000,
-        220.4
+        220.0
       ],
       [
         1788789600,
+        220.4
+      ],
+      [
+        1788793200,
         220.4
       ]
     ]
@@ -313,14 +313,14 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 74.5,
-    "fresh": true,
+    "age_min": 79.1,
+    "fresh": false,
     "last_updated_utc": "2026-09-06T22:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": ""
+    "note": "NOT driving posture: stale/invalid (age 79.1 min, limit 75)"
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -481,7 +481,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-09-06T23:17:33.402610+00:00",
+    "valid_utc": "2026-09-06T23:22:04.719937+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

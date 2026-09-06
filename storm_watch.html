@@ -124,6 +124,8 @@
     z-index:1100;color:var(--sim);background:var(--panel);border:1px solid var(--sim);
     border-radius:6px;padding:4px 14px;font-weight:700;letter-spacing:.14em}
   #simTag.on{display:block}
+  #simSpeed button{background:none;border:1px solid var(--line);color:var(--dim);border-radius:4px;padding:0 5px;margin-left:3px;font-size:10.5px;cursor:pointer}
+  #simSpeed button.on{color:var(--txt);border-color:var(--txt)}
   @media (max-width:720px){
     #simbar{width:calc(100% - 28px);flex-wrap:wrap;bottom:96px}
     #simbar input[type=range]{flex:1;min-width:120px}
@@ -237,6 +239,7 @@
     <option value="Ivan 2004">Ivan 2004</option>
   </select><span id="simSrc" style="font-size:11px;color:var(--dim);margin-left:6px">schematic tracks</span>
   <button id="simPlay">▶ Play storm</button>
+  <span id="simSpeed" title="replay speed — seminar default is 2.5×, about 20 s per storm" style="font-size:11px;color:var(--dim);margin-left:6px">speed <button data-rate="1">1×</button><button data-rate="2.5" class="on">2.5×</button><button data-rate="5">5×</button></span>
   <input type="range" id="simSlider" min="0" max="100" value="0" step="0.5">
   <span id="simTime">T+0 h</span>
 </div>
@@ -744,6 +747,7 @@ async function refresh(){
    training/awareness overlay: never touches live data or the posture engine.
    ========================================================================== */
 let simActive=false, simPlaying=false, simT=0, simTimer=null;
+let simRate=2.5;   /* hours of storm per tick, relative to the original 0.4 h / 120 ms (3.3 h/s). 2.5× ≈ 20 s for a 7-day replay */
 let simLatch=null, simWasInside=false;   /* readiness floor latches once met, until the storm has passed through */
 const simGroup = L.layerGroup();
 const SIM_COLORS = {TD:"#8a94a0",TS:"#e6b34d",HU:"#e8734d",MH:"#d94f6b"};
@@ -858,11 +862,15 @@ $("simPlay").addEventListener("click",()=>{
   if(simT >= simMaxH()) simT = 0;
   simPlaying = true; $("simPlay").textContent = "❚❚ Pause";
   simTimer = setInterval(()=>{
-    simT = Math.min(simT + 0.4, simMaxH());
+    simT = Math.min(simT + 0.4*simRate, simMaxH());
     simDraw();
     if(simT >= simMaxH()) simStop();
   },120);
 });
+document.querySelectorAll("#simSpeed button").forEach(b=>b.addEventListener("click",()=>{
+  simRate = Number(b.dataset.rate);
+  document.querySelectorAll("#simSpeed button").forEach(x=>x.classList.toggle("on", x===b));
+}));
 $("simSlider").addEventListener("input",e=>{
   simStop(); const nt=Number(e.target.value); if(nt<simT){ simLatch=null; simWasInside=false; } simT = nt; simDraw();
 });

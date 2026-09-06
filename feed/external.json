@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-06T21:33:31.117994+00:00",
+  "fetched_utc": "2026-09-06T21:41:45.748480+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,12 +13,12 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1788725700,
-        68.2
+        1788729300,
+        66.5
       ],
       "00065": [
-        1788725700,
-        4.03
+        1788729300,
+        4.02
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
       "flood_categories_ft": {
@@ -32,15 +32,15 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1788725700,
-        627.0
+        1788729300,
+        529.0
       ],
       "00065": [
-        1788725700,
-        3.94
+        1788729300,
+        3.78
       ]
     },
-    "local_inflow_cfs": 558.8,
+    "local_inflow_cfs": 462.5,
     "stage_series_up": [
       [
         1788709500,
@@ -117,6 +117,22 @@
       [
         1788725700,
         4.03
+      ],
+      [
+        1788726600,
+        4.03
+      ],
+      [
+        1788727500,
+        4.02
+      ],
+      [
+        1788728400,
+        4.02
+      ],
+      [
+        1788729300,
+        4.02
       ]
     ],
     "stage_series_down": [
@@ -195,6 +211,22 @@
       [
         1788725700,
         3.94
+      ],
+      [
+        1788726600,
+        3.89
+      ],
+      [
+        1788727500,
+        3.85
+      ],
+      [
+        1788728400,
+        3.81
+      ],
+      [
+        1788729300,
+        3.78
       ]
     ],
     "provenance": "MEASURED"
@@ -287,15 +319,15 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.46,
+    "stage_ft": 2.47,
     "condition": "Normal",
     "level": "NORMAL",
-    "trend": "Falling",
+    "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 60.6,
+    "age_min": 38.8,
     "fresh": true,
-    "last_updated_utc": "2026-09-06T20:33:00+00:00",
+    "last_updated_utc": "2026-09-06T21:03:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
@@ -461,7 +493,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-09-06T21:33:33.316161+00:00",
+    "valid_utc": "2026-09-06T21:41:49.936413+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }

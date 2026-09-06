@@ -3,7 +3,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cullowhee Creek — live watershed status</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="noah_map.css"></head><body>
+<link rel="stylesheet" href="noah_map.css">
+<style>#sbtable{max-width:460px;right:14px}</style></head><body>
 <!-- ===== status banner (auto-hides when embedded in a page that already shows it) ===== -->
 <style>
 #devbanner{position:fixed;top:0;left:0;right:0;z-index:2000;background:#3a1d12;
@@ -133,14 +134,14 @@
 <div id="map"></div>
 <div id="sbtable">
   <h4 id="sbhdr">Sub-basin status <span id="sbtog">&#9662;</span></h4>
-  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil wetness, 0 (dry) to 1 (saturated): Open-Meteo soil-moisture percentile against the cell's own 30-day history, falling back to the 30-day rainfall index. Modeled until the in-basin probes report. The uncapped forecast outlook that used to sit here is in the status pill's tooltip.">Soil moisture</th><th>Rain</th><th>~RP / stage</th><th>Lead</th></tr></thead>
+  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil wetness, 0 (dry) to 1 (saturated): Open-Meteo soil-moisture percentile against the cell's own 30-day history, falling back to the 30-day rainfall index. Modeled until the in-basin probes report. The uncapped forecast outlook that used to sit here is in the status pill's tooltip.">Soil moisture</th><th>Rain</th><th title="modeled stream depth at the reach (total stage: storm flow plus baseflow through the reach rating), in feet. Campus is the only field-validated rating; the others are placeholders until the stage nodes report. The small ~yr is the return period of the modeled flow, which is what sets the posture on the seven non-campus reaches. Speedwell carries the FIMAN gage where measured.">Stream depth</th><th>Lead</th></tr></thead>
   <tbody id="sbtbody"></tbody></table>
   <div class="sbleg">
     <div><b>Status</b> &mdash; severity posture: Normal &#9656; Watch &#9656; Warning &#9656; Emergency</div>
     <div><b>Outlook</b> &mdash; what soil + <i>forecast</i> rain alone imply. Forecast evidence buys lead time at lower confidence, so it can raise a <b>Watch</b> and no further; <b>Warning</b> and <b>Emergency</b> assert the flood is happening and need a measured stream rise. Where the forecast outruns that, this column shows the higher level <i>dashed</i> and the sub-basin is <b>ringed in that colour on the map</b> &mdash; storm coming, not yet confirmed.</div>
     <div><b>Soil moisture</b> &mdash; the wetness the engine used for that sub-basin, 0 (dry) to 1 (saturated), from the Open-Meteo soil-moisture percentile or the 30-day rainfall index; <b>MOD</b> = modeled, replaced by the in-basin probes when NOAH deploys. Amber above 0.6, orange above 0.85.</div>
     <div><b>Rain</b> &mdash; rainfall driving the status, in inches. Live: peak 24-hr precipitation forecast (QPF) at that sub-basin. What-if: design-storm depth falling over that sub-basin.</div>
-    <div><b>~RP / stage</b> &mdash; modeled flood magnitude. Tributaries: return period in years (e.g. ~100&nbsp;yr). WCU campus: creek stage in feet.</div>
+    <div><b>Stream depth</b> &mdash; modeled depth at the reach in feet (storm flow plus baseflow through the reach rating). Campus is the only field-validated rating; the rest are placeholders until the stage nodes report. The small ~yr is the return period of the modeled flow, which sets the posture on the tributaries. The mouth has no rating and shows the return period alone.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
     <div>&#9670; &mdash; posture <b>confirmed by a measured gauge</b> (NCEM FIMAN 25380 at Speedwell), not modeled alone. Measurement can raise a basin's status, never lower it.</div>
     <div class="sbleg-f">rows sorted worst-first &middot; updates live</div>
@@ -960,10 +961,13 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
   var html="";
   for(var i=0;i<rows.length;i++){ var r=rows[i], col=SEV[r.lv]||"#9AA5B1";
     var rainS=(r.rain!=null&&isFinite(r.rain))? (+r.rain).toFixed(1)+"″":"—";
-    var rpS;
-    if(r.bid==="CC-WCU-2260"){ rpS=(r.stage!=null)? (+r.stage).toFixed(1)+" ft":"—"; }
-    else if(r.bid==="CC-MOUTH-2340"){ rpS=(r.rp!=null)? "~"+Math.round(r.rp)+" yr":"—"; }
-    else { rpS=(r.rp!=null)? "~"+Math.round(r.rp)+" yr":"—"; }
+    /* STREAM DEPTH column (2026-09-06, was "~RP / stage"): modeled depth in feet for every reach with a rating,
+       with the return period of the flow as a small suffix on the frequency-classified reaches; the mouth has
+       no rating and shows the return period alone. */
+    var rpS, rpTag=(r.rp!=null&&r.bid!=="CC-WCU-2260")? " <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(r.rp)+" yr</span>":"";
+    if(r.stage!=null&&isFinite(r.stage)){ rpS=(+r.stage).toFixed(1)+" ft"+rpTag; }
+    else if(r.rp!=null){ rpS="~"+Math.round(r.rp)+" yr"; }
+    else { rpS="—"; }
     var _c=(typeof cur==="function")?cur(r.bid):null;
     var lead=(_c&&_c.leadMin!=null)? _c.leadMin+" min"
              :((typeof LEADMIN!=="undefined"&&LEADMIN[r.bid]!=null)? LEADMIN[r.bid]+" min*":"—");

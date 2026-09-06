@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-06T23:29:57.202333+00:00",
+  "fetched_utc": "2026-09-06T23:41:25.626073+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
@@ -17,7 +17,7 @@
     "CC-MOUTH-2340": 0.07
   },
   "nws_note": "api.weather.gov gridded forecast, next 24 h",
-  "wetness_note": "live_rainfall unavailable; ARC-II default (URLError)",
+  "wetness_note": "live_rainfall unavailable; ARC-II default (TimeoutError)",
   "basins": {
     "CC-UP-503": {
       "basin": "CC-UP-503",

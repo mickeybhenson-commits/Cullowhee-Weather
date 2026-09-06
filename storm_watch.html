@@ -751,6 +751,7 @@ async function refresh(){
 let simActive=false, simPlaying=false, simT=0, simTimer=null;
 let simRate=2.5;   /* hours of storm per tick, relative to the original 0.4 h / 120 ms (3.3 h/s). 2.5× ≈ 20 s for a 7-day replay */
 let simLatch=null, simWasInside=false;   /* readiness floor latches once met, until the storm has passed through */
+let simFirstElev=null;                   /* replay hour the floor first reached ELEVATED — the notice clock starts here */
 const simGroup = L.layerGroup();
 const SIM_COLORS = {TD:"#8a94a0",TS:"#e6b34d",HU:"#e8734d",MH:"#d94f6b"};
 
@@ -826,6 +827,7 @@ function simDraw(){
   let res = evalStorm(fpts, cur.status);
   if(res.inside) simWasInside=true;
   if(res.met) simLatch = {floor:res.floor, at:simT};
+  if((res.floor==="ELEVATED"||res.floor==="WATCH_PENDING") && (simFirstElev===null || simT<simFirstElev)) simFirstElev=simT;
   else if(simLatch && !simWasInside){ res = Object.assign({}, res, {floor:simLatch.floor, held:true}); }
   else if(simWasInside && !res.inside){ simLatch=null; }
   const b = $("floorBadge");
@@ -839,7 +841,7 @@ function simDraw(){
   let tot, frac, rain, recInfo=null;
   if(rec){ tot = rec.total_in; rain = simRecRain(rec, simT); frac = tot>0 ? rain/tot : 0;
     const day = Math.min(rec.wetness_by_day.length-1, Math.max(0, Math.floor(simT/24)));
-    recInfo = {wetness: rec.wetness_by_day[day], trips: rec.trip_by_day[day], day: day, api30: rec.api30_in, w0: rec.wetness};
+    recInfo = {wetness: rec.wetness_by_day[day], trips: rec.trip_by_day[day], day: day, api30: rec.api30_in, w0: rec.wetness, hydro: rec.hydro||null, hour: simT, firstElev: simFirstElev};
     $("simRain").value = tot.toFixed(1); $("simRain").disabled = true; $("simRainWrap").title = "ERA5 reanalysis storm total for this replay (Open-Meteo archive) — a modeled record, not gauges";
   } else { tot = Number($("simRain").value)||0; frac = gH==null ? 0 : Math.max(0, Math.min(1, (simT-(gH-36))/42)); rain = tot*frac; $("simRain").disabled = false; }
   if(window.rdySim) rdySim({level:res.floor, held:!!res.held, rain:+rain.toFixed(2), rainTotal:tot, rainFrac:frac, rec:recInfo,
@@ -860,7 +862,7 @@ function simEnter(){
   $("simbar").classList.add("on");
   $("simTag").classList.add("on");
   $("statline").innerHTML = '<span style="color:var(--sim)">●</span> SIMULATION — live NHC display suspended';
-  simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH();
+  simT = 0; simLatch=null; simWasInside=false; simFirstElev=null; $("simSlider").max = simMaxH();
   $("simRain").value = SIM_RAIN[$("simStorm").value] ?? 8; simDraw();
 }
 function simExit(){
@@ -892,11 +894,11 @@ document.querySelectorAll("#simSpeed button").forEach(b=>b.addEventListener("cli
   document.querySelectorAll("#simSpeed button").forEach(x=>x.classList.toggle("on", x===b));
 }));
 $("simSlider").addEventListener("input",e=>{
-  simStop(); const nt=Number(e.target.value); if(nt<simT){ simLatch=null; simWasInside=false; } simT = nt; simDraw();
+  simStop(); const nt=Number(e.target.value); if(nt<simT){ simLatch=null; simWasInside=false; simFirstElev=null; } simT = nt; simDraw();
 });
 $("simRain").addEventListener("change",()=>{ if(simActive) simDraw(); });
 $("simStorm").addEventListener("change",()=>{
-  simStop(); simT = 0; simLatch=null; simWasInside=false; $("simSlider").max = simMaxH(); $("simRain").value = SIM_RAIN[$("simStorm").value] ?? 8; simDraw();
+  simStop(); simT = 0; simLatch=null; simWasInside=false; simFirstElev=null; $("simSlider").max = simMaxH(); $("simRain").value = SIM_RAIN[$("simStorm").value] ?? 8; simDraw();
 });
 
 function tickClock(){ $("clock").textContent = fmtZ(new Date()); }
@@ -931,7 +933,10 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
     c.sim_rain = ov.rain||0; c.sim_rain_total = ov.rainTotal||0; c.sim_rain_frac = ov.rainFrac||0; c.sim_rec = ov.rec||null;
     if(ov.rec){ Object.keys(c.basins||{}).forEach(function(bid){ var b=c.basins[bid];
       b.wetness = {w: ov.rec.wetness, tier:"reanalysis", source:"ERA5 30-day API at replay day "+(ov.rec.day+1), note:"antecedent wetness from the reanalysis rain record — starts "+ov.rec.w0+" (API30 "+ov.rec.api30+" in), rises as the storm's rain lands"};
-      b.trip_in = ov.rec.trips[bid] || null; b.stage = {valid:false, tier:"modeled"}; }); }
+      b.trip_in = ov.rec.trips[bid] || null; b.stage = {valid:false, tier:"modeled"};
+      if(ov.rec.hydro && ov.rec.hydro.basins[bid]){ var hb=ov.rec.hydro.basins[bid], hi=Math.max(0, Math.min(hb.stage_ft.length-1, Math.floor(ov.rec.hour)));
+        b.sim_stage = hb.stage_ft[hi]; b.sim_posture = hb.posture[hi]; b.sim_first = hb.first; b.sim_peak = hb.peak_stage_ft; b.sim_peak_hr = hb.peak_hr;
+        b.sim_obs = (ov.rec.hydro.observed||{})[bid] || null; } }); }
     return c;
   }
   function render(j){
@@ -945,13 +950,20 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
                            : '<div class="al" style="color:var(--dim)">no alarm ringing — corridor, WPC excessive-rainfall (5 d), wetness trend, forecast margin all quiet</div>';
     if(ero.status==="ok"){ alHtml += '<div class="cad">WPC excessive-rainfall days 1–5: '+(ero.days||[]).map(function(d){ return d.dn? '<b>'+d.label+'</b>' : 'none'; }).join(" · ")+'</div>'; }
     else if(ero.status){ alHtml += '<div class="cad">WPC excessive-rainfall outlook: '+ero.status+'</div>'; }
-    if(j.sim && j.sim_rec){ alHtml += '<div class="cad" style="color:var(--sim)"><b>modeled record</b> — ERA5 reanalysis rain for this storm (Open-Meteo archive, one cell over the watershed) and the antecedent wetness it implies: '+num(j.sim_rec.w0,2)+' at the start, '+num(j.sim_rec.wetness,2)+' on replay day '+(j.sim_rec.day+1)+' · rain '+num(j.sim_rain,1)+' of '+num(j.sim_rain_total,1)+' in fallen · <b>rung = the engine\'s rung for that rain at that wetness — modeled, not observed; ERA5 under-catches mountain rain</b> · press LIVE to return</div>'; }
+    if(j.sim && j.sim_rec && j.sim_rec.hydro){ var H=j.sim_rec.hydro, fw=H.basins["CC-WCU-2260"].first.WATCH, fe=j.sim_rec.firstElev, ob=(H.observed||{})["CC-WCU-2260"];
+      alHtml += '<div class="cad" style="color:var(--sim)"><b>reenactment</b> — the engine run through this storm\'s ERA5 rain record hour by hour (real hyetograph → runoff → unit hydrograph → calibrated stage), wetness '+num(H.wetness_used,2)+' at the start · '+num(j.sim_rain,1)+' of '+num(j.sim_rain_total,1)+' in fallen · '+
+        (fw==null ? 'campus never reaches WATCH in this record' : 'campus first WATCH at T+'+fw+' h'+(fe!=null ? ' — <b>'+Math.round(fw-fe)+' h after the floor went ELEVATED at T+'+Math.round(fe)+' h</b>' : ''))+
+        (ob ? ' · observed campus peak '+ob.stage_ft+' ft ('+ob.posture+') vs modeled '+num(H.basins["CC-WCU-2260"].peak_stage_ft,1)+' ft' : '')+
+        ' · <b>modeled, one reanalysis cell, ERA5 under-catches mountain rain</b> · press LIVE to return</div>'; }
+    else if(j.sim && j.sim_rec){ alHtml += '<div class="cad" style="color:var(--sim)"><b>modeled record</b> — ERA5 reanalysis rain for this storm (Open-Meteo archive, one cell over the watershed) and the antecedent wetness it implies: '+num(j.sim_rec.w0,2)+' at the start, '+num(j.sim_rec.wetness,2)+' on replay day '+(j.sim_rec.day+1)+' · rain '+num(j.sim_rain,1)+' of '+num(j.sim_rain_total,1)+' in fallen · <b>rung = the engine\'s rung for that rain at that wetness — modeled, not observed; ERA5 under-catches mountain rain</b> · press LIVE to return</div>'; }
     else if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — no reanalysis before 1940, so an assumed total of ≈'+num(j.sim_rain_total,1)+' in arrives with the track ('+Math.round(j.sim_rain_frac*100)+'% so far) · <b>rung = the engine\'s rung for that rain at today\'s wetness — modeled, not a posture</b> · press LIVE to return</div>'; }
     if(j.mode_since){ alHtml += '<div class="cad">mode since '+j.mode_since.slice(5,16).replace("T"," ")+'Z'+(cad.feed? ' · cadence: feed '+cad.feed+' min · FIMAN '+cad.fiman+' min · node stage '+cad.node_stage+' min · soil '+cad.node_soil+' min · rain '+cad.node_rain:'')+(cad.backhaul? ' · '+cad.backhaul:'')+'</div>'; }
     $("rdyAlarms").innerHTML = alHtml;
     if(j.status!=="ok"){ $("rdyRows").innerHTML='<tr><td colspan="5" style="text-align:left;color:var(--pend)">readiness feed: '+j.status+'</td></tr>'; $("rdyFoot").textContent=""; return; }
     var thead=$("rdy").querySelector("thead tr");
-    thead.innerHTML = j.sim ? '<th>basin</th><th>wet</th><th>to WATCH</th><th>storm rain</th><th>margin</th><th>rung</th>'
+    var hyd = !!(j.sim && j.sim_rec && j.sim_rec.hydro);
+    thead.innerHTML = hyd ? '<th>basin</th><th>wet</th><th>storm rain</th><th>stage ft</th><th>peak</th><th>posture</th>'
+                    : j.sim ? '<th>basin</th><th>wet</th><th>to WATCH</th><th>storm rain</th><th>margin</th><th>rung</th>'
                             : '<th>basin</th><th>wet</th><th>to WATCH</th><th>qpf24</th><th>margin</th>';
     var RUNG_COLOR={NORMAL:"var(--ok)",WATCH:"var(--elev)",WARNING:"var(--pend)",EMERGENCY:"#ff5c7a"};
     var rows=[], deployed=0, planned=0, order=["CC-COX-097","CC-LB-171","CC-UP-503","CC-TIL-705","CC-MS-1100","CC-SPD-1830","CC-WCU-2260","CC-MOUTH-2340"];
@@ -965,6 +977,14 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
       var mcls = m==null ? "" : m<=0 ? "m-neg" : m<1 ? "m-low" : "";
       var confirm = r.stage && r.stage.valid && r.stage.tier!=="modeled";
       var nm=(r.name||bid).replace(/ \(.*$/,"").replace("Mainstem above Speedwell","Mainstem").replace("Upper Cullowhee","Upper Cull.").replace("Cullowhee Creek at ","").slice(0,13);
+      if(hyd){ var ps=r.sim_posture||"N/A", st=r.sim_stage, pk=r.sim_peak, ob=r.sim_obs;
+        rows.push('<tr><td title="'+bid+'">'+nm+'</td>'+
+          '<td title="'+(w.note||"")+'">'+num(w.w,2)+tag(w.tier)+'</td>'+
+          '<td>'+num(rain,1)+'</td>'+
+          '<td>'+(st==null?'<span style="color:var(--dim)">n/a</span>':num(st,1))+'</td>'+
+          '<td title="modeled peak at T+'+r.sim_peak_hr+' h'+(ob?' · observed '+ob.stage_ft+' ft ('+ob.posture+')':'')+'">'+(pk==null?'—':num(pk,1)+(ob?' <span style="color:var(--ok)">obs '+num(ob.stage_ft,1)+'</span>':''))+'</td>'+
+          '<td style="font-weight:600;color:'+(RUNG_COLOR[ps]||"var(--dim)")+'">'+ps+'</td></tr>');
+        return; }
       rows.push('<tr'+(confirm?' class="confirm" title="measured stage '+num(r.stage.value,2)+' ft · '+r.stage.source+'"':'')+'>'+
         '<td title="'+bid+'">'+nm+'</td>'+
         '<td title="'+(w.note||w.source||"")+'">'+num(w.w,2)+tag(w.tier)+'</td>'+

@@ -541,3 +541,24 @@ class TestStarlinkOverhead(unittest.TestCase):
         self.assertTrue(all(k in out["sats"][0] for k in ("tle1", "tle2", "norad", "alt_km")))
         bad = so.build(datetime(2026, 8, 5, tzinfo=timezone.utc), tles=[("X", "garbage", "garbage")])
         self.assertEqual(bad["status"], "ok"); self.assertEqual(bad["sats"], [])   # unparsable rows are skipped
+
+
+class TestReenactment(unittest.TestCase):
+    """reenact.py: the engine run hour by hour through the ERA5 record of each replay storm."""
+
+    def test_helene_reenactment_lands_near_the_observed_campus_peak(self):
+        import json, reenact
+        d = json.loads(open("data/storm_records.json", encoding="utf-8").read())
+        h = d["storms"]["Helene 2024"]["hydro"]
+        wcu = h["basins"]["CC-WCU-2260"]
+        self.assertEqual(len(wcu["stage_ft"]), len(wcu["posture"]))
+        self.assertGreater(len(wcu["stage_ft"]), 100)                     # hourly through the window
+        self.assertAlmostEqual(wcu["peak_stage_ft"], 8.4, delta=1.0)      # observed 8.4 ft (WATCH)
+        self.assertIn("WATCH", wcu["posture"])
+        self.assertNotIn("EMERGENCY", wcu["posture"])                     # the real-shape path does not over-call
+        self.assertIsNotNone(wcu["first"]["WATCH"])
+        # rebuilding from the record reproduces the stored series (the tool is deterministic)
+        cum = d["storms"]["Helene 2024"]["cum_in"]
+        hourly = [cum[0]] + [round(cum[i] - cum[i - 1], 3) for i in range(1, len(cum))]
+        again = reenact.hydrograph("CC-WCU-2260", hourly, h["wetness_used"])
+        self.assertEqual(again["posture"], wcu["posture"])

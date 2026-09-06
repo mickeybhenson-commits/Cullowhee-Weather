@@ -177,7 +177,10 @@
   <div class="ctl" id="stormctl" style="display:none">
     <label style="font-size:11px;color:#5b6b7a">path</label>
     <select id="stormpath" class="mini" title="storm pathway" style="padding:4px 6px;cursor:pointer;max-width:170px">
-      <optgroup label="Historical analogs">
+      <optgroup label="Recall — the storm's own rain record">
+        <option value="helene_rec">Helene 2024 recall (ERA5 record)</option>
+      </optgroup>
+      <optgroup label="Historical analogs (schematic)">
         <option value="helene">Helene 2024 &#8593;N&#183;NW</option>
         <option value="fred">Fred 2021 &#8599;NE</option>
         <option value="frances">Frances 2004 &#8598;N&#183;NW</option>
@@ -1025,6 +1028,7 @@ function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,st
      returns early to paintStorm), so the design-storm caveat has to live HERE,
      not on the dead #read branch. SCS Type II, 24 h: overpredicts a long
      tropical event's peak 2.5-3x. */
+  if(rd && curPath().recall){ rd.innerHTML='<b>'+curPath().recall+' recall</b> <span style="opacity:.7">&middot; the storm\'s own ERA5 rain on every basin &middot; slider and radius not used &middot; press &#9658; Play storm</span>'; return; }
   if(rd) rd.innerHTML="storm "+SCEN[idx].qpf.toFixed(0)+"&Prime; peak &middot; R "+stormR.toFixed(1)+" mi &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"")+
     ' <span style="opacity:.7">&middot; 24&#8209;h design storm</span>'; }
 var _animReset=null;
@@ -1059,8 +1063,15 @@ var PATHWAYS={
   frances:{name:"Frances 2004 analog",   arrow:"↖ N·NW", dLat:0.044, dLon:-0.024, dwell:2.8, oroW:1.25, set:{idx:3,R:8.0}},
   ivan:   {name:"Ivan 2004 analog",      arrow:"↗ NE",     dLat:0.042,  dLon:0.034,  dwell:2.2, oroW:1.10, set:{idx:2,R:7.0}}
 };
+PATHWAYS.helene_rec={name:"Helene 2024 recall", arrow:"↑ N·NW", dLat:0.048, dLon:-0.014, dwell:1, oroW:0, recall:"Helene 2024"};
 var pathKey="swne";
 function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
+/* Recall records: data/storm_records.json — ERA5 reanalysis rain over the watershed, hour by hour, and the
+   antecedent wetness it implies (built by reenact.py). In recall mode the animation runs the SAME engine
+   (assessBasinEvent's chain) on the storm's real hourly rain instead of a design-storm hump, so what you
+   watch is the modeled record of the event. */
+var STORM_REC=null;
+fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ STORM_REC=j; }).catch(()=>{});
 
 /* ===== What-if storm progression: animate the event hydrograph through time =====
    Builds each basin's full calibrated hydrograph (SCS Type II storm -> NRCS-CN
@@ -1085,6 +1096,8 @@ function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
     return raw.map(function(wv){ return sum>0? total*wv/sum : 0; }); }
   function build(){   // MOVING storm: follows the selected PATHWAY through the placed swath; each basin's
     // hyetograph is the rain deposited as the storm passes over it (orographically weighted).
+    const PWr=curPath(); const rec = PWr.recall && STORM_REC && STORM_REC.storms && STORM_REC.storms[PWr.recall];
+    if(PWr.recall && rec){ return buildRecall(rec, PWr); }
     const w=ARCW[SCEN[idx].arc]||0.5, P=SCEN[idx].qpf;
     const env=extHyeto(1.0);                              // per-step intensity fraction (prolonged hump)
     const PW=curPath();
@@ -1111,6 +1124,26 @@ function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
     hydros.__rain=cum;
     hydros.__cumb={}; ORDER.forEach(function(b){ var r=0,arr=[]; for(var t=0;t<tlen;t++){ r+=(t<series[b].length?series[b][t]:0); arr.push(r); } hydros.__cumb[b]=arr; });
     const sc=document.getElementById("stormscrub"); if(sc)sc.max=tlen-1; }
+  function buildRecall(rec, PW){
+    /* the storm's own hourly rain (ERA5, one cell over the watershed) on every basin, at the record's wetness;
+       the storm marker still rides the schematic Helene pathway through the placed center for the picture */
+    const cum=rec.cum_in, hourly=[cum[0]].concat(cum.slice(1).map((c,i)=>c-cum[i]));
+    const w=(rec.hydro&&rec.hydro.wetness_used!=null)?rec.hydro.wetness_used:rec.wetness;
+    const steps=[]; hourly.forEach(v=>{ for(let k=0;k<4;k++) steps.push(Math.max(0,v)/4); });
+    const cLat=stormLL.lat, cLon=stormLL.lng, n=steps.length, track=[];
+    for(let t=0;t<n;t++){ const frac=n>1?t/(n-1):0.5; track.push([cLat+(frac-0.5)*2*PW.dLat, cLon+(frac-0.5)*2*PW.dLon]); }
+    const series={}; ORDER.forEach(b=>series[b]=steps.slice());
+    hydros={}; ORDER.forEach(b=>{ const B=BASINS[b], CN=cnFromWetness(B.CN2,w);
+      const incr=incrementalRunoff(series[b],CN), uh=unitHydrograph(B.DA,B.Tc/60.0,484,0.25);
+      const h=new Array(incr.length+uh.length).fill(0);
+      for(let i=0;i<incr.length;i++){ const r=incr[i]; if(r<=0)continue; for(let j=0;j<uh.length;j++)h[i+j]+=r*uh[j]; }
+      const raw=Math.max.apply(null,h), cp=calibratePeak(raw,b), sc=raw>0?cp/raw:0;
+      hydros[b]=h.map(x=>x*sc); });
+    tlen=Math.max.apply(null,ORDER.map(b=>hydros[b].length));
+    hydros.__track=track; hydros.__recall={name:PW.recall, total:rec.total_in, w:w, t0:rec.t0, obs:(rec.hydro&&rec.hydro.observed)||{}};
+    let cumr=[],run=0; for(let t=0;t<tlen;t++){ run+=(t<steps.length?steps[t]:0); cumr.push(run); }
+    hydros.__rain=cumr; hydros.__cumb={}; ORDER.forEach(b=>hydros.__cumb[b]=cumr);
+    const sc=document.getElementById("stormscrub"); if(sc)sc.max=tlen-1; }
   function catAt(b,t){ const h=hydros[b], cq=(t<h.length?h[t]:0);
     return STAGE_BASED[b] ? posture(stageTotalFromQ(cq,b),b) : freqPosture(cq,b); }
   function paint(t){ tpos=t;
@@ -1123,7 +1156,10 @@ function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
       if(tp){ var ll=L.latLng(tp[0],tp[1]); stormMarker.setLatLng(ll); stormCircle.setLatLng(ll); } }
     const hr=(t*DTh).toFixed(1), rain=(hydros.__rain[Math.min(t,hydros.__rain.length-1)]||0).toFixed(2);
     const rd=document.getElementById("stormread");
-    if(rd) rd.innerHTML="hr "+hr+" &middot; "+curPath().name+" "+curPath().arrow+" &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
+    if(hydros.__recall){ var R=hydros.__recall, d0=new Date(R.t0), when=new Date(d0.getTime()+t*DTh*3600e3), ob=R.obs["CC-WCU-2260"], cst=stageTotalFromQ((t<hydros["CC-WCU-2260"].length?hydros["CC-WCU-2260"][t]:0),"CC-WCU-2260");
+      if(rd){ rd.title="ERA5 reanalysis rain record run on the engine at wetness "+R.w.toFixed(2)+" — modeled, not observed; one reanalysis cell over the watershed; ERA5 under-catches mountain rain";
+        rd.innerHTML="<b>"+R.name+" recall</b> &middot; "+when.toISOString().slice(5,16).replace("T"," ")+"Z &middot; rain "+rain+"/"+R.total.toFixed(1)+"&Prime; &middot; campus "+(cst==null?"—":cst.toFixed(1)+" ft")+(ob?" <span style=\"opacity:.7\">(obs peak "+ob.stage_ft+")</span>":"")+" &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":""); } }
+    else if(rd) rd.innerHTML="hr "+hr+" &middot; "+curPath().name+" "+curPath().arrow+" &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
     if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var cq=(t<hydros[b].length?hydros[b][t]:0);
       return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b)}; }));
     const sc=document.getElementById("stormscrub"); if(sc && +sc.value!==t) sc.value=t; }
@@ -1131,7 +1167,7 @@ function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
     const p=document.getElementById("stormplay"); if(p)p.innerHTML="&#9658; Play storm"; }
   function firstActive(){ for(var t=0;t<tlen;t++){ for(var k=0;k<ORDER.length;k++){ var c=catAt(ORDER[k],t); if(c!=="NORMAL"&&c!=="N/A") return t; } } return 0; }
   function step(){ if(tpos>=tlen-1){paint(tlen-1);stop();return;} paint(tpos+1); }
-  function startTimer(){ if(timer)clearInterval(timer); timer=setInterval(step, Math.round(BASE_MS/speed)); }
+  function startTimer(){ if(timer)clearInterval(timer); timer=setInterval(step, Math.round((hydros&&hydros.__recall?70:BASE_MS)/speed)); }
   function playPause(){ if(timer){stop();return;} if(!hydros)build();
     if(tpos===0 || tpos>=tlen-1) tpos=Math.max(0, firstActive()-12);   // skip the all-NORMAL lead-in
     document.getElementById("stormplay").innerHTML="&#10073;&#10073; Pause"; paint(tpos); startTimer(); }
@@ -1139,7 +1175,7 @@ function curPath(){ return PATHWAYS[pathKey]||PATHWAYS.swne; }
     if(typeof stormMarker!=="undefined"){ stormMarker.setLatLng(stormLL); stormCircle.setLatLng(stormLL); }
     if(mode==="whatif")repaint();
     const sc=document.getElementById("stormscrub"); if(sc)sc.value=0;
-    const rd=document.getElementById("stormread"); if(rd)rd.innerHTML="place the storm &middot; "+curPath().name+" "+curPath().arrow+" &middot; press play"; }
+    const rd=document.getElementById("stormread"); if(rd)rd.innerHTML=(curPath().recall?"<b>"+curPath().recall+" recall</b> &middot; the storm's own ERA5 rain record on the engine &middot; press play":"place the storm &middot; "+curPath().name+" "+curPath().arrow+" &middot; press play"); }
   var pb=document.getElementById("stormplay"); if(pb)pb.onclick=playPause;
   var rb=document.getElementById("stormreset"); if(rb)rb.onclick=reset;
   var sb=document.getElementById("stormscrub"); if(sb)sb.addEventListener("input",function(e){ if(!hydros)build(); stop(); paint(+e.target.value); });

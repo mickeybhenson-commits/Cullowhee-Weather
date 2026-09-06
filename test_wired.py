@@ -184,6 +184,12 @@ TOOLS = {
                                     # harness — not because it cannot run in CI. It exits
                                     # 1 on a mismatch, so it drops straight into a step.
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
+    "reenact",              # CLI: runs cwm_model's real-hyetograph chain through each storm in
+                            # data/storm_records.json and writes the hourly stage/posture series
+                            # the What-if replay (storm_watch.html) and the Helene recall
+                            # (live.html) read. Its input is a one-off ERA5 pull made through a
+                            # browser (the sandbox cannot reach Open-Meteo), so it is run by hand
+                            # when a storm is added, not on a schedule. Landed 2026-09-06.
     "nisar_slope_motion",   # argparse CLI: reads ~2.3 GB NISAR L2 GUNW .h5 files from ASF and
                             # reports LOS motion on the NC 107 slope. Needs the files and h5py, so
                             # it is a workstation tool; it landed 2026-09-03 without this entry.

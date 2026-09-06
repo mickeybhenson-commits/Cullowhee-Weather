@@ -13,7 +13,17 @@ live.html's assessBasinEvent, kept as a time series instead of a peak.
 
     python reenact.py            -> rewrites the "hydro" block of data/storm_records.json
 
-Wetness: one CN per storm, from the record's wetness at the start of the day the main rain
+Validated forcing: a storm may carry a "forcing" block naming a gauge-based hyetograph and an
+antecedent wetness that the project has validated. Helene does — the K24A hourly hyetograph
+scaled to 10 in (k24a_helene_hyeto_scaled.csv) at wetness 0.25, the forcing backtest_helene.py
+runs and the one that reproduces the five NCGS surveyed marks to within half a foot. When the
+block is present the rain is spliced into the ERA5 window at its timestamps (ERA5 stays on the
+days before and after) and the stated wetness is used, so the recall on live.html and the
+replay on storm_watch.html are the validated event, not a second, unvalidated one from a
+reanalysis cell (ERA5 reads 9.2 in and puts the main rain on a drier soil, giving 8.0 ft —
+close, but not the number the marks checked). The ERA5 cumulative is kept as cum_in_era5.
+
+Wetness otherwise: one CN per storm, from the record's wetness at the start of the day the main rain
 began (first hour the cumulative passes 25 % of the storm total). Helene starts at 0.11 and
 the predecessor rain saturates the ground before the main rain, so the day-3 value is what
 the main rain meets. Stated in the output.
@@ -100,13 +110,78 @@ def hydrograph(bid: str, hourly_in: list[float], wetness: float) -> dict:
                 stage_ft=stage, posture=post, first=firsts)
 
 
+VALIDATED_FORCING = {
+    "Helene 2024": dict(
+        rain_csv="k24a_helene_hyeto_scaled.csv", rain_total_in=10.0, wetness=0.25,
+        source="K24A hourly hyetograph scaled to the 10 in basin total (peak 0.66 in/h), antecedent wetness 0.25 "
+               "(drought-dry) — the backtest_helene.py forcing, which reproduces the five NCGS surveyed Helene "
+               "high-water marks to within 0.3-0.5 ft (HELENE_DECISION, 2026-07-31)"),
+}
+
+
+def _splice_forcing(s: dict, name: str, base: Path) -> dict:
+    """Replace the ERA5 hourly rain with the validated gauge hyetograph over its own hours; keep ERA5 outside."""
+    f = VALIDATED_FORCING.get(name)
+    if not f:
+        return s
+    import csv
+    from datetime import datetime, timezone
+    era = s.get("cum_in_era5") or s["cum_in"]
+    hourly = [era[0]] + [era[i] - era[i - 1] for i in range(1, len(era))]
+    t0 = datetime.fromisoformat(s["t0"].replace("Z", "+00:00"))
+    rows = list(csv.reader((base / f["rain_csv"]).read_text(encoding="utf-8").splitlines()))
+    rows = [r for r in rows if len(r) >= 2 and r[0][:2] == "20"]
+    first = last = None
+    for ts, v in rows:
+        t = datetime.strptime(ts, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+        h = int(round((t - t0).total_seconds() / 3600.0))
+        if 0 <= h < len(hourly):
+            hourly[h] = float(v)
+            first = h if first is None else first
+            last = h
+    # the gauge record covers the whole event: zero ERA5 inside its span (already overwritten hour by hour)
+    cum, run = [], 0.0
+    for v in hourly:
+        run += v
+        cum.append(round(run, 3))
+    s["cum_in_era5"] = era
+    s["cum_in"] = cum
+    s["total_in"] = round(cum[-1], 2)
+    # antecedent by day: start from the validated wetness (inverted through the same API map) and carry the
+    # spliced rain forward day by day, so the card's wetness and trip lines follow the validated event too
+    import wetness as W
+    import readiness as R
+    month = t0.month
+    lo = (1.4 if W.is_growing_season(month) else 0.5) * W.API_5DAY_EQUIV
+    hi = (2.1 if W.is_growing_season(month) else 1.1) * W.API_5DAY_EQUIV
+    w0 = float(f["wetness"])
+    api = (w0 / 0.5) * lo if w0 < 0.5 else lo + (w0 - 0.5) / 0.5 * (hi - lo)
+    s["api30_in_era5"] = s.get("api30_in_era5", s["api30_in"])
+    s["api30_in"] = round(api, 2)
+    ndays = len(s["wetness_by_day"])
+    s["wetness_by_day_era5"] = s.get("wetness_by_day_era5") or s["wetness_by_day"]
+    wbd = []
+    for d_ in range(ndays):
+        wbd.append(round(W.wetness_from_api(api, month), 3))
+        api = W.API_K * api + sum(hourly[d_ * 24:(d_ + 1) * 24])
+    s["wetness_by_day"] = wbd
+    s["trip_by_day"] = [{bid: R.trip_inches(bid, w_) for bid in cwm.BASINS} for w_ in wbd]
+    s["wetness"] = wbd[0]
+    s["forcing"] = dict(rain=f["source"], rain_csv=f["rain_csv"], hours=[first, last], wetness=f["wetness"],
+                        era5_total_in=round(era[-1], 2))
+    return s
+
+
 def build(rec_path: Path = Path("data/storm_records.json")) -> dict:
     d = json.loads(rec_path.read_text(encoding="utf-8"))
     for name, s in d["storms"].items():
+        _splice_forcing(s, name, rec_path.resolve().parent.parent)
         cum = s["cum_in"]
         hourly = [round(cum[0], 3)] + [round(cum[i] - cum[i - 1], 3) for i in range(1, len(cum))]
         day = main_rain_day(cum)
         w = s["wetness_by_day"][min(day, len(s["wetness_by_day"]) - 1)]
+        if s.get("forcing") and s["forcing"].get("wetness") is not None:
+            w = float(s["forcing"]["wetness"])
         basins = {bid: hydrograph(bid, hourly, w) for bid in cwm.BASINS}
         gate = s.get("gateH")
         notice = {}
@@ -115,10 +190,15 @@ def build(rec_path: Path = Path("data/storm_records.json")) -> dict:
             notice[bid] = None if (fw is None or gate is None) else round(fw - gate, 1)   # + = WATCH after the gate crossing
         s["hydro"] = dict(engine="cwm_model real-hyetograph chain (assess_event as a time series)",
                           wetness_used=w, wetness_day=day + 1, dt_hr=1.0, gateH=gate,
+                          wetness_source=("validated antecedent (" + s["forcing"]["rain"].split(",")[0] + ")" if s.get("forcing") else "ERA5 30-day API at the start of the main-rain day"),
+                          rain_source=(s["forcing"]["rain"] if s.get("forcing") else "ERA5 reanalysis, one cell over the watershed (Open-Meteo archive)"),
                           basins=basins, notice_hr=notice, observed=OBSERVED.get(name, {}))
     d["hydro_note"] = ("hydro.basins[bid].stage_ft / posture are hourly from replay hour 0; first.* = hour each rung was first "
                        "reached; notice_hr = first WATCH minus the gate-crossing hour (negative = WATCH before the track "
-                       "crossed the gate). One CN per storm from the record wetness on the day the main rain began.")
+                       "crossed the gate). One CN per storm from the record wetness on the day the main rain began, or the "
+                       "validated antecedent where a storm carries a 'forcing' block (Helene: K24A 10 in at wetness 0.25, "
+                       "the backtest forcing that matches the NCGS marks; cum_in is then that hyetograph spliced into the "
+                       "ERA5 window and cum_in_era5 keeps the reanalysis).")
     rec_path.write_text(json.dumps(d, separators=(",", ":")), encoding="utf-8")
     return d
 

@@ -19,8 +19,9 @@ the predecessor rain saturates the ground before the main rain, so the day-3 val
 the main rain meets. Stated in the output.
 
 Caveats travel with the data: one reanalysis cell for all eight basins, ERA5 under-catches
-mountain rain, the calibration is the regression fit, and the campus observed peak (8.4 ft,
-WATCH) is the only ground truth — the engine over-calls it, which is the point of showing it.
+mountain rain, the calibration is the regression fit. Comparisons: the campus 8.4 ft is
+marks-implied (consistent, not independent); the Speedwell FIMAN rise of 6.36 ft is the only
+measured number, and the rating there is known ~2x too shallow.
 """
 from __future__ import annotations
 
@@ -32,8 +33,21 @@ import cwm_model as cwm
 from flood_rating import calibrate_peak
 
 DT = cwm.DT                      # 0.25 h
-OBSERVED = {                     # the ground truth we have; the engine is compared to it on the page
-    "Helene 2024": {"CC-WCU-2260": {"stage_ft": 8.4, "posture": "WATCH", "source": "observed campus stage (project backtest); the engine over-calls it"}},
+OBSERVED = {                     # what we actually have to compare against, stated honestly
+    "Helene 2024": {
+        # Campus has no gauge. 8.4 ft is the peak the NCGS surveyed high-water marks (~10-yr, on the
+        # Speedwell-to-campus reach) imply through the reach rating — see HELENE_RETURN_PERIOD_CONFLICT.
+        # It is NOT an independent measurement of this engine (it was derived with the same real-hyetograph
+        # chain from the marks), so agreement here means "consistent", not "validated".
+        "CC-WCU-2260": {"stage_ft": 8.4, "posture": "WATCH", "kind": "marks-implied",
+                        "source": "peak implied by the NCGS surveyed Helene marks (~10-yr) through the reach rating; no gauge at campus"},
+        # Speedwell has the only measured record: FIMAN 25380 read 8.86 ft gage height at the Helene peak
+        # against 2.50 ft at low flow - a 6.36 ft rise, which needs no datum. The rectangular rating used
+        # here is documented ~2x too shallow (noah_rating_error_quantified_2026-08-07), so the modeled rise
+        # under-predicts it. That gap is a known rating problem, not a rainfall problem.
+        "CC-SPD-1830": {"rise_ft": 6.36, "gage_peak_ft": 8.86, "gage_low_ft": 2.50, "kind": "measured",
+                        "source": "FIMAN 25380 measured rise, Helene peak minus low flow (datum-free); the rating here is ~2x too shallow"},
+    },
 }
 
 
@@ -80,7 +94,8 @@ def hydrograph(bid: str, hourly_in: list[float], wetness: float) -> dict:
             idx = next((i for i, p in enumerate(post) if order.get(p, 0) >= order[rung]), None)
         firsts[rung] = idx
     pk_i = max(range(len(cal)), key=lambda i: cal[i]) if cal else 0
-    return dict(CN=round(CN, 1), peak_cfs=round(cp, 0), peak_hr=round(pk_i * DT, 1),
+    rise = None if (not stage or stage[0] is None or b["rating"] == "none") else round((cwm.stage_total(cp, bid) or 0) - stage[0], 2)
+    return dict(CN=round(CN, 1), peak_cfs=round(cp, 0), peak_hr=round(pk_i * DT, 1), rise_ft=rise,
                 peak_stage_ft=(None if b["rating"] == "none" else round(cwm.stage_total(cp, bid) or 0, 2)),
                 stage_ft=stage, posture=post, first=firsts)
 

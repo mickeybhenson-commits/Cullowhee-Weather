@@ -935,7 +935,7 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
       b.wetness = {w: ov.rec.wetness, tier:"reanalysis", source:"ERA5 30-day API at replay day "+(ov.rec.day+1), note:"antecedent wetness from the reanalysis rain record — starts "+ov.rec.w0+" (API30 "+ov.rec.api30+" in), rises as the storm's rain lands"};
       b.trip_in = ov.rec.trips[bid] || null; b.stage = {valid:false, tier:"modeled"};
       if(ov.rec.hydro && ov.rec.hydro.basins[bid]){ var hb=ov.rec.hydro.basins[bid], hi=Math.max(0, Math.min(hb.stage_ft.length-1, Math.floor(ov.rec.hour)));
-        b.sim_stage = hb.stage_ft[hi]; b.sim_posture = hb.posture[hi]; b.sim_first = hb.first; b.sim_peak = hb.peak_stage_ft; b.sim_peak_hr = hb.peak_hr;
+        b.sim_stage = hb.stage_ft[hi]; b.sim_posture = hb.posture[hi]; b.sim_first = hb.first; b.sim_peak = hb.peak_stage_ft; b.sim_peak_hr = hb.peak_hr; b.sim_rise = hb.rise_ft;
         b.sim_obs = (ov.rec.hydro.observed||{})[bid] || null; } }); }
     return c;
   }
@@ -953,7 +953,8 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
     if(j.sim && j.sim_rec && j.sim_rec.hydro){ var H=j.sim_rec.hydro, fw=H.basins["CC-WCU-2260"].first.WATCH, fe=j.sim_rec.firstElev, ob=(H.observed||{})["CC-WCU-2260"];
       alHtml += '<div class="cad" style="color:var(--sim)"><b>reenactment</b> — the engine run through this storm\'s ERA5 rain record hour by hour (real hyetograph → runoff → unit hydrograph → calibrated stage), wetness '+num(H.wetness_used,2)+' at the start · '+num(j.sim_rain,1)+' of '+num(j.sim_rain_total,1)+' in fallen · '+
         (fw==null ? 'campus never reaches WATCH in this record' : 'campus first WATCH at T+'+fw+' h'+(fe!=null ? ' — <b>'+Math.round(fw-fe)+' h after the floor went ELEVATED at T+'+Math.round(fe)+' h</b>' : ''))+
-        (ob ? ' · observed campus peak '+ob.stage_ft+' ft ('+ob.posture+') vs modeled '+num(H.basins["CC-WCU-2260"].peak_stage_ft,1)+' ft' : '')+
+        (ob ? ' · campus modeled '+num(H.basins["CC-WCU-2260"].peak_stage_ft,1)+' ft vs '+ob.stage_ft+' ft implied by the surveyed marks (consistent, not independent)' : '')+
+        ((H.observed||{})["CC-SPD-1830"] ? ' · Speedwell: FIMAN measured a '+(H.observed["CC-SPD-1830"].rise_ft)+' ft rise, the engine '+num(H.basins["CC-SPD-1830"].rise_ft,1)+' ft — the rating there is ~2× too shallow (known)' : '')+
         ' · <b>modeled, one reanalysis cell, ERA5 under-catches mountain rain</b> · press LIVE to return</div>'; }
     else if(j.sim && j.sim_rec){ alHtml += '<div class="cad" style="color:var(--sim)"><b>modeled record</b> — ERA5 reanalysis rain for this storm (Open-Meteo archive, one cell over the watershed) and the antecedent wetness it implies: '+num(j.sim_rec.w0,2)+' at the start, '+num(j.sim_rec.wetness,2)+' on replay day '+(j.sim_rec.day+1)+' · rain '+num(j.sim_rain,1)+' of '+num(j.sim_rain_total,1)+' in fallen · <b>rung = the engine\'s rung for that rain at that wetness — modeled, not observed; ERA5 under-catches mountain rain</b> · press LIVE to return</div>'; }
     else if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — no reanalysis before 1940, so an assumed total of ≈'+num(j.sim_rain_total,1)+' in arrives with the track ('+Math.round(j.sim_rain_frac*100)+'% so far) · <b>rung = the engine\'s rung for that rain at today\'s wetness — modeled, not a posture</b> · press LIVE to return</div>'; }
@@ -982,7 +983,9 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
           '<td title="'+(w.note||"")+'">'+num(w.w,2)+tag(w.tier)+'</td>'+
           '<td>'+num(rain,1)+'</td>'+
           '<td>'+(st==null?'<span style="color:var(--dim)">n/a</span>':num(st,1))+'</td>'+
-          '<td title="modeled peak at T+'+r.sim_peak_hr+' h'+(ob?' · observed '+ob.stage_ft+' ft ('+ob.posture+')':'')+'">'+(pk==null?'—':num(pk,1)+(ob?' <span style="color:var(--ok)">obs '+num(ob.stage_ft,1)+'</span>':''))+'</td>'+
+          '<td title="modeled peak at T+'+r.sim_peak_hr+' h'+(ob&&ob.stage_ft!=null?' · '+ob.source:'')+(ob&&ob.rise_ft!=null?' · '+ob.source+' — measured rise '+ob.rise_ft+' ft vs modeled '+(r.sim_rise!=null?r.sim_rise:'?')+' ft':'')+'">'+(pk==null?'—':num(pk,1))+
+            (ob&&ob.stage_ft!=null?' <span style="color:var(--ok)" title="marks-implied, not a gauge">marks '+num(ob.stage_ft,1)+'</span>':'')+
+            (ob&&ob.rise_ft!=null?' <span style="color:var(--pend)" title="FIMAN 25380 measured rise; the rating here is ~2x too shallow">FIMAN rise '+num(ob.rise_ft,1)+' vs '+(r.sim_rise!=null?num(r.sim_rise,1):'?')+'</span>':'')+'</td>'+
           '<td style="font-weight:600;color:'+(RUNG_COLOR[ps]||"var(--dim)")+'">'+ps+'</td></tr>');
         return; }
       rows.push('<tr'+(confirm?' class="confirm" title="measured stage '+num(r.stage.value,2)+' ft · '+r.stage.source+'"':'')+'>'+

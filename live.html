@@ -1156,7 +1156,14 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
       const raw=Math.max.apply(null,h), cp=calibratePeak(raw,b), sc=raw>0?cp/raw:0;
       hydros[b]=h.map(x=>x*sc); });
     tlen=Math.max.apply(null,ORDER.map(b=>hydros[b].length));
-    hydros.__track=track; hydros.__recall={name:PW.recall, total:rec.total_in, w:w, t0:rec.t0, obs:(rec.hydro&&rec.hydro.observed)||{}};
+    /* soil moisture through the storm: the 30-day rainfall index decays daily (API_K) and takes the record's
+       rain step by step, then the same wetness map the engine uses. This is what a probe would report as the
+       storm goes on; the engine's CN was set once at the start (its cumulative-rain runoff formula carries the
+       wetting itself), so the two are stated separately. */
+    const kStep=Math.pow(API_K, 1/96); let apiT=(rec.api30_in!=null?rec.api30_in:0); const wetS=[];
+    for(let t=0;t<tlen;t++){ apiT=apiT*kStep+(t<steps.length?steps[t]:0); wetS.push(wetnessFromAPI(apiT)); }
+    hydros.__wet=wetS;
+    hydros.__track=track; hydros.__recall={name:PW.recall, total:rec.total_in, w:w, t0:rec.t0, obs:(rec.hydro&&rec.hydro.observed)||{}, spdRise:(rec.hydro&&rec.hydro.basins&&rec.hydro.basins["CC-SPD-1830"])?rec.hydro.basins["CC-SPD-1830"].rise_ft:null};
     let cumr=[],run=0; for(let t=0;t<tlen;t++){ run+=(t<steps.length?steps[t]:0); cumr.push(run); }
     hydros.__rain=cumr; hydros.__cumb={}; ORDER.forEach(b=>hydros.__cumb[b]=cumr);
     const sc=document.getElementById("stormscrub"); if(sc)sc.max=tlen-1; }
@@ -1174,11 +1181,11 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
     const rd=document.getElementById("stormread");
     if(hydros.__recall){ var R=hydros.__recall, d0=new Date(R.t0), when=new Date(d0.getTime()+t*DTh*3600e3), ob=R.obs["CC-WCU-2260"], cst=stageTotalFromQ((t<hydros["CC-WCU-2260"].length?hydros["CC-WCU-2260"][t]:0),"CC-WCU-2260");
       if(rd){ rd.title="ERA5 reanalysis rain record run on the engine at wetness "+R.w.toFixed(2)+" — modeled, not observed; one reanalysis cell over the watershed; ERA5 under-catches mountain rain";
-        rd.innerHTML="<b>"+R.name+" recall</b> &middot; "+when.toISOString().slice(5,16).replace("T"," ")+"Z &middot; rain "+rain+"/"+R.total.toFixed(1)+"&Prime; &middot; campus "+(cst==null?"—":cst.toFixed(1)+" ft")+(ob?" <span style=\"opacity:.7\">(obs peak "+ob.stage_ft+")</span>":"")+" &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":""); } }
+        rd.innerHTML="<b>"+R.name+" recall</b> &middot; "+when.toISOString().slice(5,16).replace("T"," ")+"Z &middot; rain "+rain+"/"+R.total.toFixed(1)+"&Prime; &middot; campus "+(cst==null?"—":cst.toFixed(1)+" ft")+(ob?" <span style=\"opacity:.7\" title=\"peak implied by the NCGS surveyed marks through the reach rating — no gauge at campus; consistent with the engine, not an independent check\">(marks-implied peak "+ob.stage_ft+")</span>":"")+" &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":""); } }
     else if(rd) rd.innerHTML="hr "+hr+" &middot; "+curPath().name+" "+curPath().arrow+" &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
     if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var cq=(t<hydros[b].length?hydros[b][t]:0);
       return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b),
-              wet:(hydros.__recall?hydros.__recall.w:(ARCW[SCEN[idx].arc]||0.5)), wetsrc:(hydros.__recall?"ERA5 record wetness (30-day rainfall index at the storm's start)":"scenario wetness (ARC "+SCEN[idx].arc+")")}; }));
+              wet:(hydros.__recall?(hydros.__wet?hydros.__wet[Math.min(t,hydros.__wet.length-1)]:hydros.__recall.w):(ARCW[SCEN[idx].arc]||0.5)), wetsrc:(hydros.__recall?"30-day rainfall index carried through the storm's ERA5 rain (what a probe would read); the engine's CN was set at the start ("+hydros.__recall.w.toFixed(2)+") and its runoff formula carries the wetting":"scenario wetness (ARC "+SCEN[idx].arc+")")}; }));
     const sc=document.getElementById("stormscrub"); if(sc && +sc.value!==t) sc.value=t; }
   function stop(){ clearInterval(timer); timer=null;
     const p=document.getElementById("stormplay"); if(p)p.innerHTML="&#9658; Play storm"; }

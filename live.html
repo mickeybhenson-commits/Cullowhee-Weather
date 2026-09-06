@@ -777,7 +777,7 @@ function repaint(){
       ' <span style="opacity:.72">&middot; design storm</span>';
   }
   if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var c=cur(b);
-    return {bid:b, lv:(c&&c.lvl?c.lvl:"N/A"), rain:(c&&c.qpf!=null?c.qpf:null), rp:(c?c.rp:null), stage:(c?c.stage:null)}; }));
+    return {bid:b, live:true, lv:(c&&c.lvl?c.lvl:"N/A"), rain:(c&&c.qpf!=null?c.qpf:null), rp:(c?c.rp:null), stage:(c?c.stage:null)}; }));
 }
 /* ---- live weather: Open-Meteo per basin (CORS-enabled) ---- */
 /* Open-Meteo is called with timezone=auto, so daily.time[] / hourly.time[] are
@@ -965,7 +965,13 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
        with the return period of the flow as a small suffix on the frequency-classified reaches; the mouth has
        no rating and shows the return period alone. */
     var rpS, rpTag=(r.rp!=null&&r.bid!=="CC-WCU-2260")? " <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(r.rp)+" yr</span>":"";
-    if(r.stage!=null&&isFinite(r.stage)){ rpS=(+r.stage).toFixed(1)+" ft"+rpTag; }
+    /* Live mode, Speedwell: the FIMAN 25380 gage height IS the stream depth there - measured, in the gage's own datum
+       (about 2.5 ft at low flow). The rectangular-rating number goes to the tooltip so the two are never confused. */
+    var _cg=(typeof cur==="function")?cur(r.bid):null;   /* this row's live state (_cc below is declared later in the loop body) */
+    var govSt=(r.live && _cg && _cg.gov && _cg.gov.stage!=null && isFinite(_cg.gov.stage)) ? +_cg.gov.stage : null;
+    if(govSt!=null){ rpS="<span title='NCEM FIMAN 25380 at Speedwell, measured gage height (gage datum, ~2.5 ft at low flow), "+(_cg.gov.age!=null?Math.round(_cg.gov.age)+" min old":"")+"; the engine\'s rectangular-rating depth here reads "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft (that rating is ~2x too shallow, known)'>"+govSt.toFixed(2)+" ft <span style=\'color:#9db2c4;font-size:9px\'>MEAS</span></span>"+rpTag; }
+    else if(r.live && r.bid==="CC-WCU-2260" && r.stage!=null && +r.stage<=4.0){ rpS="<span title='rating floor: the campus TVA water-surface profile only defines the 10/100/500-yr points, so below storm flow the stage is held at 4.0 ft. There is no gauge at campus - the real low-flow depth is not measured. This number moves only when the engine puts storm flow on the reach.'>4.0 ft <span style=\'color:#6b7a8a;font-size:9px\'>floor</span></span>"; }
+    else if(r.stage!=null&&isFinite(r.stage)){ rpS=(+r.stage).toFixed(1)+" ft"+rpTag; }
     else if(r.rp!=null){ rpS="~"+Math.round(r.rp)+" yr"; }
     else { rpS="—"; }
     var _c=(typeof cur==="function")?cur(r.bid):null;

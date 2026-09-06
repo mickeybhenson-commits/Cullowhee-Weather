@@ -498,3 +498,46 @@ class TestReadinessChain(unittest.TestCase):
         self.assertAlmostEqual(wet.wetness_from_soil_percentile(1.0), 1.0)
         w, tag = wet.resolve_wetness(soil_pct=21)                                 # the feed_runner path
         self.assertEqual((round(w, 2), tag), (0.21, "soil_percentile"))
+
+
+class TestStarlinkOverhead(unittest.TestCase):
+    """starlink_overhead.py: the candidate set for the gateway's Starlink link. Offline —
+    element sets come from the tracker page's baked sample (epoch 2026-08-05)."""
+
+    def _tles(self):
+        import re, json
+        html = open("satellite-tracker.html", encoding="utf-8").read()
+        data = json.loads(re.search(r"var SAT_DATA\s*=\s*(\[.*?\]);", html, re.S).group(1))
+        return [(d["catalogName"], d["tle1"], d["tle2"]) for d in data if d["group"] == "starlink"]
+
+    def test_operational_filter_reads_altitude_from_mean_motion(self):
+        import starlink_overhead as so
+        tles = self._tles()
+        alts = [so.altitude_km(l2) for _n, _l1, l2 in tles]
+        self.assertTrue(all(440 <= a <= 620 for a in alts), alts)          # all ten are on station
+        raising = "2 64472  53.1575 145.8202 0001267  93.3979 266.7169 15.90000000 63945"  # ~350 km
+        self.assertFalse(so.operational(raising))
+
+    def test_zenith_is_ninety_degrees(self):
+        import math, starlink_overhead as so
+        from datetime import datetime, timezone
+        now = datetime(2026, 8, 5, 12, 0, tzinfo=timezone.utc)
+        site = so._site_ecef(so.SITE["lat"], so.SITE["lon"], 0.64)
+        n = math.sqrt(sum(c * c for c in site)); up = [c / n for c in site]
+        r_ecef = [site[i] + 550 * up[i] for i in range(3)]
+        g = so._gmst(now); cg, sg = math.cos(g), math.sin(g)
+        r_eci = (r_ecef[0] * cg - r_ecef[1] * sg, r_ecef[0] * sg + r_ecef[1] * cg, r_ecef[2])
+        self.assertGreater(so.elevation_deg(r_eci, now, site, so.SITE["lat"], so.SITE["lon"]), 89.5)
+
+    def test_select_finds_the_high_pass_and_never_raises(self):
+        import starlink_overhead as so
+        from datetime import datetime, timezone
+        out = so.build(datetime(2026, 8, 5, 3, 30, tzinfo=timezone.utc), tles=self._tles())
+        self.assertEqual(out["status"], "ok")
+        names = {s["name"]: s for s in out["sats"]}
+        self.assertIn("STARLINK-34493", names)
+        self.assertGreater(names["STARLINK-34493"]["max_elev"], 70)         # the 04:08Z overhead pass
+        self.assertTrue(all(s["max_elev"] >= so.MASK_DEG for s in out["sats"]))
+        self.assertTrue(all(k in out["sats"][0] for k in ("tle1", "tle2", "norad", "alt_km")))
+        bad = so.build(datetime(2026, 8, 5, tzinfo=timezone.utc), tles=[("X", "garbage", "garbage")])
+        self.assertEqual(bad["status"], "ok"); self.assertEqual(bad["sats"], [])   # unparsable rows are skipped

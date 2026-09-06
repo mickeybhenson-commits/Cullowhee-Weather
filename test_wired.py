@@ -201,6 +201,7 @@ TOOLS = {
 # tools that are expected to be absent on a bare runner and guard their own imports.
 THIRD_PARTY = {
     "h5py", "matplotlib", "matplotlib.pyplot",   # nisar_slope_motion.py (workstation tool)
+    "sgp4",                                      # starlink_overhead.py (requirements.txt)
     # requirements.txt (the console)
     "streamlit", "streamlit_autorefresh", "streamlit_folium", "folium",
     "requests", "pandas", "numpy", "plotly", "pydeck",

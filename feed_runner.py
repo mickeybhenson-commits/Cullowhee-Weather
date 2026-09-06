@@ -335,6 +335,15 @@ def main() -> None:
     except Exception as e:                                   # belt and braces
         print(f"readiness feed skipped: {e}")
 
+    # Starlink candidate set for the gateway (starlink_overhead.py): operational satellites
+    # that reach the terminal mask from Cullowhee in the next 75 min, with TLEs, so the
+    # tracker page propagates hundreds of objects instead of eight thousand. Best effort.
+    try:
+        import starlink_overhead
+        starlink_overhead.publish(OUTDIR, now)
+    except Exception as e:                                   # belt and braces
+        print(f"starlink overhead feed skipped: {e}")
+
     # 1. Resolve the best available stage. sources.resolve() already applies
     #    its own freshness and plausibility gates and will reject a sensor
     #    that has gone quiet or is reporting nonsense, falling back down the

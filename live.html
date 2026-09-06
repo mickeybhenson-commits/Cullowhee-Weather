@@ -1148,7 +1148,12 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
     const w=(rec.hydro&&rec.hydro.wetness_used!=null)?rec.hydro.wetness_used:rec.wetness;
     const steps=[]; hourly.forEach(v=>{ for(let k=0;k<4;k++) steps.push(Math.max(0,v)/4); });
     const cLat=stormLL.lat, cLon=stormLL.lng, n=steps.length, track=[];
-    for(let t=0;t<n;t++){ const frac=n>1?t/(n-1):0.5; track.push([cLat+(frac-0.5)*2*PW.dLat, cLon+(frac-0.5)*2*PW.dLon]); }
+    /* storm marker: rides the Helene heading (N·NW) through the placed center, and is AT the center at the hour the
+       track crossed the gate (rec.gateH). It enters from well south of the watershed at the start of the rain and is
+       well north of it — off the watershed — by the time the loop ends, so the picture shows the storm arrive, cross
+       and leave. Schematic position; the rain is the record's, not a function of where the marker is. */
+    const gateT=(rec.gateH!=null?rec.gateH:0)*4,
+          uLat=PW.dLat/Math.hypot(PW.dLat,PW.dLon), uLon=PW.dLon/Math.hypot(PW.dLat,PW.dLon), REACH=0.22;   /* deg along the heading each side of the center */
     const series={}; ORDER.forEach(b=>series[b]=steps.slice());
     hydros={}; ORDER.forEach(b=>{ const B=BASINS[b], CN=cnFromWetness(B.CN2,w);
       const incr=incrementalRunoff(series[b],CN), uh=unitHydrograph(B.DA,B.Tc/60.0,484,0.25);
@@ -1166,6 +1171,9 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
     hydros.__wet=wetS;
     hydros.__firstRain=Math.max(0, (steps.findIndex(function(v){ return v>0.002; })||0)-8);   /* where the loop restarts */
     (function(){ var last=steps.length-1; while(last>0 && steps[last]<=0.002) last--; hydros.__loopEnd=Math.min(tlen-1, last+24); })();   /* loop ends 6 h after the rain stops */
+    (function(){ var a=hydros.__firstRain, b=hydros.__loopEnd, g=Math.min(Math.max(gateT, a+1), b-1);
+      for(let t=0;t<tlen;t++){ var f = t<=g ? -1+(t-a)/(g-a) : (t-g)/(b-g);   /* -1 at the first rain, 0 at the gate crossing, +1 at the loop end */
+        f=Math.max(-1.3, Math.min(1.3, f)); track.push([cLat+f*REACH*uLat, cLon+f*REACH*uLon]); } })();
     hydros.__track=track; hydros.__recall={name:PW.recall, total:rec.total_in, w:w, t0:rec.t0, forcing:rec.forcing||null, obs:(rec.hydro&&rec.hydro.observed)||{}, spdRise:(rec.hydro&&rec.hydro.basins&&rec.hydro.basins["CC-SPD-1830"])?rec.hydro.basins["CC-SPD-1830"].rise_ft:null};
     let cumr=[],run=0; for(let t=0;t<tlen;t++){ run+=(t<steps.length?steps[t]:0); cumr.push(run); }
     hydros.__rain=cumr; hydros.__cumb={}; ORDER.forEach(b=>hydros.__cumb[b]=cumr);

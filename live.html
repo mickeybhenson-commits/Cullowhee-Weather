@@ -484,7 +484,9 @@ function lvlOf(b){ const c=cur(b); return c?c.lvl:"N/A"; }
 function styleFor(b){const lv=lvlOf(b), c=cur(b);
   const fc=(mode==="live"&&c&&c.fcLvl)?c.fcLvl:lv;
   const ring=((SEVRANK[fc]||0)>(SEVRANK[lv]||0));
-  return {color:ring?SEV_FILL[fc]:SEV_FILL[lv], weight:ring?4:2, opacity:.95,
+  /* borders: heavy black between sub-basins (2026-09-06); the dashed coloured ring still
+     marks a basin whose forecast outlook outruns its confirmed posture */
+  return {color:ring?SEV_FILL[fc]:"#000", weight:ring?5:3.5, opacity:ring?.95:.9,
           dashArray:ring?"6 3":null, fillColor:SEV_FILL[lv], fillOpacity:.60};}
 const f1=x=>(x==null?"\u2014":x.toFixed(1));
 const pct=x=>(x==null?"n/a":Math.round(x*100)+"%");
@@ -566,7 +568,7 @@ const layerByBid={};
 const basins=L.geoJSON(FC,{style:f=>styleFor(f.properties.bid),
   onEachFeature:(f,l)=>{const b=f.properties.bid;layerByBid[b]=l;
     l.bindTooltip(tip(b),{sticky:true});
-    l.on("mouseover",()=>l.setStyle({weight:3.5,fillOpacity:.55}));
+    l.on("mouseover",()=>l.setStyle({weight:5,fillOpacity:.55}));
     l.on("mouseout",()=>l.setStyle(styleFor(b)));}}).addTo(map);
 const labels=L.layerGroup(), markerByBid={};
 /* community name + label direction per sub-basin (directions staggered so the
@@ -1026,14 +1028,14 @@ function _arcw(a){ return ({1:0.2,2:0.5,3:0.85})[a]||0.5; }
 function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,stormLL.lng,stormR,SCEN[idx].qpf);
   if(curPath().recall){ /* recall: the animation owns the map and the table; here only the pre-play state */
     var recw=(STORM_REC&&STORM_REC.storms&&STORM_REC.storms[curPath().recall]&&STORM_REC.storms[curPath().recall].hydro)?STORM_REC.storms[curPath().recall].hydro.wetness_used:null;
-    ORDER.forEach(function(b){ var col=SEV.NORMAL||"#9AA5B1"; if(layerByBid[b]) layerByBid[b].setStyle({color:col,fillColor:col}); if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col}); });
+    ORDER.forEach(function(b){ var col=SEV.NORMAL||"#9AA5B1"; if(layerByBid[b]) layerByBid[b].setStyle({color:"#000",weight:3.5,fillColor:col}); if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col}); });
     if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ return {bid:b,lv:"NORMAL",rain:0,rp:null,stage:stageTotalFromQ(0,b),wet:recw,wetsrc:"ERA5 record wetness at the storm's start"}; }));
     var rd0=document.getElementById("read"); if(rd0) rd0.innerHTML='<b>'+curPath().recall+' recall</b> <span style="opacity:.7">&middot; the storm\'s own ERA5 rain on every basin &middot; slider and radius not used &middot; press &#9658; Play storm</span>';
     return; }
   var rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}, ww="NORMAL",wb=null;
   var _rows=[];
   ORDER.forEach(function(b){ var pr=(rain[b]||0)*ORO[b], a=assessBasin(b,pr,w), lv=(a.posture), col=SEV[lv]||"#9AA5B1";
-    if(layerByBid[b]) layerByBid[b].setStyle({color:col,fillColor:col});
+    if(layerByBid[b]) layerByBid[b].setStyle({color:"#000",weight:3.5,fillColor:col});
     if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col});
     _rows.push({bid:b,lv:lv,rain:pr,rp:a.rp,stage:a.stage});
     if((rank[lv]||0)>(rank[ww]||0)){ww=lv;wb=b;} });
@@ -1163,7 +1165,7 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
   function paint(t){ tpos=t;
     const rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}; let ww="NORMAL",wb=null;
     ORDER.forEach(b=>{ const c=catAt(b,t), col=SEV[c]||"#9AA5B1";
-      if(layerByBid[b]) layerByBid[b].setStyle({color:col,fillColor:col});
+      if(layerByBid[b]) layerByBid[b].setStyle({color:"#000",weight:3.5,fillColor:col});
       if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col});
       if((rank[c]||0)>(rank[ww]||0)){ww=c;wb=b;} });
     if(hydros && hydros.__track){ var tp=hydros.__track[Math.min(t,hydros.__track.length-1)];

@@ -1163,6 +1163,8 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
     const kStep=Math.pow(API_K, 1/96); let apiT=(rec.api30_in!=null?rec.api30_in:0); const wetS=[];
     for(let t=0;t<tlen;t++){ apiT=apiT*kStep+(t<steps.length?steps[t]:0); wetS.push(wetnessFromAPI(apiT)); }
     hydros.__wet=wetS;
+    hydros.__firstRain=Math.max(0, (steps.findIndex(function(v){ return v>0.002; })||0)-8);   /* where the loop restarts */
+    (function(){ var last=steps.length-1; while(last>0 && steps[last]<=0.002) last--; hydros.__loopEnd=Math.min(tlen-1, last+24); })();   /* loop ends 6 h after the rain stops */
     hydros.__track=track; hydros.__recall={name:PW.recall, total:rec.total_in, w:w, t0:rec.t0, obs:(rec.hydro&&rec.hydro.observed)||{}, spdRise:(rec.hydro&&rec.hydro.basins&&rec.hydro.basins["CC-SPD-1830"])?rec.hydro.basins["CC-SPD-1830"].rise_ft:null};
     let cumr=[],run=0; for(let t=0;t<tlen;t++){ run+=(t<steps.length?steps[t]:0); cumr.push(run); }
     hydros.__rain=cumr; hydros.__cumb={}; ORDER.forEach(b=>hydros.__cumb[b]=cumr);
@@ -1190,10 +1192,23 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
   function stop(){ clearInterval(timer); timer=null;
     const p=document.getElementById("stormplay"); if(p)p.innerHTML="&#9658; Play storm"; }
   function firstActive(){ for(var t=0;t<tlen;t++){ for(var k=0;k<ORDER.length;k++){ var c=catAt(ORDER[k],t); if(c!=="NORMAL"&&c!=="N/A") return t; } } return 0; }
-  function step(){ if(tpos>=tlen-1){paint(tlen-1);stop();return;} paint(tpos+1); }
+  var holdUntil=0;
+  function step(){
+    if(holdUntil && performance.now()<holdUntil) return;   /* pausing on the peak / the end */
+    holdUntil=0;
+    if(hydros&&hydros.__recall){
+      /* recall: linger 2.5 s on the campus peak so the room can read it, hold 4 s at the end, then
+         loop from the start of the rain so the replay keeps running at the lectern until paused */
+      var h=hydros["CC-WCU-2260"], pk=0; for(var i=1;i<h.length;i++){ if(h[i]>h[pk]) pk=i; }
+      if(tpos+1===pk){ paint(pk); holdUntil=performance.now()+2500; return; }
+      var end=(hydros.__loopEnd!=null?hydros.__loopEnd:tlen-1);
+      if(tpos>=end){ paint(end); holdUntil=performance.now()+4000; tpos=Math.max(0, hydros.__firstRain||0)-1; return; }
+      paint(tpos+1); return; }
+    if(tpos>=tlen-1){paint(tlen-1);stop();return;} paint(tpos+1); }
   function startTimer(){ if(timer)clearInterval(timer); timer=setInterval(step, Math.round((hydros&&hydros.__recall?70:BASE_MS)/speed)); }
   function playPause(){ if(timer){stop();return;} if(!hydros)build();
-    if(tpos===0 || tpos>=tlen-1) tpos=Math.max(0, firstActive()-12);   // skip the all-NORMAL lead-in
+    if(hydros&&hydros.__recall){ if(tpos===0 || tpos>=tlen-1) tpos=Math.max(0, hydros.__firstRain||0); }
+    else if(tpos===0 || tpos>=tlen-1) tpos=Math.max(0, firstActive()-12);   // skip the all-NORMAL lead-in
     document.getElementById("stormplay").innerHTML="&#10073;&#10073; Pause"; paint(tpos); startTimer(); }
   function reset(){ stop(); tpos=0; hydros=null;
     if(typeof stormMarker!=="undefined"){ stormMarker.setLatLng(stormLL); stormCircle.setLatLng(stormLL); }

@@ -74,6 +74,8 @@
   #rdy .mode{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;letter-spacing:.04em;margin-left:4px;vertical-align:1px}
   #rdy .mode.QUIET{background:#16321f;color:var(--ok)} #rdy .mode.ATTENTION{background:#3a2e10;color:var(--elev)} #rdy .mode.STORM{background:#3d1717;color:var(--pend)}
   #rdyAlarms{font-size:10.5px;line-height:1.4;margin:0 0 6px}
+  #rdy.sim{border-top-color:var(--sim);box-shadow:inset 3px 0 0 var(--sim)}
+  #rdy .simtag{display:inline-block;padding:1px 6px;border:1px solid var(--sim);color:var(--sim);border-radius:3px;font-size:9.5px;font-weight:700;letter-spacing:.06em;margin-right:6px;vertical-align:1px}
   #rdyAlarms .al{margin:1px 0} #rdyAlarms .al b{font-weight:600}
   #rdyAlarms .cad{color:var(--dim);font-size:10px;margin-top:3px}
   #wnstrip.dimmed{opacity:.45}
@@ -817,6 +819,8 @@ function simDraw(){
   b.querySelector(".why").textContent =
     $("simStorm").value+" · T+"+Math.round(simT)+" h · "+cur.status+" "+cur.wind+" kt"+
     (res.held ? " · holding — corridor test met at T+"+Math.round(simLatch.at)+" h" : res.inside ? " · IN CORRIDOR" : res.met ? " · zone crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? " · analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : ""));
+  if(window.rdySim) rdySim({level:res.floor, held:!!res.held,
+    why:$("simStorm").value+" T+"+Math.round(simT)+" h · "+(res.held ? "holding since T+"+Math.round(simLatch.at)+" h" : res.inside ? "in corridor" : res.met ? "gate crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? "analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : "no criterion met"))});
   /* the right-hand panel shows the replayed storm, tagged, instead of live data */
   renderStormList([{name:$("simStorm").value+" (SIMULATION)", cls:cur.status, wind:cur.wind, sim:true, ...res}]);
   const os=$("wnstrip"); if(os) os.classList.add("dimmed");
@@ -844,6 +848,7 @@ function simExit(){
   $("simbar").classList.remove("on");
   $("simTag").classList.remove("on");
   applyFloorBadge("NONE", [], []); $("stormList").innerHTML=""; /* clear the sim state immediately */
+  if(window.rdyLive) rdyLive();
   refresh();  /* restore live badge, panel, layers */
 }
 $("whatifBtn").addEventListener("click",()=> simActive ? simExit() : simEnter());
@@ -878,16 +883,36 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
   var open = null;                        /* null = follow the floor; true/false = user choice */
   function tag(t){ t=(t||"modeled").toLowerCase(); var L={measured:"MEAS",gov_estimate:"GOV",modeled:"MOD"}; return '<span class="tag '+t+'">'+(L[t]||t)+'</span>'; }
   function num(v,d){ return (v==null||isNaN(v)) ? "—" : Number(v).toFixed(d==null?2:d); }
+  var lastFeed=null, simOverlay=null;
+  var MODES=["QUIET","ATTENTION","STORM"];
+  var CADENCE={QUIET:{feed:30,fiman:30,node_stage:15,node_soil:360,node_rain:"on tip"},
+               ATTENTION:{feed:15,fiman:15,node_stage:10,node_soil:60,node_rain:"on tip"},
+               STORM:{feed:15,fiman:15,node_stage:5,node_soil:60,node_rain:"on tip",backhaul:"satellite rung reserved for stage exceedances"}};
+  /* What-if overlay: same alarm rules as readiness.alarms_and_mode, applied to the replayed
+     storm's floor; every other input (WPC, wetness, forecast, rows) stays today's real value —
+     the replayed track on today's ground. Never written anywhere; LIVE restores the feed. */
+  function simulated(j, ov){
+    var c = JSON.parse(JSON.stringify(j));
+    c.floor = {level:ov.level, why:ov.why||"", latched:!!ov.held, sequence:null, status:"ok"};
+    var alarms = (c.alarms||[]).filter(function(a){ return a.name!=="corridor"; });
+    if(ov.level==="ELEVATED"||ov.level==="WATCH_PENDING") alarms.unshift({name:"corridor",mode:"STORM",detail:ov.level+": "+(ov.why||"")});
+    else if(ov.level==="ANALOG") alarms.unshift({name:"corridor",mode:"ATTENTION",detail:"ANALOG: "+(ov.why||"")});
+    var mode="QUIET"; alarms.forEach(function(a){ if(MODES.indexOf(a.mode)>MODES.indexOf(mode)) mode=a.mode; });
+    c.alarms=alarms; c.mode=mode; c.cadence=CADENCE[mode]; c.mode_since=null; c.sim=true; c.fetched_utc=j.fetched_utc;
+    return c;
+  }
   function render(j){
     var card=$("rdy"); card.style.display="block";
+    card.classList.toggle("sim", !!j.sim);
     var fl=(j.floor||{}), lvl=fl.level||"?";
     var mode=j.mode||"?";
-    $("rdyMeta").innerHTML = '<span class="mode '+mode+'" title="wake-up mode: QUIET = nothing ringing · ATTENTION = start looking · STORM = sample fast. A mode is not a posture; it only changes how often the system looks.">'+mode+'</span> · floor '+lvl+(fl.latched?" (held)":"")+" · "+((j.fetched_utc||"").slice(5,16).replace("T"," ")+"Z");
+    $("rdyMeta").innerHTML = (j.sim?'<span class="simtag" title="What-if replay: the corridor alarm and the mode come from the replayed storm; WPC, wetness, forecast and every row are today\'s real values. Nothing is written to the feed.">SIMULATION</span>':'')+'<span class="mode '+mode+'" title="wake-up mode: QUIET = nothing ringing · ATTENTION = start looking · STORM = sample fast. A mode is not a posture; it only changes how often the system looks.">'+mode+'</span> · floor '+lvl+(fl.latched?" (held)":"")+(j.sim?" (replay)":"")+" · "+((j.fetched_utc||"").slice(5,16).replace("T"," ")+"Z");
     var al=j.alarms||[], cad=j.cadence||{}, ero=j.ero||{};
     var alHtml = al.length ? al.map(function(a){ return '<div class="al"><b style="color:'+(a.mode==="STORM"?"var(--pend)":"var(--elev)")+'">'+a.name.replace("_"," ")+'</b> → '+a.mode+' · '+a.detail+'</div>'; }).join("")
                            : '<div class="al" style="color:var(--dim)">no alarm ringing — corridor, WPC excessive-rainfall (5 d), wetness trend, forecast margin all quiet</div>';
     if(ero.status==="ok"){ alHtml += '<div class="cad">WPC excessive-rainfall days 1–5: '+(ero.days||[]).map(function(d){ return d.dn? '<b>'+d.label+'</b>' : 'none'; }).join(" · ")+'</div>'; }
     else if(ero.status){ alHtml += '<div class="cad">WPC excessive-rainfall outlook: '+ero.status+'</div>'; }
+    if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — corridor alarm from the replay; everything else live · press LIVE to return</div>'; }
     if(j.mode_since){ alHtml += '<div class="cad">mode since '+j.mode_since.slice(5,16).replace("T"," ")+'Z'+(cad.feed? ' · cadence: feed '+cad.feed+' min · FIMAN '+cad.fiman+' min · node stage '+cad.node_stage+' min · soil '+cad.node_soil+' min · rain '+cad.node_rain:'')+(cad.backhaul? ' · '+cad.backhaul:'')+'</div>'; }
     $("rdyAlarms").innerHTML = alHtml;
     if(j.status!=="ok"){ $("rdyRows").innerHTML='<tr><td colspan="5" style="text-align:left;color:var(--pend)">readiness feed: '+j.status+'</td></tr>'; $("rdyFoot").textContent=""; return; }
@@ -917,9 +942,11 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
   function load(){
     fetch("feed/readiness.json?t="+Date.now(),{cache:"no-store"})
       .then(function(r){ if(!r.ok) throw new Error("HTTP "+r.status); return r.json(); })
-      .then(render)
+      .then(function(j){ lastFeed=j; render(simOverlay ? simulated(j, simOverlay) : j); })
       .catch(function(e){ var card=$("rdy"); card.style.display="block"; $("rdyMeta").textContent="· feed not available ("+e.message+")"; $("rdyRows").innerHTML=""; $("rdyFoot").textContent="readiness.json has not been published yet — not the same as calm."; });
   }
+  window.rdySim = function(ov){ simOverlay=ov; if(lastFeed){ var c=simulated(lastFeed, ov); if(open===null && c.mode!=="QUIET"){ open=true; } render(c); } };
+  window.rdyLive = function(){ simOverlay=null; if(lastFeed) render(lastFeed); };
   $("rdyTog").addEventListener("click",function(){ open = $("rdy").classList.contains("collapsed"); $("rdy").classList.toggle("collapsed", !open); $("rdyTog").textContent = open ? "hide" : "show"; });
   load(); setInterval(load, 15*60*1000);
 })();

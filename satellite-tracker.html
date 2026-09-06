@@ -267,8 +267,8 @@
     </details>
 
     <div class="controls-row">
-      <button data-speed="1">Live</button>
-      <button data-speed="60" class="is-on">60×</button>
+      <button data-speed="1" class="is-on">Live</button>
+      <button data-speed="60">60×</button>
       <button data-speed="600">600×</button>
       <button id="btn-now">Now</button>
       <button id="btn-geo">Skylo GEOs</button>
@@ -1631,7 +1631,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
   var SITE = { name: 'Cullowhee, NC', lat: 35.3137, lon: -83.1765 };
 
   // ---------- sim clock ----------
-  var speed = 60;   // default: 1 real minute = 1 orbital hour, so motion reads at a glance
+  var speed = 1;    // default: live (real time); 60× and 600× are one click away
   var simTime = Date.now();
   var lastReal = performance.now();
   function tickClock() {

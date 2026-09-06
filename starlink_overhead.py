@@ -13,7 +13,8 @@ This module does the heavy part server-side so the page stays light:
   2. keep the ones in an operational shell (altitude from mean motion, 440–620 km) —
      satellites still raising orbit or de-orbiting cannot carry user traffic;
   3. propagate the survivors (sgp4) over the next WINDOW_MIN minutes at STEP_S and keep
-     any that reach >= MASK_DEG elevation from the site;
+     any that reach >= MASK_DEG elevation from the site, with the rise/set of that pass so
+     the page only propagates satellites that are in (or about to be in) view;
   4. write feed/starlink_overhead.json with their TLEs, so the browser propagates a few
      hundred objects instead of eight thousand.
 
@@ -38,7 +39,7 @@ SOURCE = "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle"
 SITE = dict(name="FRESHET gateway (Cullowhee, NC)", lat=35.3137, lon=-83.1765, alt_km=0.64)
 MASK_DEG = 25.0            # Starlink user-terminal elevation mask (FCC waiver, 2021)
 SHELL_KM = (440.0, 620.0)  # operational shells (mean-motion altitude; the 480 km Gen2 shell reads ~463); outside = raising or decaying
-WINDOW_MIN = 75            # cover two feed cycles with margin
+WINDOW_MIN = 45            # one 30-min feed cycle with margin
 STEP_S = 60                # coarse pass search; the page refines at 15 s
 MU = 398600.4418
 RE = 6378.137
@@ -118,7 +119,7 @@ def select(tles, now: datetime, window_min=WINDOW_MIN, step_s=STEP_S, mask=MASK_
             sat = Satrec.twoline2rv(l1, l2)
         except Exception:                             # noqa: BLE001
             continue
-        best, t_best = -90.0, None
+        best, t_best, rise, sett = -90.0, None, None, None
         for t, (jd, fr) in zip(times, jds):
             e, r, _v = sat.sgp4(jd, fr)
             if e != 0:
@@ -126,10 +127,17 @@ def select(tles, now: datetime, window_min=WINDOW_MIN, step_s=STEP_S, mask=MASK_
             el = elevation_deg(r, t, site, SITE["lat"], SITE["lon"])
             if el > best:
                 best, t_best = el, t
+            if el >= mask and rise is None:
+                rise = t - timedelta(seconds=step_s)          # widened by one step each side
+            if el < mask and rise is not None and sett is None and t > rise + timedelta(seconds=step_s):
+                sett = t
         if best >= mask:
+            fmt = "%Y-%m-%dT%H:%M:%SZ"
             keep.append(dict(name=name, norad=int(l1[2:7]), cospar=l1[9:17].strip(),
                              alt_km=round(altitude_km(l2), 1), max_elev=round(best, 1),
-                             max_at=t_best.strftime("%Y-%m-%dT%H:%M:%SZ"), tle1=l1, tle2=l2))
+                             max_at=t_best.strftime(fmt), rise=rise.strftime(fmt),
+                             set=(sett or times[-1] + timedelta(seconds=step_s)).strftime(fmt),
+                             tle1=l1, tle2=l2))
     keep.sort(key=lambda s: -s["max_elev"])
     return keep
 

@@ -1890,6 +1890,12 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     scene.add(ll);
     s.link = ll;
   }
+  function destroyVisuals(s) {
+    if (s.marker) { scene.remove(s.marker); s.marker.material.dispose(); s.marker = null; }
+    if (s.track) { scene.remove(s.track); s.track.geometry.dispose(); s.track.material.dispose(); s.track = null; }
+    if (s.link) { scene.remove(s.link); s.link.geometry.dispose(); s.link.material.dispose(); s.link = null; }
+    if (s.label) { s.label.remove(); s.label = null; }
+  }
   sats.forEach(makeVisuals);
 
   var lastTrackSim = -Infinity;
@@ -2133,7 +2139,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     ndc.y = -((ev.clientY - r.top) / r.height) * 2 + 1;
     raycaster.setFromCamera(ndc, camera);
     var objs = [];
-    for (var i = 0; i < sats.length; i++) if (sats[i].marker.visible) objs.push(sats[i].marker);
+    for (var i = 0; i < sats.length; i++) if (sats[i].marker && sats[i].marker.visible) objs.push(sats[i].marker);
     var hits = raycaster.intersectObjects(objs, false);
     if (!hits.length) return null;
     for (var j = 0; j < sats.length; j++) if (sats[j].marker === hits[0].object) return sats[j];
@@ -2266,7 +2272,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
       updateTracks(true);
     });
   });
-  window.__setSim = function (ms) { simTime = ms; updateTracks(true); rankLikely(); };  // test hook
+  window.__setSim = function (ms) { simTime = ms; updateTracks(true); rankLikely(true); };  // test hook
   window.__dbg = function () { return { sats: sats, stateAt: stateAt, likely: likelyList }; };
   document.getElementById('btn-now').addEventListener('click', function () {
     simTime = Date.now();   // jump the clock back to real time, keep the current speed
@@ -2345,9 +2351,12 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     var sec = new Date(simTime).getUTCSeconds() + new Date(simTime).getUTCMilliseconds() / 1000;
     var rem = (12 - sec) % 15; if (rem <= 0) rem += 15; return rem;
   }
-  function rankLikely() {
+  var lastRank = 0;
+  function rankLikely(force) {
     var lk = document.getElementById('likely');
     if (!starlinkFeed || !lk) return;
+    if (!force && performance.now() - lastRank < 2000) return;
+    lastRank = performance.now();
     var fov = starlinkFeed.fov_half_deg || 50, mask = starlinkFeed.mask_deg || 25;
     var cands = [];
     sats.forEach(function (s) {
@@ -2370,6 +2379,9 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     inCone.forEach(function (s) { s.score = s.elev - 0.35 * s.offBore - (s.secLeft < 15 ? 40 : 0) + Math.min(s.secLeft, 60) * 0.1; });
     inCone.sort(function (a, b) { return b.score - a.score; });
     likelyList = inCone; likelyTop = inCone[0] || null;
+    // list order: the ranked cone first, then the rest of the sky by elevation
+    var rest = cands.filter(function (s) { return !s.inCone; }).sort(function (a, b) { return b.elev - a.elev; });
+    inCone.concat(rest).forEach(function (s) { if (s.row) listEl.appendChild(s.row); });
     sats.forEach(function (s) { if (s.row && s.fromFeed) { s.row.classList.toggle('is-top', s === likelyTop); s.row.classList.toggle('in-cone', !!s.inCone); } });
     var age = Math.round((Date.now() - Date.parse(starlinkFeed.fetched_utc)) / 60000);
     var html = '<div class="lk-head">Likely link <span class="tag" title="The terminal never reports its serving satellite. Ranked by elevation, offset from the dish boresight, and time left before it leaves the cone.">educated guess</span></div>' +
@@ -2395,7 +2407,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
         var v = parseFloat(inp.value); if (!isFinite(v)) return;
         if (id === 'lk-az') bore.az = ((v % 360) + 360) % 360; else bore.el = Math.max(25, Math.min(90, v));
         try { localStorage.setItem('freshet_boresight', JSON.stringify(bore)); } catch (e) {}
-        inp.blur(); rankLikely();
+        inp.blur(); rankLikely(true);
       });
     });
   }
@@ -2408,7 +2420,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
         if (!j.sats || !j.sats.length) throw new Error('catalog loaded, none reach the mask in the next ' + j.window_min + ' min');
         starlinkFeed = j;
         // retire the baked sample; the catalog replaces it
-        sats.forEach(function (s) { if (s.constellation === 'starlink') { s.retired = true; s.marker.visible = false; s.label.style.display = 'none'; if (s.row) s.row.style.display = 'none'; } });
+        sats.forEach(function (s) { if (s.constellation === 'starlink') { s.retired = true; destroyVisuals(s); if (s.row) s.row.style.display = 'none'; } });
         // the modeled cloud is a picture of density, not a catalog — hide it by default now
         cloud.visible = false;
         if (window.__cloudRow) { window.__cloudRow.classList.add('is-off'); window.__cloudRow.querySelector('.row-sub').textContent = 'modeled density picture — hidden while the real catalog is loaded (click ◉ to show)'; }
@@ -2420,12 +2432,13 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
           var s = { meta: meta, rec: satellite.twoline2satrec(d.tle1, d.tle2), group: g, constellation: 'starlink', isGeo: false,
                     lat: 0, lon: 0, alt: d.alt_km, elev: -90, az: 0, visible: true, fromFeed: true, mask: j.mask_deg || 25,
                     nextPassText: 'peaks ' + Math.round(d.max_elev) + '° at ' + d.max_at.slice(11, 16) + 'Z',
+                    riseMs: Date.parse(d.rise || d.max_at) , setMs: Date.parse(d.set || d.max_at),
                     marker: null, label: null, track: null, link: null, row: null };
-          sats.push(s); makeVisuals(s); if (window.__makeStarlinkRow) window.__makeStarlinkRow(s);
+          sats.push(s); if (window.__makeStarlinkRow) window.__makeStarlinkRow(s);   // visuals are made when its pass begins
           s.row.style.display = 'none';
         });
         if (sub) sub.textContent = j.sats.length + ' reach ≥' + j.mask_deg + '° in the next ' + j.window_min + ' min · drawn only while in view';
-        updateTracks(true); rankLikely();
+        updateTracks(true); rankLikely(true);
       })
       .catch(function (e) {
         if (sub) sub.textContent = 'catalog feed unavailable (' + e.message + ') — modeled fleet + 10 tracked';
@@ -2474,6 +2487,14 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     var sizeF = Math.min(1.15, Math.max(0.35, camDist / 2.9));
 
     sats.forEach(function (s) {
+      if (s.retired) return;
+      // catalog satellites: propagate only inside their pass window (±90 s) — the feed
+      // carries hundreds of them and SGP4 for all of them every frame would stall the page
+      if (s.fromFeed && selected !== s && (simTime < s.riseMs - 90000 || simTime > s.setMs + 90000)) {
+        if (s.marker) { s.elev = -90; destroyVisuals(s); }
+        return;
+      }
+      if (!s.marker) makeVisuals(s);   // catalog satellite entering its pass window
       var g = stateAt(s.rec, simTime);
       if (g) { s.lat = g.lat; s.lon = g.lon; s.alt = g.alt; s.elev = g.elev; s.az = g.az; }
       var r = 1 + s.alt / EARTH_R;
@@ -2502,7 +2523,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
       }
 
       // label
-      var wantLabel = !s.retired && (s.constellation !== 'starlink' || sel || s.elev > (s.mask || 10));
+      var wantLabel = !s.retired && (s.constellation !== 'starlink' || sel || (s.fromFeed ? (likelyList.indexOf(s) > -1 && likelyList.indexOf(s) < 3) : s.elev > (s.mask || 10)));
       var front = p.clone().normalize().dot(camDir) > (s.isGeo ? -0.2 : horizon);
       if (s.visible && front && wantLabel) {
         tmp.copy(p).project(camera);
@@ -2535,6 +2556,8 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
       var cc = window.__cloudRow && window.__cloudRow.querySelector('[data-cloud-count]');
       if (cc) cc.textContent = cloud.visible ? cloud.overSite + ' over Cullowhee now' : 'hidden';
       sats.forEach(function (s) {
+        if (s.retired) return;
+        if (s.fromFeed && s.elev <= -90) { if (s.row.style.display !== 'none' && selected !== s) s.row.style.display = 'none'; return; }
         s.row.querySelector('[data-live]').textContent =
           fmtAlt(s.alt) + ' · ' + fmtLatLon(s.lat, s.lon);
         if (s.elev > (s.mask || 10) && !s.isGeo) {
@@ -2545,6 +2568,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
           s.row.querySelector('[data-pass]').textContent = s.nextPassText;
         }
         if (s.fromFeed) s.row.style.display = (s.elev > s.mask || selected === s) ? '' : 'none';
+        if (s.retired) return;
       });
       if (selected) {
         var dp = detailEl.querySelector('[data-d-pos]');

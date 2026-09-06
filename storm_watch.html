@@ -762,6 +762,10 @@ const HSTAT = {TD:"TD",SD:"TD",LO:"TD",WV:"TD",DB:"TD",EX:"TD",TS:"TS",SS:"TS",H
    Frances/Ivan 2004: 6–10 in the Balsams; Opal: ~5; July 1916: 22 at Altapass, less here). Planning inputs, not measurements. */
 const SIM_RAIN = {"Helene 2024":11, "Fred 2021":5, "Ivan 2004":6, "Frances 2004":8, "Opal 1995":5, "July 1916":8};
 const SIM_GATE = {};   /* replay hour at which the track first reaches the gate, per storm */
+let STORM_REC = null;   /* data/storm_records.json — ERA5 reanalysis rain + antecedent wetness per replay storm (1940+) */
+fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ STORM_REC=j; if(simActive) simDraw(); }).catch(()=>{});
+function simRecord(){ const r = STORM_REC && STORM_REC.storms && STORM_REC.storms[$("simStorm").value]; return r||null; }
+function simRecRain(rec, h){ const c=rec.cum_in; if(h<=0) return 0; const i=Math.floor(h); if(i>=c.length-1) return c[c.length-1]; return c[i]+(c[i+1]-c[i])*(h-i); }
 function buildSimTracksFromFeed(){
   const byId = {}; for(const c of ANALOG.corridor_storms) byId[c.id]=c;
   let n=0;
@@ -831,9 +835,14 @@ function simDraw(){
     $("simStorm").value+" · T+"+Math.round(simT)+" h · "+cur.status+" "+cur.wind+" kt"+
     (res.held ? " · holding — corridor test met at T+"+Math.round(simLatch.at)+" h" : res.inside ? " · IN CORRIDOR" : res.met ? " · zone crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? " · analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : ""));
   /* storm rain arriving: none until 36 h before the gate, all of it 6 h after (the main rain falls ahead of and through passage) */
-  const gH = SIM_GATE[$("simStorm").value]; const tot = Number($("simRain").value)||0;
-  const frac = gH==null ? 0 : Math.max(0, Math.min(1, (simT-(gH-36))/42));
-  if(window.rdySim) rdySim({level:res.floor, held:!!res.held, rain:+(tot*frac).toFixed(2), rainTotal:tot, rainFrac:frac,
+  const gH = SIM_GATE[$("simStorm").value]; const rec = simRecord();
+  let tot, frac, rain, recInfo=null;
+  if(rec){ tot = rec.total_in; rain = simRecRain(rec, simT); frac = tot>0 ? rain/tot : 0;
+    const day = Math.min(rec.wetness_by_day.length-1, Math.max(0, Math.floor(simT/24)));
+    recInfo = {wetness: rec.wetness_by_day[day], trips: rec.trip_by_day[day], day: day, api30: rec.api30_in, w0: rec.wetness};
+    $("simRain").value = tot.toFixed(1); $("simRain").disabled = true; $("simRainWrap").title = "ERA5 reanalysis storm total for this replay (Open-Meteo archive) — a modeled record, not gauges";
+  } else { tot = Number($("simRain").value)||0; frac = gH==null ? 0 : Math.max(0, Math.min(1, (simT-(gH-36))/42)); rain = tot*frac; $("simRain").disabled = false; }
+  if(window.rdySim) rdySim({level:res.floor, held:!!res.held, rain:+rain.toFixed(2), rainTotal:tot, rainFrac:frac, rec:recInfo,
     why:$("simStorm").value+" T+"+Math.round(simT)+" h · "+(res.held ? "holding since T+"+Math.round(simLatch.at)+" h" : res.inside ? "in corridor" : res.met ? "gate crossing ≤ "+Math.round(res.tau)+" h" : (res.analog&&res.analog.n ? "analog "+Math.round(res.analog.frac*100)+"% of "+res.analog.n : "no criterion met"))});
   /* the right-hand panel shows the replayed storm, tagged, instead of live data */
   renderStormList([{name:$("simStorm").value+" (SIMULATION)", cls:cur.status, wind:cur.wind, sim:true, ...res}]);
@@ -901,7 +910,7 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
    as calm. */
 (function(){
   var open = null;                        /* null = follow the floor; true/false = user choice */
-  function tag(t){ t=(t||"modeled").toLowerCase(); var L={measured:"MEAS",gov_estimate:"GOV",modeled:"MOD"}; return '<span class="tag '+t+'">'+(L[t]||t)+'</span>'; }
+  function tag(t){ t=(t||"modeled").toLowerCase(); var L={measured:"MEAS",gov_estimate:"GOV",modeled:"MOD",reanalysis:"ERA5"}; return '<span class="tag '+(t==="reanalysis"?"modeled":t)+'" title="'+(t==="reanalysis"?"ERA5 reanalysis record (modeled, not measured)":"")+'">'+(L[t]||t)+'</span>'; }
   function num(v,d){ return (v==null||isNaN(v)) ? "—" : Number(v).toFixed(d==null?2:d); }
   var lastFeed=null, simOverlay=null;
   var MODES=["QUIET","ATTENTION","STORM"];
@@ -919,7 +928,10 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
     else if(ov.level==="ANALOG") alarms.unshift({name:"corridor",mode:"ATTENTION",detail:"ANALOG: "+(ov.why||"")});
     var mode="QUIET"; alarms.forEach(function(a){ if(MODES.indexOf(a.mode)>MODES.indexOf(mode)) mode=a.mode; });
     c.alarms=alarms; c.mode=mode; c.cadence=CADENCE[mode]; c.mode_since=null; c.sim=true; c.fetched_utc=j.fetched_utc;
-    c.sim_rain = ov.rain||0; c.sim_rain_total = ov.rainTotal||0; c.sim_rain_frac = ov.rainFrac||0;
+    c.sim_rain = ov.rain||0; c.sim_rain_total = ov.rainTotal||0; c.sim_rain_frac = ov.rainFrac||0; c.sim_rec = ov.rec||null;
+    if(ov.rec){ Object.keys(c.basins||{}).forEach(function(bid){ var b=c.basins[bid];
+      b.wetness = {w: ov.rec.wetness, tier:"reanalysis", source:"ERA5 30-day API at replay day "+(ov.rec.day+1), note:"antecedent wetness from the reanalysis rain record — starts "+ov.rec.w0+" (API30 "+ov.rec.api30+" in), rises as the storm's rain lands"};
+      b.trip_in = ov.rec.trips[bid] || null; b.stage = {valid:false, tier:"modeled"}; }); }
     return c;
   }
   function render(j){
@@ -933,7 +945,8 @@ loadAnalogs().then(refresh); setInterval(refresh,REFRESH_MS); setInterval(loadAn
                            : '<div class="al" style="color:var(--dim)">no alarm ringing — corridor, WPC excessive-rainfall (5 d), wetness trend, forecast margin all quiet</div>';
     if(ero.status==="ok"){ alHtml += '<div class="cad">WPC excessive-rainfall days 1–5: '+(ero.days||[]).map(function(d){ return d.dn? '<b>'+d.label+'</b>' : 'none'; }).join(" · ")+'</div>'; }
     else if(ero.status){ alHtml += '<div class="cad">WPC excessive-rainfall outlook: '+ero.status+'</div>'; }
-    if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — corridor alarm from the replay · storm rain '+num(j.sim_rain,1)+' of ≈'+num(j.sim_rain_total,1)+' in arrived ('+Math.round(j.sim_rain_frac*100)+'%) · <b>rung = the engine\'s rung for that rain at today\'s wetness — a replay, modeled, not a posture</b> · press LIVE to return</div>'; }
+    if(j.sim && j.sim_rec){ alHtml += '<div class="cad" style="color:var(--sim)"><b>modeled record</b> — ERA5 reanalysis rain for this storm (Open-Meteo archive, one cell over the watershed) and the antecedent wetness it implies: '+num(j.sim_rec.w0,2)+' at the start, '+num(j.sim_rec.wetness,2)+' on replay day '+(j.sim_rec.day+1)+' · rain '+num(j.sim_rain,1)+' of '+num(j.sim_rain_total,1)+' in fallen · <b>rung = the engine\'s rung for that rain at that wetness — modeled, not observed; ERA5 under-catches mountain rain</b> · press LIVE to return</div>'; }
+    else if(j.sim){ alHtml += '<div class="cad" style="color:var(--sim)">replayed storm on today\'s ground — no reanalysis before 1940, so an assumed total of ≈'+num(j.sim_rain_total,1)+' in arrives with the track ('+Math.round(j.sim_rain_frac*100)+'% so far) · <b>rung = the engine\'s rung for that rain at today\'s wetness — modeled, not a posture</b> · press LIVE to return</div>'; }
     if(j.mode_since){ alHtml += '<div class="cad">mode since '+j.mode_since.slice(5,16).replace("T"," ")+'Z'+(cad.feed? ' · cadence: feed '+cad.feed+' min · FIMAN '+cad.fiman+' min · node stage '+cad.node_stage+' min · soil '+cad.node_soil+' min · rain '+cad.node_rain:'')+(cad.backhaul? ' · '+cad.backhaul:'')+'</div>'; }
     $("rdyAlarms").innerHTML = alHtml;
     if(j.status!=="ok"){ $("rdyRows").innerHTML='<tr><td colspan="5" style="text-align:left;color:var(--pend)">readiness feed: '+j.status+'</td></tr>'; $("rdyFoot").textContent=""; return; }

@@ -279,7 +279,7 @@
       accuracy degrades over weeks, so positions drift the further this is opened from that date.
       Skylo flies no satellites of its own &mdash; shown are its partner GEOs covering North
       America (Ligado SkyTerra 1, TerreStar 1, Viasat Inmarsat 4-F3).
-      The Starlink layer draws <b>only the four likeliest</b> of the cataloged satellites currently
+      The Starlink layer draws <b>only the two likeliest</b> of the cataloged satellites currently
       above the user terminal&rsquo;s 25&deg; mask at Cullowhee (tick &ldquo;show all&rdquo; for the rest), from the CelesTrak element set refreshed every
       feed cycle (<code>feed/starlink_overhead.json</code>). The <b>likely link</b> block is an
       educated guess: the dish never reports which satellite serves it, so candidates are ranked
@@ -2359,7 +2359,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
   // scheduler is known to prefer them — high elevation, near the dish boresight, and not
   // about to leave the cone before the next 15-second re-plan. It is a guess and says so.
   var likelyTop = null, likelyList = [], starlinkFeed = null;
-  var SHOW_N = 4, showAll = false;   // draw only the four best candidates unless asked for all
+  var SHOW_N = 2, showAll = false;   // draw only the two best candidates unless asked for all
   var bore = { az: 0, el: 70 };            // NC default: dish tilted north, ~70° up
   try { var sb = JSON.parse(localStorage.getItem('freshet_boresight') || 'null'); if (sb && isFinite(sb.az) && isFinite(sb.el)) bore = sb; } catch (e) {}
   function angSep(az1, el1, az2, el2) {

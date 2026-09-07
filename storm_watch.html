@@ -140,6 +140,8 @@
   .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);
     color:var(--txt);border:1px solid var(--line)}
   .leaflet-popup-content{font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;margin:10px 12px}
+  .trklbl{font:10px ui-monospace,Menlo,monospace;letter-spacing:.3px;white-space:nowrap;pointer-events:none;
+    text-shadow:0 0 3px #0b0f14,0 0 3px #0b0f14,0 0 2px #0b0f14}
   .gatelbl{color:var(--gate);font:11px ui-monospace,Menlo,monospace;
     text-shadow:0 0 4px #000;white-space:nowrap}
   .wslbl{color:var(--ok);font:11px ui-monospace,Menlo,monospace;
@@ -277,7 +279,7 @@
   <div><span class="sw" style="border-color:var(--gate);border-top-style:dashed"></span>Corridor gate −83.2° / 33.0–36.5°N</div>
   <div><span class="sw" style="border-color:#7fb3ff"></span>NHC forecast track</div>
   <div><span class="sw" style="border-color:#5a6675;border-top-style:dotted"></span>Analog best tracks (schematic)</div>
-  <div><span class="sw" style="border-color:#b8bec6"></span>Far-west pattern &mdash; went to Arkansas, still came east (Danny 85, Andrew 92, Ida 21)</div>
+  <div><span class="sw" style="border-color:#d7dce2;border-top-style:dashed"></span>Far-west pattern &mdash; went to Arkansas, still came east (Danny 85, Andrew 92, Ida 21)</div>
 </div>
 
 
@@ -517,10 +519,20 @@ const SIM_TRACKS = {
     [32.9,-87.0,48,"TS", 45],[34.4,-85.9,56,"TS", 40],[35.5,-84.5,64,"TD", 30],
     [36.2,-82.9,72,"TD", 25]]
 };
+/* label a track: placed at the point nearest a chosen latitude (default ~29 N, just before landfall) */
+function trackLabel(latlngs, text, color, atLat, group){
+  const lat = atLat==null ? 29.0 : atLat;
+  let best=latlngs[0], bd=1e9;
+  for(const q of latlngs){ const d=Math.abs(q[0]-lat); if(d<bd){bd=d;best=q;} }
+  L.marker(best,{icon:L.divIcon({className:"trklbl",html:'<span style="color:'+color+'">'+text+'</span>',iconAnchor:[-6,6]}),
+    interactive:false}).addTo(group);
+}
 const analogGroup = L.layerGroup();
 for(const [nm,pts] of Object.entries(SIM_TRACKS)){
-  L.polyline(pts.map(p=>[p[0],p[1]]),{color:"#5a6675",weight:1.5,dashArray:"2 5",interactive:true})
+  const ll = pts.map(p=>[p[0],p[1]]);
+  L.polyline(ll,{color:"#5a6675",weight:1.5,dashArray:"2 5",interactive:true})
     .bindPopup("<b>"+nm+"</b><br>Approx. best track (schematic)").addTo(analogGroup);
+  trackLabel(ll, nm, "#8a95a3", nm.startsWith("Frances") ? 27.5 : 29.0, analogGroup);
 }
 analogGroup.addTo(map);
 
@@ -538,9 +550,10 @@ function drawFarWest(){
   for(const [id,nm,km] of FAR_WEST){
     const c=byId[id]; if(!c) continue;
     const pts=c.track.filter(p=>p[0]>=20).map(p=>[p[0],p[1]]);
-    L.polyline(pts,{color:"#b8bec6",weight:1.5,opacity:.55,interactive:true})
+    L.polyline(pts,{color:"#d7dce2",weight:1.2,opacity:.45,dashArray:"6 6",interactive:true})
       .bindPopup("<b>"+nm+"</b><br>Far-west pattern: crossed 33&deg;N in the lower Mississippi valley, then recurved east over the Blue Ridge.<br>Closest approach to Cullowhee: "+km+" km (HURDAT2 best track)")
       .addTo(farWestGroup);
+    trackLabel(pts, nm, "#c9ced6", id==="AL092021" ? 31.5 : id==="AL041992" ? 27.0 : 25.5, farWestGroup);
   }
 }
 

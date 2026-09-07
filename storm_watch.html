@@ -277,6 +277,7 @@
   <div><span class="sw" style="border-color:var(--gate);border-top-style:dashed"></span>Corridor gate −83.2° / 33.0–36.5°N</div>
   <div><span class="sw" style="border-color:#7fb3ff"></span>NHC forecast track</div>
   <div><span class="sw" style="border-color:#5a6675;border-top-style:dotted"></span>Analog best tracks (schematic)</div>
+  <div><span class="sw" style="border-color:#b8bec6"></span>Far-west pattern &mdash; went to Arkansas, still came east (Danny 85, Andrew 92, Ida 21)</div>
 </div>
 
 
@@ -450,7 +451,7 @@ async function loadAnalogs(){
     const recent=(ev.events||[]).filter(e=>{ const t=Date.parse(e.date); return !isNaN(t) && now-t>=0 && now-t<=win; });
     SEQUENCE = recent.length ? {on:true, why:"SEQUENCE · corridor crossed "+recent.map(e=>e.name+" "+e.date).join(", ")} : {on:false, why:""};
   }catch(e){ SEQUENCE={on:false,why:""}; }
-  if(ANALOG && ANALOG.corridor_storms) buildSimTracksFromFeed();
+  if(ANALOG && ANALOG.corridor_storms){ buildSimTracksFromFeed(); drawFarWest(); }
 }
 
 const NHC_MAPSERVER =
@@ -523,6 +524,26 @@ for(const [nm,pts] of Object.entries(SIM_TRACKS)){
 }
 analogGroup.addTo(map);
 
+/* ---- far-west pattern (light grey) ----
+   Storms that went deep into the lower Mississippi valley / Arkansas side (crossed 33 N west of -89) and
+   STILL came back east over the Blue Ridge within ~160 km of Cullowhee. They are the counter-example to
+   "it went to Arkansas, we are clear": Danny 1985 (38 km), Andrew 1992 (75 km), Ida 2021 (159 km).
+   Drawn from the real HURDAT2 best tracks in feed/corridor_analogs.json once it loads. */
+const FAR_WEST = [["AL041985","Danny 1985",38],["AL041992","Andrew 1992",75],["AL092021","Ida 2021",159]];
+const farWestGroup = L.layerGroup().addTo(map);
+function drawFarWest(){
+  if(!ANALOG || !ANALOG.corridor_storms) return;
+  farWestGroup.clearLayers();
+  const byId={}; for(const c of ANALOG.corridor_storms) byId[c.id]=c;
+  for(const [id,nm,km] of FAR_WEST){
+    const c=byId[id]; if(!c) continue;
+    const pts=c.track.filter(p=>p[0]>=20).map(p=>[p[0],p[1]]);
+    L.polyline(pts,{color:"#b8bec6",weight:1.5,opacity:.55,interactive:true})
+      .bindPopup("<b>"+nm+"</b><br>Far-west pattern: crossed 33&deg;N in the lower Mississippi valley, then recurved east over the Blue Ridge.<br>Closest approach to Cullowhee: "+km+" km (HURDAT2 best track)")
+      .addTo(farWestGroup);
+  }
+}
+
 /* optional national radar context (IEM n0q, single live frame) */
 const radarLayer = L.tileLayer(
   "https://mesonet.agron.iastate.edu/cache/tile.py/1.0.0/nexrad-n0q/{z}/{x}/{y}.png",
@@ -538,6 +559,7 @@ L.control.layers(null,{
   "Forecast track + points":trackGroup,
   "Past track":pastGroup,
   "Analog tracks (schematic)":analogGroup,
+  "Far-west pattern (Arkansas recurve)":farWestGroup,
   "Corridor zone":corridorZone,
   "NEXRAD composite (live)":radarLayer
 },{collapsed:true,position:"topleft"}).addTo(map);

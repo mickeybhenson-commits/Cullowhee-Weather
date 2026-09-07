@@ -10,7 +10,8 @@ a steep slope — the same idealisation known to be ~2x too shallow at Speedwell
 were in different frames and the margins were too generous. This puts both halves on one section per
 reach, cut from USGS 3DEP 1 m (NC QL2 LiDAR) at the pour point (data/reach_sections_3dep.json), the same
 method as fiman_rating / campus_rating / mouth_rating: conveyance Manning through the real geometry,
-parabolic unseen bed 1 ft below the LiDAR water surface, water-surface slope from a 4 m thalweg grid,
+parabolic unseen bed below the LiDAR water surface (1 ft on the mainstem, 0.25-0.3 ft on the small branches, chosen so the
+survey-day flow is ~1-2x baseflow), water-surface slope from a 4 m thalweg grid,
 channel n per reach (0.045 gravel/cobble; 0.05 Cox; 0.06 the boulder ravine at Mountain), overbank 0.08.
 
 WATCH rung = the stage this same rating gives at the WATCH flow of the posture rule, which since 2026-09-07 is
@@ -55,8 +56,9 @@ def _section(rec):
     c = (lo + hi) / 2.0
     half = (hi - lo) / 2.0 or 1.0
     bed = list(elev)
+    bbw = float(rec.get("bed_below_ws", BED_BELOW_WS))   # per reach: ~1 ft on the mainstem, 0.25-0.3 ft on the small branches
     for i in range(lo, hi + 1):
-        bed[i] = mn - BED_BELOW_WS * (1.0 - ((i - c) / half) ** 2)
+        bed[i] = mn - bbw * (1.0 - ((i - c) / half) ** 2)
     return sta, bed, elev, lo, hi, mn
 
 
@@ -98,7 +100,7 @@ def build(step=0.1, dmax=14.0):
                                    slope=rec["slope"], slope_note=rec["slope_note"], n_channel=rec.get("n_channel", fr.N_CHANNEL),
                                    qb_cfs=QB[bid], bank_ft=round(fr.stage_from_q(WATCH_FRACTION * Q2[bid], table), 2), q2_cfs=Q2[bid],
                                    watch_q_cfs=round(WATCH_FRACTION * Q2[bid], 1), stage_at_2yr_ft=round(fr.stage_from_q(Q2[bid], table), 2),
-                                   bank_section_ft=_bank_ft(elev, lo, hi, thal), thr_registry_plus_bed_ft=round(THR_REGISTRY[bid] + BED_BELOW_WS, 2),
+                                   bank_section_ft=_bank_ft(elev, lo, hi, thal), thr_registry_plus_bed_ft=round(THR_REGISTRY[bid] + float(rec.get("bed_below_ws", BED_BELOW_WS)), 2), bed_below_ws_ft=float(rec.get("bed_below_ws", BED_BELOW_WS)),
                                    watch_note="WATCH = the stage this rating gives at 0.3 x the 2-yr flow - the FIMAN Monitor standard adopted "
                                               "watershed-wide (the posture rule's WATCH), so the countdown agrees with the status; the stage at the "
                                               "2-yr flow, the section's own bank and the registry bankfull (+1 ft unseen bed) are kept as checks" + (" - Mountain's registry bankfull is still a placeholder" if bid == "CC-UP-503" else ""),

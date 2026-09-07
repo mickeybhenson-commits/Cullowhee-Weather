@@ -884,7 +884,7 @@ function recomputeLive(){
                stage:a.stage,storm:a.storm,rp:a.rp,
                wet:w,CN:a.CN,cq:a.calib_q,p5:d.p5,api:d.api,qpf:d.qpf,
                vwc:d.vwc,soilPct:d.soilPct,
-               leadMin:(a.leadMin!=null?a.leadMin:null),
+               leadMin:((a.leadMin!=null && (a.total||0)>0.01)?a.leadMin:null),   /* no forecast rain -> no modeled event -> fall back to the basin's characteristic lead (LEADMIN*) instead of a misleading 0 min */
                shape:a.shape,total:(a.total!=null?a.total:d.qpf),
                fcFrom:d.fcFrom, xfer:(XFER?XFER[b]:null), xferQspd:XQ, xferStage:(XFER?+FIMAN_GOV.stage:null)};});
   repaint();

@@ -1,9 +1,9 @@
 {
-  "fetched_utc": "2026-09-07T07:00:30.217239+00:00",
+  "fetched_utc": "2026-09-07T07:06:59.955646+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
-    "ffg_in": "empty",
+    "ffg_in": "ReadTimeout",
     "nwm": "ok",
     "cucn7": "ok",
     "flash": "ok"
@@ -216,11 +216,7 @@
     "provenance": "MEASURED"
   },
   "alerts": [],
-  "ffg_in": {
-    "ffg1h": null,
-    "ffg3h": null,
-    "ffg6h": null
-  },
+  "ffg_in": null,
   "nwm": {
     "reach": 19730552,
     "reach_is_cullowhee": false,
@@ -309,7 +305,7 @@
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 57.5,
+    "age_min": 64.4,
     "fresh": true,
     "last_updated_utc": "2026-09-07T06:03:00+00:00",
     "datum_verified": false,
@@ -476,7 +472,7 @@
     },
     "headline": "BELOW",
     "fresh": true,
-    "age_min": 10.5,
+    "age_min": 17.4,
     "valid_utc": "2026-09-07T06:50:00+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"

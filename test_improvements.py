@@ -583,3 +583,12 @@ class TestFimanRating(unittest.TestCase):
         self.assertAlmostEqual(t["CC-TIL-705"] / 1000.0, 7.05 / 18.3, places=6)
         self.assertAlmostEqual(t["CC-UP-503"] / 1000.0, 5.03 / 18.3, places=6)
         self.assertGreater(t["CC-WCU-2260"], 1000.0)
+
+
+    def test_mouth_rating_gives_the_mouth_a_depth(self):
+        import mouth_rating as mr, cwm_model as cwm
+        mr.build()
+        cwm._TABLE_RATINGS.clear()
+        self.assertIsNotNone(cwm.stage_total(0, "CC-MOUTH-2340"), "the mouth should now have a creek-only depth")
+        self.assertLess(cwm.stage_total(0, "CC-MOUTH-2340"), 3.0)
+        self.assertGreater(cwm.stage_total(2400, "CC-MOUTH-2340"), cwm.stage_total(0, "CC-MOUTH-2340"))

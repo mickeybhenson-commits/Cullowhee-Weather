@@ -233,9 +233,35 @@ def posture(depth, bid):
     if depth>=t[0]: return "WATCH"
     return "NORMAL"
 
+_TABLE_RATINGS = {}   # bid -> (table, qb) loaded from data/*.json; the mouth's creek-only LiDAR rating (mouth_rating.py)
+_TABLE_FILES = {"CC-MOUTH-2340": "data/mouth_rating.json"}
+
+def _table_rating(bid):
+    """Depth-vs-discharge table for reaches that have no analytic rating (the mouth). None if absent."""
+    if bid in _TABLE_RATINGS: return _TABLE_RATINGS[bid]
+    import json, os
+    f=_TABLE_FILES.get(bid); r=None
+    if f:
+        path=os.path.join(os.path.dirname(os.path.abspath(__file__)), f)
+        try:
+            j=json.load(open(path, encoding="utf-8")); r=(j["table"], float(j.get("qb_cfs") or 0.0))
+        except Exception:      # noqa: BLE001 - no file, no rating; the reach stays depth-less
+            r=None
+    _TABLE_RATINGS[bid]=r
+    return r
+
+def _depth_from_table(q, table):
+    for (d0,q0),(d1,q1) in zip(table, table[1:]):
+        if q0<=q<=q1: return d0+(d1-d0)*(q-q0)/((q1-q0) or 1e-9)
+    return table[-1][0] if q>table[-1][1] else table[0][0]
+
 def stage_total(cq, bid):
     b=BASINS[bid]
-    if b["rating"]=="none": return None
+    if b["rating"]=="none":
+        tr=_table_rating(bid)
+        if tr is None: return None
+        table,qb=tr
+        return round(_depth_from_table((cq or 0)+qb, table), 2)
     t=depth_from_q((cq or 0)+(b.get("qb") or 0), bid)
     return None if t is None else max(t, b.get("floor",0.0))
 

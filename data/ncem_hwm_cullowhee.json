@@ -1,0 +1,108 @@
+{
+ "source": "NCEM spartagis DA/HighWaterMark/MapServer/0 ('High water mark locations for surveyors'), queried 2026-09-06 over the Cullowhee Creek valley; coordinates from the layer (approx. 5 m), elevations only where the note carries one (datum not stated - 'ft' / 'ft msl')",
+ "note": "HWM-16..20 flagged by the NCEM crew (TFC & CDJ) on 2024-10-23 are the five NCGS-surveyed Helene marks already in data/cullowhee_helene_marks_RAW.csv (4827-4831): same points. The three WCU HWM Mapping Team marks (K. Schneider, Nov 2024) are NEW to this project: Helene high-water marks on and below campus WITH elevations - Old Well Station 2089.5, storm-drain 2086.9, Bellamy 2079.3 - but in an unstated vertical frame, so they settle the campus stage only once the campus TVA section (bed 2070.5, suspected ~35 ft below the NAVD88 frame) is tied by one leveled shot.",
+ "points": [
+  {
+   "lat": 35.290607,
+   "lon": -83.182918,
+   "event": "TS Helene",
+   "type": "HWM debris line on fence",
+   "notes": "25380 HWM-18 debris line on fence",
+   "collector": "TFC & CDJ",
+   "created": "2024-10-23",
+   "objectid": 64403,
+   "ncgs_mark": 4829
+  },
+  {
+   "lat": 35.29391,
+   "lon": -83.18258,
+   "event": "TS Helene",
+   "type": "HWM mud line on car",
+   "notes": "25380 HWM-19 mud line on car",
+   "collector": "TFC & CDJ",
+   "created": "2024-10-23",
+   "ncgs_mark": 4830
+  },
+  {
+   "lat": 35.28934,
+   "lon": -83.18199,
+   "event": "TS Helene",
+   "type": "HWM debris line on fence",
+   "notes": "25380 HWM-16 debris line on fence",
+   "collector": "TFC & CDJ",
+   "created": "2024-10-23",
+   "ncgs_mark": 4827
+  },
+  {
+   "lat": 35.2892,
+   "lon": -83.18082,
+   "event": "TS Helene",
+   "type": "HWM debris line on slope",
+   "notes": "25380 HWM-17 debris line on slope",
+   "collector": "TFC & CDJ",
+   "created": "2024-10-23",
+   "ncgs_mark": 4828
+  },
+  {
+   "lat": 35.30013,
+   "lon": -83.18108,
+   "event": "TS Helene",
+   "type": "HWM debris line on baseball field fence",
+   "notes": "25380 HWM-20 debris line on baseball field fence",
+   "collector": "TFC & CDJ",
+   "created": "2024-10-23",
+   "ncgs_mark": 4831
+  },
+  {
+   "lat": 35.318015,
+   "lon": -83.181452,
+   "event": "20240927",
+   "type": "High Water Mark",
+   "notes": "Elevation (ft): 2079.3. HWM on ground, 30'9\" East of Bellamy Sign. Private (Bellamy Apartments). HWM marked w/ coordinates only.",
+   "collector": "WCU HWM Mapping Team (K. Schneider)",
+   "created": "2024-11-24",
+   "objectid": 68402,
+   "elev_ft": 2079.3
+  },
+  {
+   "lat": 35.317488,
+   "lon": -83.187984,
+   "event": "20240927 Helene",
+   "type": "High Water Mark",
+   "notes": "Elevation (ft msl): 2086.9. HWM on ground, 68 ft SW from storm drain cover. Public. Yellow flag.",
+   "collector": "WCU HWM Mapping Team (K. Schneider)",
+   "created": "2024-11-27",
+   "elev_ft": 2086.9
+  },
+  {
+   "lat": 35.31345,
+   "lon": -83.18712,
+   "event": "20240927 Helene",
+   "type": "High Water Mark",
+   "notes": "Elevation (ft): 2089.5. HWM on ground, 16' 3\" from CC Old Well Station. WCU Property. Yellow flag.",
+   "collector": "WCU HWM Mapping Team (K. Schneider)",
+   "created": "2024-11-24",
+   "elev_ft": 2089.5
+  },
+  {
+   "lat": 35.3135,
+   "lon": -83.18706,
+   "event": "20241127",
+   "type": "High Water Mark",
+   "notes": "Elevation (ft): 2089.5. HWM on ground, 16' 3\" from CC Old Well Station. WCU Property. (duplicate entry)",
+   "collector": "WCU HWM Mapping Team (K. Schneider)",
+   "created": "2024-11-24",
+   "elev_ft": 2089.5
+  },
+  {
+   "lat": 35.31735,
+   "lon": -83.175014,
+   "event": null,
+   "type": "High Water Mark",
+   "notes": null,
+   "collector": null,
+   "created": "2025-08-06",
+   "objectid": 84000
+  }
+ ]
+}

@@ -98,7 +98,9 @@
     2715.6
    ],
    "thresh": 0.6,
-   "geom": "V-shaped ravine: water ~4 m wide, both sides climbing 10+ ft within 10 m"
+   "geom": "V-shaped ravine: water ~4 m wide, both sides climbing 10+ ft within 10 m",
+   "bed_below_ws": 0.8,
+   "bed_note": "unseen bed depth chosen so the flow at the LiDAR survey water surface is ~1-2x the engine baseflow (the survey was flown at ordinary flow); 1 ft on the mainstem, less on the small branches"
   },
   "CC-MS-1100": {
    "name": "Lower Mountain (mainstem above Speedwell) pour point",
@@ -197,7 +199,9 @@
     2149.7
    ],
    "thresh": 0.8,
-   "geom": "~6 m channel, banks +2.6 ft, broad valley floor at +1.5-2.7 ft both sides"
+   "geom": "~6 m channel, banks +2.6 ft, broad valley floor at +1.5-2.7 ft both sides",
+   "bed_below_ws": 1.0,
+   "bed_note": "unseen bed depth chosen so the flow at the LiDAR survey water surface is ~1-2x the engine baseflow (the survey was flown at ordinary flow); 1 ft on the mainstem, less on the small branches"
   },
   "CC-TIL-705": {
    "name": "Tilley Creek, 20 m above its confluence with the mainstem",
@@ -276,7 +280,9 @@
     2151.9
    ],
    "thresh": 0.8,
-   "geom": "~4 m channel, banks +2.0-2.5 ft, flat floodplain at +2.5 ft"
+   "geom": "~4 m channel, banks +2.0-2.5 ft, flat floodplain at +2.5 ft",
+   "bed_below_ws": 1.0,
+   "bed_note": "unseen bed depth chosen so the flow at the LiDAR survey water surface is ~1-2x the engine baseflow (the survey was flown at ordinary flow); 1 ft on the mainstem, less on the small branches"
   },
   "CC-COX-097": {
    "name": "Cox Branch, ~55 m above its pour point (the incised reach; at the mouth the branch fans out onto the mainstem floodplain)",
@@ -355,7 +361,9 @@
     2103.9
    ],
    "thresh": 0.35,
-   "geom": "~7 m incised channel at 2095.6, right bank/terrace +3.3 ft (2098.9), left side climbing to a road at +10 ft"
+   "geom": "~7 m incised channel at 2095.6, right bank/terrace +3.3 ft (2098.9), left side climbing to a road at +10 ft",
+   "bed_below_ws": 0.25,
+   "bed_note": "unseen bed depth chosen so the flow at the LiDAR survey water surface is ~1-2x the engine baseflow (the survey was flown at ordinary flow); 1 ft on the mainstem, less on the small branches"
   },
   "CC-LB-171": {
    "name": "Long Branch pour point",
@@ -454,7 +462,9 @@
     2095.8
    ],
    "thresh": 0.35,
-   "geom": "~10 m channel at 2083.5, banks +2.5 ft (left, 2086.2) and +4.5 ft (right terrace)"
+   "geom": "~10 m channel at 2083.5, banks +2.5 ft (left, 2086.2) and +4.5 ft (right terrace)",
+   "bed_below_ws": 0.3,
+   "bed_note": "unseen bed depth chosen so the flow at the LiDAR survey water surface is ~1-2x the engine baseflow (the survey was flown at ordinary flow); 1 ft on the mainstem, less on the small branches"
   }
  }
 }

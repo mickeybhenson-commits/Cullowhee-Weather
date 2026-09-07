@@ -234,7 +234,7 @@ def posture(depth, bid):
     return "NORMAL"
 
 _TABLE_RATINGS = {}   # bid -> (table, qb) loaded from data/*.json; the mouth's creek-only LiDAR rating (mouth_rating.py)
-_TABLE_FILES = {"CC-MOUTH-2340": "data/mouth_rating.json"}
+_TABLE_FILES = {"CC-MOUTH-2340": "data/mouth_rating.json", "CC-WCU-2260": "data/campus_rating.json"}   # campus: depth only (posture stays on the TVA stage)
 
 def _table_rating(bid):
     """Depth-vs-discharge table for reaches that have no analytic rating (the mouth). None if absent."""
@@ -259,13 +259,18 @@ CAMPUS_SEC = dict(w=60.5, n=0.035, s=0.0050)   # Bieger/TVA reference rectangle 
 
 def depth_above_bed(cq, bid):
     """Water depth above the channel bed, the same quantity on every reach (the live.html Stream-depth column).
-    Campus: Manning through the reference rectangle. Its posture ladder (7/9/11 ft, 11 = water in the road) is a
-    STAGE in the TVA road-datum frame, which sits ~3-4 ft above the effective bed (stage 8.7 at the 10-yr flow vs
-    5.2 ft of water); stage_total() keeps that frame for the posture, this gives the depth. Other reaches: identical
+    Campus: the 3DEP LiDAR section at the pour point (campus_rating.py). That section, run independently, gives
+    8.6 / 11.5 ft at the 10- / 100-yr flows against the validated ladder stages 8.7 / 11.0, so the campus ladder
+    (7/9/11 ft, 11 = water in the road) reads as depth above the bed to within ~1 ft; stage_total() keeps the TVA
+    power law (with its 4.0 ft low-flow floor) for the posture, this gives the water depth at any flow. Other reaches: identical
     to stage_total (their ratings are depth above bed already); the mouth uses its creek-only LiDAR table."""
     b=BASINS[bid]
     if bid=="CC-WCU-2260":
-        return round(rect_depth((cq or 0)+(b.get("qb") or 0), CAMPUS_SEC), 2)
+        tr=_table_rating(bid)
+        if tr is not None:
+            table,qb=tr
+            return round(_depth_from_table((cq or 0)+qb, table), 2)     # LiDAR section at the pour point (campus_rating.py)
+        return round(rect_depth((cq or 0)+(b.get("qb") or 0), CAMPUS_SEC), 2)   # fallback: reference rectangle
     return stage_total(cq, bid)
 
 def stage_total(cq, bid):

@@ -184,6 +184,8 @@ TOOLS = {
                                     # harness — not because it cannot run in CI. It exits
                                     # 1 on a mismatch, so it drops straight into a step.
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
+    "campus_rating",        # CLI: builds data/campus_rating.json (LiDAR section at the campus warning point, depth only);
+                            # cwm_model.depth_above_bed and live.html read the JSON
     "mouth_rating",         # CLI: builds data/mouth_rating.json (creek-only LiDAR rating ~250 m above the mouth);
                             # cwm_model.stage_total and live.html read the JSON for CC-MOUTH-2340
     "fiman_rating",         # CLI: builds data/fiman_25380_rating.json (3DEP-section rating at the FIMAN gage +

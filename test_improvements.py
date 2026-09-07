@@ -592,3 +592,11 @@ class TestFimanRating(unittest.TestCase):
         self.assertIsNotNone(cwm.stage_total(0, "CC-MOUTH-2340"), "the mouth should now have a creek-only depth")
         self.assertLess(cwm.stage_total(0, "CC-MOUTH-2340"), 3.0)
         self.assertGreater(cwm.stage_total(2400, "CC-MOUTH-2340"), cwm.stage_total(0, "CC-MOUTH-2340"))
+
+    def test_campus_lidar_section_reproduces_the_ladder(self):
+        """The independent LiDAR section at the campus warning point should land near the validated 7/9/11 ladder."""
+        import campus_rating as cr
+        cr.build()
+        self.assertTrue(7.3 <= cr.depth_from_q(2580) <= 9.5, "10-yr flow should read ~8.7 ft (ladder) within ~1 ft")
+        self.assertTrue(10.0 <= cr.depth_from_q(5155) <= 12.5, "100-yr flow should read ~11 ft (water in the road) within ~1 ft")
+        self.assertTrue(0.8 <= cr.depth_from_q(57) <= 2.0, "low flow should be a foot or so of water, not the 4.0 ft floor")

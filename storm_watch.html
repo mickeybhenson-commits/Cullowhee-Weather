@@ -278,8 +278,14 @@
 <div id="legend">
   <div><span class="sw" style="border-color:var(--gate);border-top-style:dashed"></span>Corridor gate −83.2° / 33.0–36.5°N</div>
   <div><span class="sw" style="border-color:#7fb3ff"></span>NHC forecast track</div>
-  <div><span class="sw" style="border-color:#5a6675;border-top-style:dotted"></span>Analog best tracks (schematic)</div>
-  <div><span class="sw" style="border-color:#d7dce2;border-top-style:dashed"></span>Far-west pattern &mdash; went to Arkansas, still came east (Danny 85, Andrew 92, Ida 21)</div>
+  <div>Analog best tracks (schematic, dotted):
+    <span class="sw" style="border-color:#e88a8a;border-top-style:dotted"></span><span style="color:#e88a8a">Helene 2024</span>
+    <span class="sw" style="border-color:#c99be0;border-top-style:dotted"></span><span style="color:#c99be0">Frances 2004</span>
+    <span class="sw" style="border-color:#8fd0a8;border-top-style:dotted"></span><span style="color:#8fd0a8">Ivan 2004</span></div>
+  <div>Far-west pattern (dashed) &mdash; went to Arkansas, still came east:
+    <span class="sw" style="border-color:#e0b070;border-top-style:dashed"></span><span style="color:#e0b070">Danny 1985</span>
+    <span class="sw" style="border-color:#7ccfd6;border-top-style:dashed"></span><span style="color:#7ccfd6">Andrew 1992</span>
+    <span class="sw" style="border-color:#b8b8ea;border-top-style:dashed"></span><span style="color:#b8b8ea">Ida 2021</span></div>
 </div>
 
 
@@ -527,12 +533,16 @@ function trackLabel(latlngs, text, color, atLat, group){
   L.marker(best,{icon:L.divIcon({className:"trklbl",html:'<span style="color:'+color+'">'+text+'</span>',iconAnchor:[-6,6]}),
     interactive:false}).addTo(group);
 }
+/* one colour per storm, shared by its line and its label (and the legend) */
+const TRACK_COLOR = {"Helene 2024":"#e88a8a","Frances 2004":"#c99be0","Ivan 2004":"#8fd0a8",
+                     "Danny 1985":"#e0b070","Andrew 1992":"#7ccfd6","Ida 2021":"#b8b8ea"};
 const analogGroup = L.layerGroup();
 for(const [nm,pts] of Object.entries(SIM_TRACKS)){
   const ll = pts.map(p=>[p[0],p[1]]);
-  L.polyline(ll,{color:"#5a6675",weight:1.5,dashArray:"2 5",interactive:true})
+  const col = TRACK_COLOR[nm]||"#5a6675";
+  L.polyline(ll,{color:col,weight:1.6,opacity:.8,dashArray:"2 5",interactive:true})
     .bindPopup("<b>"+nm+"</b><br>Approx. best track (schematic)").addTo(analogGroup);
-  trackLabel(ll, nm, "#8a95a3", nm.startsWith("Frances") ? 27.5 : 29.0, analogGroup);
+  trackLabel(ll, nm, col, nm.startsWith("Frances") ? 27.5 : 29.0, analogGroup);
 }
 analogGroup.addTo(map);
 
@@ -550,10 +560,11 @@ function drawFarWest(){
   for(const [id,nm,km] of FAR_WEST){
     const c=byId[id]; if(!c) continue;
     const pts=c.track.filter(p=>p[0]>=20).map(p=>[p[0],p[1]]);
-    L.polyline(pts,{color:"#d7dce2",weight:1.2,opacity:.45,dashArray:"6 6",interactive:true})
+    const col = TRACK_COLOR[nm]||"#d7dce2";
+    L.polyline(pts,{color:col,weight:1.3,opacity:.6,dashArray:"6 6",interactive:true})
       .bindPopup("<b>"+nm+"</b><br>Far-west pattern: crossed 33&deg;N in the lower Mississippi valley, then recurved east over the Blue Ridge.<br>Closest approach to Cullowhee: "+km+" km (HURDAT2 best track)")
       .addTo(farWestGroup);
-    trackLabel(pts, nm, "#c9ced6", id==="AL092021" ? 31.5 : id==="AL041992" ? 27.0 : 25.5, farWestGroup);
+    trackLabel(pts, nm, col, id==="AL092021" ? 31.5 : id==="AL041992" ? 27.0 : 25.5, farWestGroup);
   }
 }
 

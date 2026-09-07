@@ -103,7 +103,8 @@ def build(step: float = 0.1, hmax: float = 16.0) -> dict:
     out = dict(
         site="NCEM FIMAN 25380 (CUCN7) Cullowhee Creek at Speedwell", built="2026-09-06",
         gage_datum_ft=GAGE_DATUM_FT, slope=SLOPE, slope_band=[0.004, 0.011], n_channel=N_CHANNEL, n_overbank=N_OVERBANK,
-        bed_below_ws_ft=BED_BELOW_WS, lidar_ws_ft=ws, uncertainty=UNCERTAINTY, da_sqmi=DA_SPEEDWELL, da=DA,
+        bed_below_ws_ft=BED_BELOW_WS, lidar_ws_ft=ws, bed_above_datum_ft=round(ws - BED_BELOW_WS - GAGE_DATUM_FT, 2),
+        uncertainty=UNCERTAINTY, da_sqmi=DA_SPEEDWELL, da=DA,
         method="conveyance-weighted Manning through a 3DEP (NC QL2 LiDAR, 1 m) cross-section at the FIMAN site point; "
                "parabolic unseen bed below the LiDAR water surface; discharge in cfs against gage height in ft",
         tier="derived from a measurement (not a measurement): informs the stream-depth column and can sharpen a WATCH; "

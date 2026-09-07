@@ -255,6 +255,19 @@ def _depth_from_table(q, table):
         if q0<=q<=q1: return d0+(d1-d0)*(q-q0)/((q1-q0) or 1e-9)
     return table[-1][0] if q>table[-1][1] else table[0][0]
 
+CAMPUS_SEC = dict(w=60.5, n=0.035, s=0.0050)   # Bieger/TVA reference rectangle for the campus section (basins.py "section")
+
+def depth_above_bed(cq, bid):
+    """Water depth above the channel bed, the same quantity on every reach (the live.html Stream-depth column).
+    Campus: Manning through the reference rectangle. Its posture ladder (7/9/11 ft, 11 = water in the road) is a
+    STAGE in the TVA road-datum frame, which sits ~3-4 ft above the effective bed (stage 8.7 at the 10-yr flow vs
+    5.2 ft of water); stage_total() keeps that frame for the posture, this gives the depth. Other reaches: identical
+    to stage_total (their ratings are depth above bed already); the mouth uses its creek-only LiDAR table."""
+    b=BASINS[bid]
+    if bid=="CC-WCU-2260":
+        return round(rect_depth((cq or 0)+(b.get("qb") or 0), CAMPUS_SEC), 2)
+    return stage_total(cq, bid)
+
 def stage_total(cq, bid):
     b=BASINS[bid]
     if b["rating"]=="none":

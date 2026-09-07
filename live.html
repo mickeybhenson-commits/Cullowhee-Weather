@@ -134,14 +134,14 @@
 <div id="map"></div>
 <div id="sbtable">
   <h4 id="sbhdr">Sub-basin status <span id="sbtog">&#9662;</span></h4>
-  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil wetness, 0 (dry) to 1 (saturated): Open-Meteo soil-moisture percentile against the cell's own 30-day history, falling back to the 30-day rainfall index. Modeled until the in-basin probes report. The uncapped forecast outlook that used to sit here is in the status pill's tooltip.">Soil moisture</th><th>Rain</th><th title="modeled stream depth at the reach (total stage: storm flow plus baseflow through the reach rating), in feet. Campus is the only field-validated rating; the others are placeholders until the stage nodes report; the mouth is a creek-only LiDAR-section depth (no Tuckasegee backwater). The small ~yr is the return period of the modeled flow, which is what sets the posture on the seven non-campus reaches. Speedwell carries the FIMAN gage where measured.">Stream depth</th><th>Lead</th></tr></thead>
+  <table><thead><tr><th>Sub-basin</th><th>Status</th><th title="soil wetness, 0 (dry) to 1 (saturated): Open-Meteo soil-moisture percentile against the cell's own 30-day history, falling back to the 30-day rainfall index. Modeled until the in-basin probes report. The uncapped forecast outlook that used to sit here is in the status pill's tooltip.">Soil moisture</th><th>Rain</th><th title="modeled water depth above the channel bed at the reach (storm flow plus baseflow through the reach rating), in feet - the same quantity on every row. Campus is the only field-validated rating; the others are placeholders until the stage nodes report; the mouth is a creek-only LiDAR-section depth (no Tuckasegee backwater). The small ~yr is the return period of the modeled flow, which is what sets the posture on the seven non-campus reaches. Speedwell carries the FIMAN gage where measured.">Stream depth</th><th>Lead</th></tr></thead>
   <tbody id="sbtbody"></tbody></table>
   <div class="sbleg">
     <div><b>Status</b> &mdash; severity posture: Normal &#9656; Watch &#9656; Warning &#9656; Emergency</div>
     <div><b>Outlook</b> &mdash; what soil + <i>forecast</i> rain alone imply. Forecast evidence buys lead time at lower confidence, so it can raise a <b>Watch</b> and no further; <b>Warning</b> and <b>Emergency</b> assert the flood is happening and need a measured stream rise. Where the forecast outruns that, this column shows the higher level <i>dashed</i> and the sub-basin is <b>ringed in that colour on the map</b> &mdash; storm coming, not yet confirmed.</div>
     <div><b>Soil moisture</b> &mdash; the wetness the engine used for that sub-basin, 0 (dry) to 1 (saturated), from the Open-Meteo soil-moisture percentile or the 30-day rainfall index; <b>MOD</b> = modeled, replaced by the in-basin probes when NOAH deploys. Amber above 0.6, orange above 0.85.</div>
     <div><b>Rain</b> &mdash; rainfall driving the status, in inches. Live: peak 24-hr precipitation forecast (QPF) at that sub-basin. What-if: design-storm depth falling over that sub-basin.</div>
-    <div><b>Stream depth</b> &mdash; modeled depth at the reach in feet (storm flow plus baseflow through the reach rating). Campus is the only field-validated rating; the rest are placeholders until the stage nodes report. The small ~yr is the return period of the modeled flow, which sets the posture on the tributaries. The mouth (Cullowhee) shows the creek's own depth from a LiDAR section ~250 m above the Tuckasegee; river backwater, which drowned that reach in Helene, is not represented. <b>MEAS</b> = FIMAN 25380 gage height at Speedwell; <b>AR</b> = that one measurement carried to the other reaches: gage height &rarr; discharge (LiDAR-section rating, &plusmn;35%) &rarr; scaled by drainage area &rarr; depth through the reach rating. Derived from a measurement, not one; the stage nodes replace it.</div>
+    <div><b>Stream depth</b> &mdash; modeled water depth above the channel bed, in feet, the same quantity on every row (storm flow plus baseflow through the reach rating). The campus row also shows its posture <i>stage</i>, which is in the TVA road-datum frame ~3&ndash;4 ft above the bed (7 / 9 / 11 ft ladder, 11 = water in the road). Campus is the only field-validated ladder; the rest are placeholders until the stage nodes report. The small ~yr is the return period of the modeled flow, which sets the posture on the tributaries. The mouth (Cullowhee) shows the creek's own depth from a LiDAR section ~250 m above the Tuckasegee; river backwater, which drowned that reach in Helene, is not represented. <b>MEAS</b> = measured at Speedwell: FIMAN 25380 gage height less the ~1 ft between the gage datum and the channel bed (the gage reading itself follows in grey); <b>AR</b> = that one measurement carried to the other reaches: gage height &rarr; discharge (LiDAR-section rating, &plusmn;35%) &rarr; scaled by drainage area &rarr; depth through the reach rating. Derived from a measurement, not one; the stage nodes replace it.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
     <div>&#9670; &mdash; posture <b>confirmed by a measured gauge</b> (NCEM FIMAN 25380 at Speedwell), not modeled alone. Measurement can raise a basin's status, never lower it.</div>
     <div class="sbleg-f">rows sorted worst-first &middot; updates live</div>
@@ -312,6 +312,12 @@ function stageTotalFromQ(cq,bid){ const b=BASINS[bid];
   if(b.rating==="none"){ if(bid==="CC-MOUTH-2340" && MOUTH_RATING) return tableDepth((cq||0)+(MOUTH_RATING.qb_cfs||0), MOUTH_RATING.table); return null; }
   const t=depthFromQ((cq||0)+(b.qb||0),bid);
   return t==null?null:Math.max(t,b.floor||0); }
+/* depth above the channel bed - the SAME quantity on every reach (cwm_model.depth_above_bed). Campus: Manning through
+   the reference rectangle (w 60.5 ft, n 0.035, s 0.005). Its 7/9/11 ft ladder is a STAGE in the TVA road-datum frame,
+   ~3-4 ft above the effective bed (stage 8.7 ft at the 10-yr flow = ~5.2 ft of water); stageTotalFromQ keeps that
+   frame for the posture, this gives the depth the column shows. Elsewhere identical to stageTotalFromQ. */
+const CAMPUS_SEC={w:60.5,n:0.035,s:0.0050};
+function depthAboveBed(cq,bid){ if(bid==="CC-WCU-2260") return rectDepth((cq||0)+(BASINS[bid].qb||0),CAMPUS_SEC); return stageTotalFromQ(cq,bid); }
 function stormHyetograph(total,dt=0.25){
   const steps=Math.round(24.0/dt), cum=[];
   for(let k=0;k<=steps;k++){ const h=k*dt, i=Math.min(Math.floor(h),23), frac=h-i;
@@ -783,7 +789,7 @@ function repaint(){
       ' <span style="opacity:.72">&middot; design storm</span>';
   }
   if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var c=cur(b);
-    return {bid:b, live:true, lv:(c&&c.lvl?c.lvl:"N/A"), rain:(c&&c.qpf!=null?c.qpf:null), rp:(c?c.rp:null), stage:(c?c.stage:null)}; }));
+    return {bid:b, live:true, lv:(c&&c.lvl?c.lvl:"N/A"), rain:(c&&c.qpf!=null?c.qpf:null), rp:(c?c.rp:null), stage:(c?c.stage:null), depth:(c&&c.cq!=null?depthAboveBed(c.cq,b):null)}; }));
 }
 /* ---- live weather: Open-Meteo per basin (CORS-enabled) ---- */
 /* Open-Meteo is called with timezone=auto, so daily.time[] / hourly.time[] are
@@ -846,7 +852,7 @@ function fimanQ(h){ if(!FIMAN_RATING||h==null) return null; var T=FIMAN_RATING.t
   for(var i=0;i<T.length-1;i++){ if(T[i][0]<=h && h<=T[i+1][0]) return T[i][1]+(T[i+1][1]-T[i][1])*(h-T[i][0])/(T[i+1][0]-T[i][0]); } return T[T.length-1][1]; }
 function fimanTransfer(qSpd){ if(!FIMAN_RATING||qSpd==null) return null; var out={}, DA=FIMAN_RATING.da;
   Object.keys(DA).forEach(function(b){ var qb=(BASINS[b]&&BASINS[b].qb)||(b==="CC-MOUTH-2340"&&MOUTH_RATING?MOUTH_RATING.qb_cfs:0)||0; var q=qSpd*DA[b]/FIMAN_RATING.da_sqmi, storm=Math.max(0,q-qb);
-    out[b]={q:q, share:DA[b]/FIMAN_RATING.da_sqmi, depth:stageTotalFromQ(storm,b), rp:(REGQ[b]?rpFromQ(storm,b):null)}; });
+    out[b]={q:q, share:DA[b]/FIMAN_RATING.da_sqmi, depth:depthAboveBed(storm,b), stage:stageTotalFromQ(storm,b), rp:(REGQ[b]?rpFromQ(storm,b):null)}; });
   return out; }
 function recomputeLive(){
   if(!LIVE) return;
@@ -991,15 +997,17 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
     var _cg=(typeof cur==="function")?cur(r.bid):null;   /* this row's live state (_cc below is declared later in the loop body) */
     var govSt=(r.live && _cg && _cg.gov && _cg.gov.stage!=null && isFinite(_cg.gov.stage)) ? +_cg.gov.stage : null;
     var X=(r.live && _cg && _cg.xfer) ? _cg.xfer : null;
-    if(govSt!=null){ rpS="<span title='NCEM FIMAN 25380 at Speedwell, measured gage height (gage datum, ~2.5 ft at low flow), "+(_cg.gov.age!=null?Math.round(_cg.gov.age)+" min old":"")+(X?"; = "+Math.round(X.q)+" cfs through the 3DEP-LiDAR-section rating at the gage (+-35 %)":"")+"; the engine\'s rectangular-rating depth here reads "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft (that rating is ~2x too shallow, known)'>"+govSt.toFixed(2)+" ft <span style=\'color:#9db2c4;font-size:9px\'>MEAS</span>"+(X?" <span style=\'color:#8fa0b2;font-size:9.5px\'>"+Math.round(X.q)+" cfs</span>":"")+"</span>"+rpTag; }
+    var dep=(r.depth!=null&&isFinite(r.depth))?+r.depth:((r.stage!=null&&isFinite(r.stage))?+r.stage:null);   /* depth above bed on every reach */
+    var ladder=(r.bid==="CC-WCU-2260" && r.stage!=null && isFinite(r.stage)) ? " <span style='color:#6b7a8a;font-size:9px' title='campus posture ladder: stage in the TVA road-datum frame (WATCH 7 / WARNING 9 / EMERGENCY 11 ft = water in the road), which sits ~3-4 ft above the channel bed; the floor of 4.0 ft is that frame at zero flow'>stage "+(+r.stage).toFixed(1)+"</span>" : "";
+    if(govSt!=null){ var bedOff=(FIMAN_RATING&&FIMAN_RATING.bed_above_datum_ft!=null)?FIMAN_RATING.bed_above_datum_ft:null, gdep=(bedOff!=null)?Math.max(0,govSt-bedOff):null;
+      rpS="<span title='NCEM FIMAN 25380 at Speedwell: measured gage height "+govSt.toFixed(2)+" ft (gage datum 2125.0; the LiDAR puts the channel bed ~"+(bedOff!=null?bedOff.toFixed(1):"1")+" ft above that datum, so water depth above the bed = gage height minus "+(bedOff!=null?bedOff.toFixed(1):"~1")+" ft), "+(_cg.gov.age!=null?Math.round(_cg.gov.age)+" min old":"")+(X?"; = "+Math.round(X.q)+" cfs through the 3DEP-LiDAR-section rating at the gage (+-35 %)":"")+"; the engine\'s rectangular-rating depth here reads "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft (that rating is ~2x too shallow, known)'>"+(gdep!=null?gdep.toFixed(1):govSt.toFixed(2))+" ft <span style=\'color:#9db2c4;font-size:9px\'>MEAS</span>"+(gdep!=null?" <span style=\'color:#6b7a8a;font-size:9px\'>gage "+govSt.toFixed(2)+"</span>":"")+(X?" <span style=\'color:#8fa0b2;font-size:9.5px\'>"+Math.round(X.q)+" cfs</span>":"")+"</span>"+rpTag; }
     else if(X && X.depth!=null){
       var xt="from the one measurement: FIMAN 25380 at Speedwell "+(_cg.xferStage!=null?(+_cg.xferStage).toFixed(2):"")+" ft = "+Math.round(_cg.xferQspd)+" cfs (3DEP-LiDAR-section rating, +-35 %), scaled by drainage area "+(X.share*100).toFixed(0)+" % (area ratio, assumes the same runoff per square mile) = "+Math.round(X.q)+" cfs here, then this reach\'s own rating for depth (a placeholder rectangle until the stage node reports). The engine\'s modeled depth is "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft. Derived from a measurement, not a measurement: it never sets WARNING by itself.";
       if(r.bid==="CC-MOUTH-2340") xt+=" Creek-only depth above the thalweg ~250 m above the Tuckasegee (LiDAR section); river backwater is not represented.";
-      var isFloor=(r.bid==="CC-WCU-2260" && +X.depth<=4.0);
-      rpS="<span title='"+xt+(isFloor?" 4.0 ft is the campus rating floor (no gauge at campus; the TVA profile is undefined below storm flow).":"")+"'>"+(+X.depth).toFixed(1)+" ft <span style=\'color:#8fa0b2;font-size:9px\'>"+(isFloor?"floor":"AR")+"</span> <span style=\'color:#8fa0b2;font-size:9.5px\'>"+Math.round(X.q)+" cfs</span></span>"+(X.rp!=null&&r.bid!=="CC-WCU-2260"?" <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(X.rp)+" yr</span>":""); }
+      var xl=(r.bid==="CC-WCU-2260" && X.stage!=null) ? " <span style='color:#6b7a8a;font-size:9px' title='campus posture ladder stage (TVA road-datum frame, ~3-4 ft above the bed; 11 ft = water in the road)'>stage "+(+X.stage).toFixed(1)+"</span>" : "";
+      rpS="<span title='"+xt+"'>"+(+X.depth).toFixed(1)+" ft <span style=\'color:#8fa0b2;font-size:9px\'>AR</span> <span style=\'color:#8fa0b2;font-size:9.5px\'>"+Math.round(X.q)+" cfs</span></span>"+xl+(X.rp!=null&&r.bid!=="CC-WCU-2260"?" <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(X.rp)+" yr</span>":""); }
     else if(X && r.bid==="CC-MOUTH-2340"){ rpS="<span title='area-ratio flow from FIMAN 25380 (no rating at the mouth)'>"+Math.round(X.q)+" cfs <span style=\'color:#8fa0b2;font-size:9px\'>AR</span></span>"+(X.rp!=null?" <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(X.rp)+" yr</span>":""); }
-    else if(r.live && r.bid==="CC-WCU-2260" && r.stage!=null && +r.stage<=4.0){ rpS="<span title='rating floor: the campus TVA water-surface profile only defines the 10/100/500-yr points, so below storm flow the stage is held at 4.0 ft. There is no gauge at campus - the real low-flow depth is not measured. This number moves only when the engine puts storm flow on the reach.'>4.0 ft <span style=\'color:#6b7a8a;font-size:9px\'>floor</span></span>"; }
-    else if(r.stage!=null&&isFinite(r.stage)){ rpS=(+r.stage).toFixed(1)+" ft"+rpTag; }
+    else if(dep!=null){ rpS=dep.toFixed(1)+" ft"+ladder+rpTag; }
     else if(r.rp!=null){ rpS="~"+Math.round(r.rp)+" yr"; }
     else { rpS="—"; }
     var _c=(typeof cur==="function")?cur(r.bid):null;
@@ -1067,7 +1075,7 @@ function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,st
   if(curPath().recall){ /* recall: the animation owns the map and the table; here only the pre-play state */
     var recw=(STORM_REC&&STORM_REC.storms&&STORM_REC.storms[curPath().recall]&&STORM_REC.storms[curPath().recall].hydro)?STORM_REC.storms[curPath().recall].hydro.wetness_used:null;
     ORDER.forEach(function(b){ var col=SEV.NORMAL||"#9AA5B1"; if(layerByBid[b]) layerByBid[b].setStyle({color:"#000",weight:3.5,fillColor:col}); if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col}); });
-    if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ return {bid:b,lv:"NORMAL",rain:0,rp:null,stage:stageTotalFromQ(0,b),wet:recw,wetsrc:"record wetness at the storm's start"}; }));
+    if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ return {bid:b,lv:"NORMAL",rain:0,rp:null,stage:stageTotalFromQ(0,b),depth:depthAboveBed(0,b),wet:recw,wetsrc:"record wetness at the storm's start"}; }));
     var rd0=document.getElementById("read"); if(rd0) rd0.innerHTML='<b>'+curPath().recall+' recall</b> <span style="opacity:.7">&middot; the storm\'s own rain record on every basin &middot; slider and radius not used &middot; press &#9658; Play storm</span>';
     return; }
   var rank={EMERGENCY:4,WARNING:3,WATCH:2,NORMAL:1,"N/A":0}, ww="NORMAL",wb=null;
@@ -1075,7 +1083,7 @@ function paintStorm(){ var w=_arcw(SCEN[idx].arc), rain=basinRain(stormLL.lat,st
   ORDER.forEach(function(b){ var pr=(rain[b]||0)*ORO[b], a=assessBasin(b,pr,w), lv=(a.posture), col=SEV[lv]||"#9AA5B1";
     if(layerByBid[b]) layerByBid[b].setStyle({color:"#000",weight:3.5,fillColor:col});
     if(markerByBid[b]) markerByBid[b].setStyle({fillColor:col});
-    _rows.push({bid:b,lv:lv,rain:pr,rp:a.rp,stage:a.stage});
+    _rows.push({bid:b,lv:lv,rain:pr,rp:a.rp,stage:a.stage,depth:depthAboveBed(a.calib_q,b)});
     if((rank[lv]||0)>(rank[ww]||0)){ww=lv;wb=b;} });
   if(typeof renderTable==="function") renderTable(_rows);
   var rd=document.getElementById("read");
@@ -1233,7 +1241,7 @@ fetch("data/storm_records.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r
         rd.innerHTML="<b>"+R.name+" recall</b> &middot; "+when.toISOString().slice(5,16).replace("T"," ")+"Z &middot; rain "+rain+"/"+R.total.toFixed(1)+"&Prime; &middot; campus "+(cst==null?"—":cst.toFixed(1)+" ft")+(ob?" <span style=\"opacity:.7\" title=\"peak implied by the NCGS surveyed marks through the reach rating — no gauge at campus; consistent with the engine, not an independent check\">(marks-implied peak "+ob.stage_ft+")</span>":"")+" &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":""); } }
     else if(rd) rd.innerHTML="hr "+hr+" &middot; "+curPath().name+" "+curPath().arrow+" &middot; rain "+rain+"&Prime; &middot; worst <b style=\"color:"+SEV[ww]+"\">"+ww+"</b>"+(wb?" ("+META[wb].short+")":"");
     if(typeof renderTable==="function") renderTable(ORDER.map(function(b){ var cq=(t<hydros[b].length?hydros[b][t]:0);
-      return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b),
+      return {bid:b, lv:catAt(b,t), rain:(hydros.__cumb&&hydros.__cumb[b]?hydros.__cumb[b][Math.min(t,hydros.__cumb[b].length-1)]:null), rp:(REGQ[b]?rpFromQ(cq,b):null), stage:stageTotalFromQ(cq,b), depth:depthAboveBed(cq,b),
               wet:(hydros.__recall?(hydros.__wet?hydros.__wet[Math.min(t,hydros.__wet.length-1)]:hydros.__recall.w):(ARCW[SCEN[idx].arc]||0.5)), wetsrc:(hydros.__recall?"30-day rainfall index carried through the storm's rain record (what a probe would read); the engine's CN was set at the start ("+hydros.__recall.w.toFixed(2)+") and its runoff formula carries the wetting":"scenario wetness (ARC "+SCEN[idx].arc+")")}; }));
     const sc=document.getElementById("stormscrub"); if(sc && +sc.value!==t) sc.value=t; }
   function stop(){ clearInterval(timer); timer=null;

@@ -83,9 +83,12 @@ jobs:
           cache: pip
 
       # Deliberately not the full requirements file: the probe needs a scene
-      # search and the cache header, nothing that reads a raster.
+      # search and the cache header, nothing that reads a raster. scipy is
+      # here because ci_update imports alert -> detect at module load, and
+      # detect needs scipy.ndimage even though the probe never calls it
+      # (every scheduled run from Aug 30 to Sep 6 died on that import).
       - name: Install the search-only dependencies
-        run: pip install "numpy>=1.24" "pyyaml>=6.0" "asf_search>=7.0"
+        run: pip install "numpy>=1.24" "scipy>=1.10" "pyyaml>=6.0" "asf_search>=7.0"
 
       - name: Any new Sentinel-1 scene over the watershed?
         id: probe

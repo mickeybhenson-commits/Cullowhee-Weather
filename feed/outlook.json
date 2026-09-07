@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-07T06:27:12.380145+00:00",
+  "fetched_utc": "2026-09-07T06:40:09.870375+00:00",
   "status": "ok",
   "tier": "outlook",
   "cap": "WATCH",
@@ -7,14 +7,14 @@
   "issued_utc": "2026-09-07T06:00:00Z",
   "n_members": 64,
   "nws_qpf24_in": {
-    "CC-UP-503": 0.02,
-    "CC-MS-1100": 0.03,
-    "CC-TIL-705": 0.03,
-    "CC-SPD-1830": 0.03,
-    "CC-COX-097": 0.03,
-    "CC-LB-171": 0.04,
-    "CC-WCU-2260": 0.03,
-    "CC-MOUTH-2340": 0.03
+    "CC-UP-503": 0.0,
+    "CC-MS-1100": 0.0,
+    "CC-TIL-705": 0.0,
+    "CC-SPD-1830": 0.0,
+    "CC-COX-097": 0.0,
+    "CC-LB-171": 0.0,
+    "CC-WCU-2260": 0.0,
+    "CC-MOUTH-2340": 0.0
   },
   "nws_note": "api.weather.gov gridded forecast, next 24 h",
   "wetness_note": "live_rainfall ladder (soil percentile > p5)",

@@ -234,7 +234,11 @@ def posture(depth, bid):
     return "NORMAL"
 
 _TABLE_RATINGS = {}   # bid -> (table, qb) loaded from data/*.json; the mouth's creek-only LiDAR rating (mouth_rating.py)
-_TABLE_FILES = {"CC-MOUTH-2340": "data/mouth_rating.json", "CC-WCU-2260": "data/campus_rating.json"}   # campus: depth only (posture stays on the TVA stage)
+_TABLE_FILES = {"CC-MOUTH-2340": "data/mouth_rating.json", "CC-WCU-2260": "data/campus_rating.json",   # campus: depth only (posture stays on the TVA stage)
+                "CC-UP-503": "data/reach_ratings.json", "CC-MS-1100": "data/reach_ratings.json", "CC-TIL-705": "data/reach_ratings.json",
+                "CC-COX-097": "data/reach_ratings.json", "CC-LB-171": "data/reach_ratings.json",          # reach_rating.py bundle (LiDAR sections at the pour points)
+                "CC-SPD-1830": "data/fiman_25380_rating.json"}   # Speedwell: the LiDAR-section rating AT THE GAGE, in FIMAN gage-height frame (datum 2125.0); WATCH = FIMAN Monitor 4 ft
+_SPD_QB = 36.6
 
 def _table_rating(bid):
     """Depth-vs-discharge table for reaches that have no analytic rating (the mouth). None if absent."""
@@ -244,8 +248,11 @@ def _table_rating(bid):
     if f:
         path=os.path.join(os.path.dirname(os.path.abspath(__file__)), f)
         try:
-            j=json.load(open(path, encoding="utf-8")); r=(j["table"], float(j.get("qb_cfs") or 0.0))
-        except Exception:      # noqa: BLE001 - no file, no rating; the reach stays depth-less
+            j=json.load(open(path, encoding="utf-8"))
+            if "reaches" in j: j=j["reaches"][bid]            # bundle file (reach_ratings.json)
+            if bid=="CC-SPD-1830": r=(j["table"], _SPD_QB, 4.0)   # [gage height, cfs]; rung = FIMAN Monitor line
+            else: r=(j["table"], float(j.get("qb_cfs") or 0.0), j.get("bank_ft"))
+        except Exception:      # noqa: BLE001 - no file, no rating; the reach keeps its analytic rating (or none)
             r=None
     _TABLE_RATINGS[bid]=r
     return r
@@ -268,18 +275,31 @@ def depth_above_bed(cq, bid):
     if bid=="CC-WCU-2260":
         tr=_table_rating(bid)
         if tr is not None:
-            table,qb=tr
+            table,qb,_bank=tr
             return round(_depth_from_table((cq or 0)+qb, table), 2)     # LiDAR section at the pour point (campus_rating.py)
         return round(rect_depth((cq or 0)+(b.get("qb") or 0), CAMPUS_SEC), 2)   # fallback: reference rectangle
-    return stage_total(cq, bid)
+    st=stage_total(cq, bid)
+    if bid=="CC-SPD-1830" and st is not None and _table_rating(bid) is not None:
+        return round(max(0.0, st-1.1), 2)     # gage height -> water depth (bed ~1.1 ft above the gage datum)
+    return st
+
+def watch_rung(bid):
+    """First flood rung in the same frame as depth_above_bed(): the reach's WATCH threshold (thr[0]); for the
+    LiDAR-table reaches the rung stored with the rating (stage at the 2-yr flow / the bank); None at the mouth without a table."""
+    tr=_table_rating(bid)
+    if tr is not None and tr[2] is not None and bid!="CC-WCU-2260": return float(tr[2])
+    t=BASINS[bid].get("thr")
+    return float(t[0]) if t else None
 
 def stage_total(cq, bid):
     b=BASINS[bid]
-    if b["rating"]=="none":
+    if b["rating"]=="none" or (b["rating"]=="rectangular" and bid in _TABLE_FILES):
         tr=_table_rating(bid)
-        if tr is None: return None
-        table,qb=tr
-        return round(_depth_from_table((cq or 0)+qb, table), 2)
+        if tr is None:
+            if b["rating"]=="none": return None
+        else:
+            table,qb,_bank=tr
+            return round(_depth_from_table((cq or 0)+qb, table), 2)
     t=depth_from_q((cq or 0)+(b.get("qb") or 0), bid)
     return None if t is None else max(t, b.get("floor",0.0))
 

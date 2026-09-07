@@ -30,7 +30,8 @@ RATING_JSON = HERE / "data" / "mouth_rating.json"
 SLOPE = 0.004
 BED_BELOW_WS = 1.0
 QB_CFS = 47.0      # baseflow at the mouth: campus 45.2 cfs scaled by 23.4/22.6
-BANK_FT = 4.8      # first flood rung for the column: the right-bank bench in the section, ~4.8 ft above the thalweg
+BANK_SECTION_FT = 4.8   # the right-bank bench in the section, ~4.8 ft above the thalweg (check value)
+Q2_CFS = 1030.0         # StreamStats 2-yr at the mouth: WATCH rung = stage at this flow, consistent with the >=2-yr posture rule
 
 
 def _section(name="a"):
@@ -56,7 +57,9 @@ def build(step=0.1, dmax=14.0):
         table.append([round(d, 1), round(fr.conveyance_q(sta, elev, thal + d, slope=SLOPE, ch_range=ch), 1)])
         d += step
     out = dict(reach="CC-MOUTH-2340 (Cullowhee Creek ~250 m above the Tuckasegee)", built="2026-09-06",
-               thalweg_ft=round(thal, 2), lidar_ws_ft=ws, slope=SLOPE, bed_below_ws_ft=BED_BELOW_WS, qb_cfs=QB_CFS, bank_ft=BANK_FT,
+               thalweg_ft=round(thal, 2), lidar_ws_ft=ws, slope=SLOPE, bed_below_ws_ft=BED_BELOW_WS, qb_cfs=QB_CFS,
+               bank_ft=round(fr.stage_from_q(Q2_CFS, table), 2), q2_cfs=Q2_CFS, bank_section_ft=BANK_SECTION_FT,
+               watch_note="WATCH = stage at the 2-yr regression flow through this rating (the section's bench is at 4.8 ft, a check)",
                n_channel=fr.N_CHANNEL, n_overbank=fr.N_OVERBANK, uncertainty=fr.UNCERTAINTY,
                method="conveyance-weighted Manning through a 3DEP LiDAR section; depth above the inferred thalweg; creek flow only",
                caveat="Tuckasegee backwater is NOT represented: in Helene the river rose ~27 ft at the confluence and drowned this reach. "

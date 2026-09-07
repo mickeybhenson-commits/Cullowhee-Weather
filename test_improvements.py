@@ -600,3 +600,15 @@ class TestFimanRating(unittest.TestCase):
         self.assertTrue(7.3 <= cr.depth_from_q(2580) <= 9.5, "10-yr flow should read ~8.7 ft (ladder) within ~1 ft")
         self.assertTrue(10.0 <= cr.depth_from_q(5155) <= 12.5, "100-yr flow should read ~11 ft (water in the road) within ~1 ft")
         self.assertTrue(0.8 <= cr.depth_from_q(57) <= 2.0, "low flow should be a foot or so of water, not the 4.0 ft floor")
+
+    def test_reach_ratings_put_level_and_rung_in_one_frame(self):
+        """Tributaries: LiDAR-section ratings; WATCH = stage at the 2-yr flow, so the countdown agrees with the posture rule."""
+        import reach_rating as rr, cwm_model as cwm
+        o = rr.build()
+        cwm._TABLE_RATINGS.clear()
+        for bid in ("CC-UP-503", "CC-MS-1100", "CC-TIL-705", "CC-COX-097", "CC-LB-171"):
+            q2 = cwm.BASINS[bid]["reg_q"][0.50]
+            self.assertAlmostEqual(cwm.stage_total(q2 - cwm.BASINS[bid]["qb"], bid), cwm.watch_rung(bid), delta=0.15)
+            self.assertGreater(cwm.stage_total(0, bid), 0.1)
+        self.assertAlmostEqual(cwm.stage_total(0, "CC-SPD-1830"), 2.4, delta=0.3, msg="Speedwell modeled low-flow stage should sit near FIMAN's 2.47 ft")
+        self.assertEqual(cwm.watch_rung("CC-SPD-1830"), 4.0)

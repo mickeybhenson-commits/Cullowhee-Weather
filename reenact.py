@@ -31,7 +31,9 @@ the main rain meets. Stated in the output.
 Caveats travel with the data: one reanalysis cell for all eight basins, ERA5 under-catches
 mountain rain, the calibration is the regression fit. Comparisons: the campus 8.4 ft is
 marks-implied (consistent, not independent); the Speedwell FIMAN rise of 6.36 ft is the only
-measured number, and the rating there is known ~2x too shallow.
+measured number. Since 2026-09-07 the Speedwell stage is in FIMAN gage-height frame through the
+LiDAR-section rating at the gage (fiman_rating.py), so the two are directly comparable: the remaining
+gap is the engine's flow (~1,600 cfs modeled vs ~3,000 cfs the gage implies), not the rating.
 """
 from __future__ import annotations
 
@@ -52,11 +54,11 @@ OBSERVED = {                     # what we actually have to compare against, sta
         "CC-WCU-2260": {"stage_ft": 8.4, "posture": "WATCH", "kind": "marks-implied",
                         "source": "peak implied by the NCGS surveyed Helene marks (~10-yr) through the reach rating; no gauge at campus"},
         # Speedwell has the only measured record: FIMAN 25380 read 8.86 ft gage height at the Helene peak
-        # against 2.50 ft at low flow - a 6.36 ft rise, which needs no datum. The rectangular rating used
-        # here is documented ~2x too shallow (noah_rating_error_quantified_2026-08-07), so the modeled rise
-        # under-predicts it. That gap is a known rating problem, not a rainfall problem.
-        "CC-SPD-1830": {"rise_ft": 6.36, "gage_peak_ft": 8.86, "gage_low_ft": 2.50, "kind": "measured",
-                        "source": "FIMAN 25380 measured rise, Helene peak minus low flow (datum-free); the rating here is ~2x too shallow"},
+        # against 2.50 ft at low flow - a 6.36 ft rise, which needs no datum. The modeled stage here is now in
+        # the same gage-height frame (LiDAR-section rating at the gage, fiman_rating.py), so peak vs peak and
+        # rise vs rise compare directly; what remains is the engine's flow shortfall (~1,600 vs ~3,000 cfs).
+        "CC-SPD-1830": {"rise_ft": 6.36, "gage_peak_ft": 8.86, "gage_low_ft": 2.50, "stage_ft": 8.86, "kind": "measured",
+                        "source": "FIMAN 25380 measured: Helene peak 8.86 ft gage height, 2.50 at low flow (6.36 ft rise); modeled stage is in the same frame"},
     },
 }
 
@@ -104,9 +106,10 @@ def hydrograph(bid: str, hourly_in: list[float], wetness: float) -> dict:
             idx = next((i for i, p in enumerate(post) if order.get(p, 0) >= order[rung]), None)
         firsts[rung] = idx
     pk_i = max(range(len(cal)), key=lambda i: cal[i]) if cal else 0
-    rise = None if (not stage or stage[0] is None or b["rating"] == "none") else round((cwm.stage_total(cp, bid) or 0) - stage[0], 2)
+    pk_st = cwm.stage_total(cp, bid)
+    rise = None if (not stage or stage[0] is None or pk_st is None) else round(pk_st - stage[0], 2)
     return dict(CN=round(CN, 1), peak_cfs=round(cp, 0), peak_hr=round(pk_i * DT, 1), rise_ft=rise,
-                peak_stage_ft=(None if b["rating"] == "none" else round(cwm.stage_total(cp, bid) or 0, 2)),
+                peak_stage_ft=(None if pk_st is None else round(pk_st, 2)),
                 stage_ft=stage, posture=post, first=firsts)
 
 

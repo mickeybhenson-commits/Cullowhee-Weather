@@ -163,12 +163,15 @@ def rp_numeric(q, bid):
 # on the two basins with the LEAST lead time in the watershed (Tc 29 and 36 min).
 # Mirrors flood_rating.WATCH_1_5YR; test_posture_rule_consistency.py keeps them equal.
 WATCH_1_5YR = {"CC-COX-097", "CC-LB-171"}
+# WATCH = the FIMAN Monitor standard adopted watershed-wide (2026-09-07): 0.3 x the 2-yr flow == RP 0.6, since
+# rp_numeric is linear in flow below the 2-yr. Mirrors flood_rating.CAT_CUTOFFS["WATCH"] and live.html catFromRP.
+WATCH_RP = 0.6
 
 
 def _cat_from_rp(T, bid=None):
     if T is None:
         return "N/A"
-    watch = 1.5 if bid in WATCH_1_5YR else 2
+    watch = min(1.5, WATCH_RP) if bid in WATCH_1_5YR else WATCH_RP
     return ("EMERGENCY" if T >= 100 else "WARNING" if T >= 10
             else "WATCH" if T >= watch else "NORMAL")
 

@@ -206,7 +206,8 @@ function rpFromQ(q,bid){ const rq=REGQ[bid]; if(!rq)return null;
 // little rain trips a WATCH on the two basins with the least lead time in the
 // watershed. Kept equal to the others by test_posture_rule_consistency.py.
 const WATCH_1_5YR = ["CC-COX-097","CC-LB-171"];
-function catFromRP(T,bid){ if(T==null)return "N/A"; if(T>=100)return "EMERGENCY"; if(T>=10)return "WARNING"; if(T>=(WATCH_1_5YR.indexOf(bid)>=0?1.5:2))return "WATCH"; return "NORMAL"; }
+// WATCH = FIMAN Monitor standard watershed-wide (2026-09-07): RP 0.6 == 0.3 x the 2-yr flow. Mirrors live.html / cwm_model / flood_rating.
+function catFromRP(T,bid){ if(T==null)return "N/A"; if(T>=100)return "EMERGENCY"; if(T>=10)return "WARNING"; if(T>=(WATCH_1_5YR.indexOf(bid)>=0?0.6:0.6))return "WATCH"; return "NORMAL"; }
 function freqPosture(cq,bid){ return catFromRP(rpFromQ(cq,bid),bid); }
 function freqInfo(cq,bid){ const rq=REGQ[bid],pi=REGPI[bid]; if(!rq||!pi)return null;
   const best=rpFromQ(cq,bid), T=best==null?10:best;

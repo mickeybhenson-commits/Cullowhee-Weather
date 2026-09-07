@@ -62,7 +62,7 @@ LIVE_HTML = os.path.join(HERE, "live.html")
 DECLARED = {}
 
 # Return periods to sweep. Dense around every cutoff that exists in any engine.
-SWEEP = ([0.5, 1.0, 1.2, 1.4, 1.49, 1.5, 1.51, 1.6, 1.8, 1.9, 1.99, 2.0, 2.01, 2.5]
+SWEEP = ([0.5, 0.59, 0.6, 0.61, 0.7, 1.0, 1.2, 1.4, 1.49, 1.5, 1.51, 1.6, 1.8, 1.9, 1.99, 2.0, 2.01, 2.5]
          + [3, 5, 8, 9.5, 9.99, 10.0, 10.01, 12, 25, 50, 90, 99.9, 100.0, 100.1, 200])
 
 FREQ_CLASSIFIED = [b for b in cwm_model.ORDER if b not in cwm_model.STAGE_BASED]
@@ -148,10 +148,10 @@ def test_html_classifiers_are_parseable():
             bad.append(f"{fn}: EMERGENCY cutoff is {cuts['EMERGENCY']}")
         if cuts["WARNING"] != 10.0:
             bad.append(f"{fn}: WARNING cutoff is {cuts['WARNING']}")
-        if cuts["WATCH"] != 2.0:
-            bad.append(f"{fn}: default WATCH cutoff is {cuts['WATCH']}")
-        if cuts["WATCH_LOW"] != 1.5:
-            bad.append(f"{fn}: flashy WATCH cutoff is {cuts['WATCH_LOW']}")
+        if cuts["WATCH"] != 0.6:
+            bad.append(f"{fn}: default WATCH cutoff is {cuts['WATCH']} (FIMAN Monitor standard = 0.6-yr, 2026-09-07)")
+        if cuts["WATCH_LOW"] != 0.6:
+            bad.append(f"{fn}: flashy WATCH cutoff is {cuts['WATCH_LOW']} (subsumed by the 0.6-yr Monitor standard)")
         if not takes_bid:
             bad.append(f"{fn}: catFromRP takes no basin argument, so it CANNOT express "
                        "the 1.5-yr WATCH — the 2026-07-15 defect, in a copy")
@@ -303,23 +303,18 @@ def test_the_1p5_watch_is_shipped_in_all_three():
             f"{fn} {sorted(lset)} != flood_rating {sorted(flood_rating.WATCH_1_5YR)} "
             "-- that page applies the early WATCH to a different set of basins.")
 
-    for bid in flood_rating.WATCH_1_5YR:
-        assert flood_rating.category_from_rp(1.7, bid) == "WATCH", bid
-        assert cwm_model._cat_from_rp(1.7, bid) == "WATCH", (
-            f"cwm_model is NORMAL at RP 1.7 on {bid} -- the 1.5-yr WATCH regressed.")
+    # 2026-09-07: the FIMAN Monitor standard (WATCH at RP 0.6 == 0.3 x the 2-yr flow) sits below the old 1.5-yr
+    # refinement on every reach, so the behavioural check is now: RP 0.7 is WATCH EVERYWHERE, RP 0.5 is NORMAL
+    # everywhere, in all three engines.
+    for bid in FREQ_CLASSIFIED:
+        assert flood_rating.category_from_rp(0.7, bid) == "WATCH", bid
+        assert cwm_model._cat_from_rp(0.7, bid) == "WATCH", f"cwm_model is NORMAL at RP 0.7 on {bid} -- the Monitor standard regressed."
+        assert flood_rating.category_from_rp(0.5, bid) == "NORMAL", bid
+        assert cwm_model._cat_from_rp(0.5, bid) == "NORMAL", bid
         for fn, src in pages:
             _, cuts, lset = _live_cat_from_rp(src)
-            assert _live_posture(1.7, cuts, bid, lset) == "WATCH", (
-                f"{fn} is NORMAL at RP 1.7 on {bid} -- the 1.5-yr WATCH regressed.")
-
-    for bid in (b for b in FREQ_CLASSIFIED if b not in flood_rating.WATCH_1_5YR):
-        assert flood_rating.category_from_rp(1.7, bid) == "NORMAL", bid
-        assert cwm_model._cat_from_rp(1.7, bid) == "NORMAL", (
-            f"{bid} got the early WATCH and is not in WATCH_1_5YR -- the rule leaked.")
-        for fn, src in pages:
-            _, cuts, lset = _live_cat_from_rp(src)
-            assert _live_posture(1.7, cuts, bid, lset) == "NORMAL", f"{fn} {bid}"
-
+            assert _live_posture(0.7, cuts, bid, lset) == "WATCH", f"{fn} is NORMAL at RP 0.7 on {bid}"
+            assert _live_posture(0.5, cuts, bid, lset) == "NORMAL", f"{fn} {bid}"
 
 if __name__ == "__main__":
     fails = 0

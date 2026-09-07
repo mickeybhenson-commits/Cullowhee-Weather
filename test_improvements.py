@@ -44,7 +44,10 @@ class TestReturnPeriod(unittest.TestCase):
 
 class TestCategory(unittest.TestCase):
     def test_default_cutoffs(self):
-        self.assertEqual(fr.category_from_rp(1.0), "NORMAL")
+        # WATCH = FIMAN Monitor standard (2026-09-07): RP 0.6 == 0.3 x the 2-yr flow
+        self.assertEqual(fr.category_from_rp(0.5), "NORMAL")
+        self.assertEqual(fr.category_from_rp(0.6), "WATCH")
+        self.assertEqual(fr.category_from_rp(1.0), "WATCH")
         self.assertEqual(fr.category_from_rp(2.0), "WATCH")
         self.assertEqual(fr.category_from_rp(9.9), "WATCH")
         self.assertEqual(fr.category_from_rp(10.0), "WARNING")
@@ -52,10 +55,12 @@ class TestCategory(unittest.TestCase):
         self.assertEqual(fr.category_from_rp(100.0), "EMERGENCY")
 
     def test_flashy_1_5yr_watch(self):
-        # Cox/LB drop WATCH to 1.5-yr; a generic reach stays WATCH>=2
+        # The 1.5-yr early WATCH for Cox/LB is subsumed by the 0.6-yr Monitor standard: every reach is WATCH at 1.6,
+        # and the flashy set still never classifies LATER than a generic reach.
         self.assertEqual(fr.category_from_rp(1.6, "CC-COX-097"), "WATCH")
         self.assertEqual(fr.category_from_rp(1.6, "CC-LB-171"), "WATCH")
-        self.assertEqual(fr.category_from_rp(1.6, "CC-UP-503"), "NORMAL")
+        self.assertEqual(fr.category_from_rp(1.6, "CC-UP-503"), "WATCH")
+        self.assertEqual(fr.category_from_rp(0.55, "CC-COX-097"), "NORMAL")
 
 
 class TestPIBand(unittest.TestCase):
@@ -607,8 +612,9 @@ class TestFimanRating(unittest.TestCase):
         o = rr.build()
         cwm._TABLE_RATINGS.clear()
         for bid in ("CC-UP-503", "CC-MS-1100", "CC-TIL-705", "CC-COX-097", "CC-LB-171"):
-            q2 = cwm.BASINS[bid]["reg_q"][0.50]
-            self.assertAlmostEqual(cwm.stage_total(q2 - cwm.BASINS[bid]["qb"], bid), cwm.watch_rung(bid), delta=0.15)
+            qw = 0.3 * cwm.BASINS[bid]["reg_q"][0.50]      # FIMAN Monitor standard: WATCH at 0.3 x the 2-yr flow
+            self.assertAlmostEqual(cwm.stage_total(qw - cwm.BASINS[bid]["qb"], bid), cwm.watch_rung(bid), delta=0.15)
+            self.assertEqual(cwm._cat_from_rp(cwm.rp_numeric(qw, bid), bid), "WATCH", "the rung and the posture rule must trip together")
             self.assertGreater(cwm.stage_total(0, bid), 0.1)
         self.assertAlmostEqual(cwm.stage_total(0, "CC-SPD-1830"), 2.4, delta=0.3, msg="Speedwell modeled low-flow stage should sit near FIMAN's 2.47 ft")
         self.assertEqual(cwm.watch_rung("CC-SPD-1830"), 4.0)

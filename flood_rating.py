@@ -55,9 +55,18 @@ from basins import BASINS, routed_order, LEAD_REQ_MIN
 AEP_RP = [(0.50, 2), (0.20, 5), (0.10, 10), (0.04, 25),
           (0.02, 50), (0.01, 100), (0.005, 200), (0.002, 500)]
 
-# Category cutoffs by return period (years). Default per §2.
-CAT_CUTOFFS = {"EMERGENCY": 100, "WARNING": 10, "WATCH": 2}
-# Flashiest lead-limited reaches: drop WATCH to 1.5-yr to offset short Tc (§2 refinement).
+# Category cutoffs by return period (years). WARNING / EMERGENCY per §2.
+# WATCH (2026-09-07): the NCEM FIMAN "Monitor" standard, adopted watershed-wide. At the one gauged site
+# (25380 Speedwell) FIMAN's Monitor line, 4.0 ft, is ~240 cfs through the LiDAR-section rating at the gage =
+# 0.29 x that reach's 2-yr flow. rp_from_q is linear in flow below the 2-yr, so 0.3 x Q2 == RP 0.6. WATCH means
+# "start watching", and it now trips on every reach at the flow FIMAN would call Monitor at Speedwell, so the
+# tributaries never sit NORMAL while the gage they feed says WATCH. WARNING (10-yr) and EMERGENCY (100-yr)
+# are unchanged; the two-tier rule still caps forecasts at WATCH.
+CAT_CUTOFFS = {"EMERGENCY": 100, "WARNING": 10, "WATCH": 0.6}
+WATCH_MONITOR_FRACTION = 0.3   # of the 2-yr flow; == CAT_CUTOFFS["WATCH"] / 2
+# Flashiest lead-limited reaches once dropped WATCH to 1.5-yr to offset short Tc (§2 refinement, 2026-07-15).
+# The Monitor standard (0.6-yr) is below that on every reach, so the set is kept for the record and the
+# consistency test, but no longer changes the cutoff.
 WATCH_1_5YR = {"CC-COX-097", "CC-LB-171"}
 _ORDER = ["NORMAL", "WATCH", "WARNING", "EMERGENCY"]
 
@@ -94,7 +103,7 @@ def category_from_rp(T, bid=None):
     """Map a return period (years) to a posture category (§2)."""
     if T is None:
         return "N/A"
-    watch = 1.5 if bid in WATCH_1_5YR else CAT_CUTOFFS["WATCH"]
+    watch = min(1.5, CAT_CUTOFFS["WATCH"]) if bid in WATCH_1_5YR else CAT_CUTOFFS["WATCH"]
     if T >= CAT_CUTOFFS["EMERGENCY"]:
         return "EMERGENCY"
     if T >= CAT_CUTOFFS["WARNING"]:

@@ -177,8 +177,11 @@ def _splice_forcing(s: dict, name: str, base: Path) -> dict:
 
 def build(rec_path: Path = Path("data/storm_records.json")) -> dict:
     d = json.loads(rec_path.read_text(encoding="utf-8"))
+    import readiness as R
     for name, s in d["storms"].items():
         _splice_forcing(s, name, rec_path.resolve().parent.parent)
+        # trip lines follow the posture rule of the day (WATCH = FIMAN Monitor standard since 2026-09-07): recompute for every storm
+        s["trip_by_day"] = [{bid: R.trip_inches(bid, w_) for bid in cwm.BASINS} for w_ in s["wetness_by_day"]]
         cum = s["cum_in"]
         hourly = [round(cum[0], 3)] + [round(cum[i] - cum[i - 1], 3) for i in range(1, len(cum))]
         day = main_rain_day(cum)

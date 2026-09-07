@@ -562,3 +562,24 @@ class TestReenactment(unittest.TestCase):
         hourly = [cum[0]] + [round(cum[i] - cum[i - 1], 3) for i in range(1, len(cum))]
         again = reenact.hydrograph("CC-WCU-2260", hourly, h["wetness_used"])
         self.assertEqual(again["posture"], wcu["posture"])
+
+
+class TestFimanRating(unittest.TestCase):
+    """fiman_rating.py: 3DEP-section rating at FIMAN 25380 and the area-ratio transfer."""
+
+    def test_rating_is_monotonic_and_anchored(self):
+        import fiman_rating as fr
+        T = fr.build()["table"]
+        qs = [q for _h, q in T]
+        self.assertTrue(all(b >= a for a, b in zip(qs, qs[1:])), "discharge must rise with stage")
+        self.assertTrue(20 <= fr.q_from_stage(2.47) <= 80, "low flow at 2.47 ft should be a few tens of cfs (engine qb 36.6)")
+        self.assertTrue(2400 <= fr.q_from_stage(8.86) <= 3400, "Helene peak 8.86 ft should read ~2,500-3,100 cfs")
+
+    def test_transfer_sums_by_area(self):
+        import fiman_rating as fr
+        t = fr.transfer(1000.0)
+        self.assertAlmostEqual(t["CC-SPD-1830"], 1000.0)
+        self.assertAlmostEqual(t["CC-MS-1100"] / 1000.0, 11.0 / 18.3, places=6)
+        self.assertAlmostEqual(t["CC-TIL-705"] / 1000.0, 7.05 / 18.3, places=6)
+        self.assertAlmostEqual(t["CC-UP-503"] / 1000.0, 5.03 / 18.3, places=6)
+        self.assertGreater(t["CC-WCU-2260"], 1000.0)

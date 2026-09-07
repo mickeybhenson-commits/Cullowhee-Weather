@@ -184,6 +184,8 @@ TOOLS = {
                                     # harness — not because it cannot run in CI. It exits
                                     # 1 on a mismatch, so it drops straight into a step.
     "ledger.verify",        # argparse CLI: --status/--score/--propose/--selftest
+    "fiman_rating",         # CLI: builds data/fiman_25380_rating.json (3DEP-section rating at the FIMAN gage +
+                            # area-ratio transfer); live.html reads the JSON, Python callers import q_from_stage/transfer
     "reenact",              # CLI: runs cwm_model's real-hyetograph chain through each storm in
                             # data/storm_records.json and writes the hourly stage/posture series
                             # the What-if replay (storm_watch.html) and the Helene recall

@@ -141,7 +141,7 @@
     <div><b>Outlook</b> &mdash; what soil + <i>forecast</i> rain alone imply. Forecast evidence buys lead time at lower confidence, so it can raise a <b>Watch</b> and no further; <b>Warning</b> and <b>Emergency</b> assert the flood is happening and need a measured stream rise. Where the forecast outruns that, this column shows the higher level <i>dashed</i> and the sub-basin is <b>ringed in that colour on the map</b> &mdash; storm coming, not yet confirmed.</div>
     <div><b>Soil moisture</b> &mdash; the wetness the engine used for that sub-basin, 0 (dry) to 1 (saturated), from the Open-Meteo soil-moisture percentile or the 30-day rainfall index; <b>MOD</b> = modeled, replaced by the in-basin probes when NOAH deploys. Amber above 0.6, orange above 0.85.</div>
     <div><b>Rain</b> &mdash; rainfall driving the status, in inches. Live: peak 24-hr precipitation forecast (QPF) at that sub-basin. What-if: design-storm depth falling over that sub-basin.</div>
-    <div><b>Stream depth</b> &mdash; modeled depth at the reach in feet (storm flow plus baseflow through the reach rating). Campus is the only field-validated rating; the rest are placeholders until the stage nodes report. The small ~yr is the return period of the modeled flow, which sets the posture on the tributaries. The mouth has no rating and shows the return period alone.</div>
+    <div><b>Stream depth</b> &mdash; modeled depth at the reach in feet (storm flow plus baseflow through the reach rating). Campus is the only field-validated rating; the rest are placeholders until the stage nodes report. The small ~yr is the return period of the modeled flow, which sets the posture on the tributaries. The mouth has no rating and shows the return period alone. <b>MEAS</b> = FIMAN 25380 gage height at Speedwell; <b>AR</b> = that one measurement carried to the other reaches: gage height &rarr; discharge (LiDAR-section rating, &plusmn;35%) &rarr; scaled by drainage area &rarr; depth through the reach rating. Derived from a measurement, not one; the stage nodes replace it.</div>
     <div><b>Lead</b> &mdash; time-to-peak: minutes of warning before the flood crest.</div>
     <div>&#9670; &mdash; posture <b>confirmed by a measured gauge</b> (NCEM FIMAN 25380 at Speedwell), not modeled alone. Measurement can raise a basin's status, never lower it.</div>
     <div class="sbleg-f">rows sorted worst-first &middot; updates live</div>
@@ -829,8 +829,23 @@ function deriveOne(loc){
   }
   return {p5,api,qpf,vwc,soilPct,fcHourly,fcFrom};
 }
+/* FIMAN 25380 rating + drainage-area-ratio transfer (fiman_rating.py, data/fiman_25380_rating.json).
+   One measured gage height at Speedwell -> discharge through a 3DEP-LiDAR-section rating (+-35 %) ->
+   the same discharge per square mile on every reach (area ratio, DA/18.3) -> depth through each reach's
+   own rating. DERIVED FROM a measurement, not a measurement: it fills the stream-depth column and can
+   sharpen a WATCH; it never sets WARNING by itself. Posture logic is untouched. */
+var FIMAN_RATING=null;
+fetch("data/fiman_25380_rating.json?t="+Date.now(),{cache:"no-store"}).then(r=>r.ok?r.json():null).then(j=>{ FIMAN_RATING=j; if(typeof recomputeLive==="function") recomputeLive(); }).catch(()=>{});
+function fimanQ(h){ if(!FIMAN_RATING||h==null) return null; var T=FIMAN_RATING.table; if(h<=T[0][0]) return T[0][1];
+  for(var i=0;i<T.length-1;i++){ if(T[i][0]<=h && h<=T[i+1][0]) return T[i][1]+(T[i+1][1]-T[i][1])*(h-T[i][0])/(T[i+1][0]-T[i][0]); } return T[T.length-1][1]; }
+function fimanTransfer(qSpd){ if(!FIMAN_RATING||qSpd==null) return null; var out={}, DA=FIMAN_RATING.da;
+  Object.keys(DA).forEach(function(b){ var q=qSpd*DA[b]/FIMAN_RATING.da_sqmi, storm=Math.max(0,q-((BASINS[b]&&BASINS[b].qb)||0));
+    out[b]={q:q, share:DA[b]/FIMAN_RATING.da_sqmi, depth:stageTotalFromQ(storm,b), rp:(REGQ[b]?rpFromQ(storm,b):null)}; });
+  return out; }
 function recomputeLive(){
   if(!LIVE) return;
+  var XFER=null, XQ=null;
+  if(FIMAN_GOV && FIMAN_GOV.stage!=null && isFinite(FIMAN_GOV.stage)){ XQ=fimanQ(+FIMAN_GOV.stage); XFER=fimanTransfer(XQ); }
   ORDER.forEach((b,i)=>{ const d=LIVE[i]; if(!d){LIVEST[b]={lvl:"N/A",stage:null};return;}
     /* wetness source ladder (wetness.py): soil percentile > 30-day API */
     const w=(useSoil&&d.soilPct!=null)?wetnessFromSoilPct(d.soilPct)
@@ -871,7 +886,7 @@ function recomputeLive(){
                vwc:d.vwc,soilPct:d.soilPct,
                leadMin:(a.leadMin!=null?a.leadMin:null),
                shape:a.shape,total:(a.total!=null?a.total:d.qpf),
-               fcFrom:d.fcFrom};});
+               fcFrom:d.fcFrom, xfer:(XFER?XFER[b]:null), xferQspd:XQ, xferStage:(XFER?+FIMAN_GOV.stage:null)};});
   repaint();
 }
 /* HOW MANY GRID CELLS ARE REALLY BEHIND THESE EIGHT NUMBERS.
@@ -969,7 +984,13 @@ function renderTable(rows){ var tb=document.getElementById("sbtbody"); if(!tb)re
        (about 2.5 ft at low flow). The rectangular-rating number goes to the tooltip so the two are never confused. */
     var _cg=(typeof cur==="function")?cur(r.bid):null;   /* this row's live state (_cc below is declared later in the loop body) */
     var govSt=(r.live && _cg && _cg.gov && _cg.gov.stage!=null && isFinite(_cg.gov.stage)) ? +_cg.gov.stage : null;
-    if(govSt!=null){ rpS="<span title='NCEM FIMAN 25380 at Speedwell, measured gage height (gage datum, ~2.5 ft at low flow), "+(_cg.gov.age!=null?Math.round(_cg.gov.age)+" min old":"")+"; the engine\'s rectangular-rating depth here reads "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft (that rating is ~2x too shallow, known)'>"+govSt.toFixed(2)+" ft <span style=\'color:#9db2c4;font-size:9px\'>MEAS</span></span>"+rpTag; }
+    var X=(r.live && _cg && _cg.xfer) ? _cg.xfer : null;
+    if(govSt!=null){ rpS="<span title='NCEM FIMAN 25380 at Speedwell, measured gage height (gage datum, ~2.5 ft at low flow), "+(_cg.gov.age!=null?Math.round(_cg.gov.age)+" min old":"")+(X?"; = "+Math.round(X.q)+" cfs through the 3DEP-LiDAR-section rating at the gage (+-35 %)":"")+"; the engine\'s rectangular-rating depth here reads "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft (that rating is ~2x too shallow, known)'>"+govSt.toFixed(2)+" ft <span style=\'color:#9db2c4;font-size:9px\'>MEAS</span>"+(X?" <span style=\'color:#8fa0b2;font-size:9.5px\'>"+Math.round(X.q)+" cfs</span>":"")+"</span>"+rpTag; }
+    else if(X && X.depth!=null){
+      var xt="from the one measurement: FIMAN 25380 at Speedwell "+(_cg.xferStage!=null?(+_cg.xferStage).toFixed(2):"")+" ft = "+Math.round(_cg.xferQspd)+" cfs (3DEP-LiDAR-section rating, +-35 %), scaled by drainage area "+(X.share*100).toFixed(0)+" % (area ratio, assumes the same runoff per square mile) = "+Math.round(X.q)+" cfs here, then this reach\'s own rating for depth (a placeholder rectangle until the stage node reports). The engine\'s modeled depth is "+(r.stage!=null?(+r.stage).toFixed(1):"—")+" ft. Derived from a measurement, not a measurement: it never sets WARNING by itself.";
+      var isFloor=(r.bid==="CC-WCU-2260" && +X.depth<=4.0);
+      rpS="<span title='"+xt+(isFloor?" 4.0 ft is the campus rating floor (no gauge at campus; the TVA profile is undefined below storm flow).":"")+"'>"+(+X.depth).toFixed(1)+" ft <span style=\'color:#8fa0b2;font-size:9px\'>"+(isFloor?"floor":"AR")+"</span> <span style=\'color:#8fa0b2;font-size:9.5px\'>"+Math.round(X.q)+" cfs</span></span>"+(X.rp!=null&&r.bid!=="CC-WCU-2260"?" <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(X.rp)+" yr</span>":""); }
+    else if(X && r.bid==="CC-MOUTH-2340"){ rpS="<span title='area-ratio flow from FIMAN 25380 (no rating at the mouth)'>"+Math.round(X.q)+" cfs <span style=\'color:#8fa0b2;font-size:9px\'>AR</span></span>"+(X.rp!=null?" <span style='color:#6b7a8a;font-size:9px'>~"+Math.round(X.rp)+" yr</span>":""); }
     else if(r.live && r.bid==="CC-WCU-2260" && r.stage!=null && +r.stage<=4.0){ rpS="<span title='rating floor: the campus TVA water-surface profile only defines the 10/100/500-yr points, so below storm flow the stage is held at 4.0 ft. There is no gauge at campus - the real low-flow depth is not measured. This number moves only when the engine puts storm flow on the reach.'>4.0 ft <span style=\'color:#6b7a8a;font-size:9px\'>floor</span></span>"; }
     else if(r.stage!=null&&isFinite(r.stage)){ rpS=(+r.stage).toFixed(1)+" ft"+rpTag; }
     else if(r.rp!=null){ rpS="~"+Math.round(r.rp)+" yr"; }

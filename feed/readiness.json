@@ -1,5 +1,5 @@
 {
- "fetched_utc": "2026-09-10T17:04:35Z",
+ "fetched_utc": "2026-09-10T19:56:51Z",
  "status": "ok",
  "tier": "readiness",
  "mode": "ATTENTION",
@@ -20,7 +20,7 @@
   "node_rain": "on tip"
  },
  "ero": {
-  "fetched_utc": "2026-09-10T17:04:35Z",
+  "fetched_utc": "2026-09-10T19:56:51Z",
   "status": "ok",
   "tier": "gov_estimate",
   "source": "WPC Excessive Rainfall Outlook (NOAA map services)",
@@ -141,7 +141,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -151,17 +151,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.01,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 6.6,
-    "p90": 6.29
+    "p90": 6.26
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -196,7 +196,7 @@
     "soil_pct": 15.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -206,17 +206,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.01,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 5.02,
-    "p90": 4.71
+    "p90": 4.68
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -251,7 +251,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -261,17 +261,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.01,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 5.71,
-    "p90": 5.41
+    "p90": 5.38
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -306,7 +306,7 @@
     "soil_pct": 21.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -316,17 +316,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.02,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 3.91,
-    "p90": 3.6
+    "p90": 3.57
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -361,7 +361,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -371,17 +371,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.02,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 8.35,
-    "p90": 8.05
+    "p90": 8.02
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -416,7 +416,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -426,17 +426,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.01,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 7.04,
-    "p90": 6.73
+    "p90": 6.7
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -471,7 +471,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": {
@@ -481,17 +481,17 @@
    },
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.02,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"
    },
    "margin_in": {
     "p50": 4.99,
-    "p90": 4.68
+    "p90": 4.65
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -526,16 +526,16 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-10T17:04:35Z",
+    "ts": "2026-09-10T19:56:51Z",
     "note": ""
    },
    "trip_in": null,
    "forecast": {
     "qpf24_p50": 0.345,
-    "qpf24_p90": 0.649,
-    "qpf72_p50": 0.376,
+    "qpf24_p90": 0.681,
+    "qpf72_p50": 0.384,
     "qpf72_p90": 0.698,
-    "nws_qpf24": 0.0,
+    "nws_qpf24": 0.02,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
     "status": "ok"

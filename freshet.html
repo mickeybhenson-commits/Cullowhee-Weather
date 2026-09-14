@@ -1,13 +1,4 @@
 <!DOCTYPE html>
-<div id="devbanner" style="position:fixed;top:0;left:0;right:0;z-index:2000;
-  background:#3a1d12;border-bottom:1px solid #f2882d;color:#ffd9bd;
-  font:600 11.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
-  padding:9px 16px;text-align:center;letter-spacing:.01em">
-  <strong style="color:#f2882d">DEVELOPMENT SYSTEM — NOT FOR EMERGENCY USE.</strong>
-  No in-stream sensors deployed. Status is modeled from forecast rainfall, not measured.
-  Official warnings: <a href="https://www.weather.gov/gsp/" style="color:#ffd9bd">NWS Greenville-Spartanburg</a>.
-</div>
-<script>if(window.self!==window.top){document.getElementById('devbanner').style.display='none';}</script>
 <html lang="en" id="top">
 <head>
 <meta charset="utf-8">
@@ -16,7 +7,7 @@
 <meta name="description" content="FRESHET — a flood-warning system for Cullowhee Creek, a mountain stream in Jackson County, North Carolina — built after Hurricane Helene.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;1,6..72,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
     --abyss:#0a161a;        /* deep creek water at night */
@@ -33,9 +24,10 @@
     --disp:'Space Grotesk',system-ui,sans-serif;
     --body:'Newsreader',Georgia,serif;
     --mono:'JetBrains Mono',ui-monospace,monospace;
+    --banner-h:40px;
   }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
+  html{scroll-behavior:smooth;scroll-padding-top:var(--banner-h)}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
   body{
     margin:0;background:var(--abyss);color:var(--mist);
@@ -45,8 +37,15 @@
   a{color:inherit}
   ::selection{background:rgba(69,208,192,.28)}
 
+  /* ---------- development banner ---------- */
+  #devbanner{position:fixed;top:0;left:0;right:0;z-index:2000;
+    background:#3a1d12;border-bottom:1px solid #f2882d;color:#ffd9bd;
+    font:600 13px/1.5 var(--mono);padding:10px 16px;text-align:center;letter-spacing:.01em}
+  #devbanner strong{color:#f2882d}
+  #devbanner a{color:#ffd9bd}
+
   .eyebrow{
-    font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.14em;
+    font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.14em;
     text-transform:uppercase;color:var(--current);margin:0 0 18px;
     display:flex;align-items:center;gap:9px;
   }
@@ -70,16 +69,16 @@
     border-left:2px solid var(--current);padding-left:16px}
   .defn b{color:var(--mist);font-weight:500;font-family:var(--disp)}
   .defn .pos{font-style:italic;color:var(--faint)}
-  .defn .src{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--faint);margin-top:6px}
+  .defn .src{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--faint);margin-top:6px}
   .defn .src a{color:var(--faint);text-decoration:none;border-bottom:1px solid var(--line)}
-  .layers{font-family:var(--mono);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);margin:0 0 28px}
+  .layers{font-family:var(--mono);font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);margin:0 0 28px}
   .layers b{color:var(--current);font-weight:500}
   .cta-row{display:flex;flex-wrap:wrap;gap:14px}
-  .btn{font-family:var(--mono);font-size:13px;letter-spacing:.04em;text-decoration:none;
-    padding:14px 22px;border-radius:2px;transition:.18s;display:inline-block}
-  .btn-primary{background:var(--current);color:#04211d;font-weight:500}
+  .btn{font-family:var(--mono);font-size:14px;letter-spacing:.04em;text-decoration:none;
+    padding:14px 22px;border-radius:2px;transition:.18s;display:inline-block;cursor:pointer}
+  .btn-primary{background:var(--current);color:#04211d;font-weight:500;border:0}
   .btn-primary:hover{background:#6fe0d2;transform:translateY(-1px)}
-  .btn-ghost{border:1px solid var(--line);color:var(--mist)}
+  .btn-ghost{border:1px solid var(--line);color:var(--mist);background:transparent}
   .btn-ghost:hover{border-color:var(--current);color:var(--current)}
 
   /* ---------- stage gauge (signature) ---------- */
@@ -89,11 +88,11 @@
   .gauge .tube-stroke{fill:none;stroke:var(--line);stroke-width:1.5}
   .waterline{stroke:var(--current);stroke-width:2;opacity:.9}
   .tick{stroke-width:1.5}
-  .tick-label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;fill:var(--slate)}
-  .tick-ft{font-family:var(--mono);font-size:10px;fill:var(--faint)}
+  .tick-label{font-family:var(--mono);font-size:12px;letter-spacing:.06em;fill:var(--slate)}
+  .tick-ft{font-family:var(--mono);font-size:11px;fill:var(--faint)}
   .water-grp{animation:tide 9s ease-in-out infinite}
   @keyframes tide{0%,100%{transform:translateY(11px)}50%{transform:translateY(-13px)}}
-  .now-reading{font-family:var(--mono);font-size:11px;fill:var(--current);font-weight:500}
+  .now-reading{font-family:var(--mono);font-size:12px;fill:var(--current);font-weight:500}
   @media (prefers-reduced-motion:reduce){.water-grp{animation:none}.live-dot{animation:none}}
 
   /* ---------- sections ---------- */
@@ -101,30 +100,81 @@
   .section-narrow{max-width:720px}
   .section h2{font-size:clamp(30px,5vw,52px);margin:0 0 20px;max-width:20ch}
   .section-lede{font-size:20px;color:var(--slate);max-width:60ch;margin:0 0 40px}
+  .section-lede+.section-lede{margin-top:-18px}
+
+  /* pull-quote: the one line to leave on screen */
+  .pull{font-family:var(--disp);font-weight:500;font-size:clamp(22px,2.4vw,30px);line-height:1.25;
+    color:var(--mist);max-width:34ch;margin:0 0 34px;padding-left:20px;border-left:3px solid var(--watch)}
+  .pull small{display:block;font-family:var(--mono);font-weight:400;font-size:13px;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--faint);margin-top:10px}
+  .pull.cyan{border-color:var(--current)}
+  .pull.red{border-color:var(--emergency)}
 
   .two-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:clamp(24px,3vw,44px);margin-top:12px}
   .two-col article{border-left:2px solid var(--current);padding-left:22px}
   .two-col h3{font-size:24px;margin:0 0 12px;color:var(--mist)}
-  .two-col .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
+  .two-col .kicker{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:6px}
   .two-col p{margin:0;color:var(--slate);font-size:18px}
+  .two-col .status{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    padding:3px 8px;border-radius:2px;margin-bottom:10px;border:1px solid var(--line);color:var(--slate)}
+  .two-col .status.live{color:var(--current);border-color:rgba(69,208,192,.5)}
+  .two-col .status.build{color:var(--watch);border-color:rgba(226,181,43,.5)}
+
+  /* ---------- stat strip ---------- */
+  .stats{max-width:1120px;margin:0 auto;padding:0 28px 8px;display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{border:1px solid var(--line);border-radius:6px;padding:16px 16px 14px;background:var(--shoal2)}
+  .stat b{display:block;font-family:var(--disp);font-weight:700;font-size:clamp(26px,2.6vw,34px);line-height:1;color:var(--mist);letter-spacing:-.02em}
+  .stat b i{font-style:normal;font-size:.55em;color:var(--slate);font-weight:500;margin-left:3px}
+  .stat span{display:block;font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-top:8px;line-height:1.4}
+  .stat.warn b{color:var(--watch)}
+  .stat.meas b{color:var(--current)}
+
+  /* ---------- model chain ---------- */
+  .chain-wrap{margin-top:48px}
+  .chain-wrap h3{font-size:20px;margin:0 0 6px;color:var(--mist)}
+  .chain-wrap .sub{font-family:var(--mono);font-size:14px;color:var(--faint);margin:0 0 18px;letter-spacing:.02em}
+  .chain{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+  .chain .step{flex:1 1 120px;min-width:120px;border:1px solid var(--line);border-radius:6px;background:var(--shoal2);padding:12px 12px 10px;position:relative}
+  .chain .step b{display:block;font-family:var(--disp);font-size:17px;font-weight:500;color:var(--mist);margin-bottom:4px}
+  .chain .step span{display:block;font-family:var(--mono);font-size:14px;color:var(--faint);line-height:1.45}
+  .chain .step .n{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--current)}
+  .chain .step .src{margin-top:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  .chain .step .src.mod{color:var(--watch)}
+  .chain .step .src.meas{color:var(--current)}
+  .chain .step.out{border-color:rgba(69,208,192,.5)}
+  .chain .arrow{align-self:center;color:var(--faint);font-family:var(--mono);font-size:18px;flex:0 0 auto;padding:0 2px}
+  .chain-key{font-family:var(--mono);font-size:13px;color:var(--faint);margin:14px 0 0;line-height:1.6}
+  .chain-key b{font-weight:500}
+  .chain-key .mod{color:var(--watch)}
+  .chain-key .meas{color:var(--current)}
+
+  /* ---------- the two rules ---------- */
+  .rules{display:grid;grid-template-columns:auto 1fr;gap:14px 18px;align-items:start;margin:34px 0 0;
+    border:1px solid var(--line);border-left:3px solid var(--watch);border-radius:6px;background:var(--shoal2);padding:18px 22px}
+  .rules .k{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--watch);padding-top:5px;white-space:nowrap}
+  .rules p{margin:0;font-family:var(--disp);font-size:19px;line-height:1.35;color:var(--mist)}
+  .rules p em{font-style:normal;color:var(--current)}
+  .rules p small{display:block;font-family:var(--body);font-weight:300;font-size:16px;color:var(--slate);margin-top:4px}
 
   /* ---------- hand-off timeline ---------- */
   .handoff{display:grid;grid-template-columns:5fr 2.6fr 2.4fr;gap:10px;margin-top:8px}
   .handoff .band{border-radius:6px;padding:18px 18px 20px;border-top:3px solid;background:var(--shoal2);min-height:100%}
-  .handoff .band .who{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:8px}
+  .handoff .band .who{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:8px}
   .handoff .band h3{font-size:22px;margin:0 0 10px;color:var(--mist)}
-  .handoff .band p{margin:0;color:var(--slate);font-size:16px;line-height:1.5}
+  .handoff .band p{margin:0;color:var(--slate);font-size:17px;line-height:1.5}
   .handoff .b-agency{border-color:#7fb3ff}.handoff .b-agency .who{color:#7fb3ff}
   .handoff .b-freshet{border-color:var(--watch)}.handoff .b-freshet .who{color:var(--watch)}
   .handoff .b-meas{border-color:var(--current)}.handoff .b-meas .who{color:var(--current)}
-  .handoff-axis{display:grid;grid-template-columns:5fr 2.6fr 2.4fr;gap:10px;margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.04em}
+  .handoff-axis{display:grid;grid-template-columns:5fr 2.6fr 2.4fr;gap:10px;margin-top:10px;font-family:var(--mono);font-size:14px;color:var(--slate);letter-spacing:.04em}
   .handoff-axis div{border-top:1px solid var(--line);padding-top:8px;display:flex;justify-content:space-between;gap:12px}
   .handoff-axis .gap{color:var(--watch)}
-  .handoff-marks{margin-top:22px;font-family:var(--mono);font-size:12px;color:var(--slate);line-height:1.7}
+  .handoff-marks{margin-top:22px;font-family:var(--mono);font-size:14px;color:var(--slate);line-height:1.7}
   .handoff-marks b{color:var(--mist);font-weight:500}
   .handoff-marks .m{display:inline-block;margin-right:18px;white-space:nowrap}
   .handoff-marks .d{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
   @media (max-width:820px){.handoff,.handoff-axis{grid-template-columns:1fr}.handoff-axis div{justify-content:flex-start;gap:14px}}
+
   /* ---------- embed frames ---------- */
   .frame{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;
     background:var(--shoal2);box-shadow:0 24px 60px -30px rgba(0,0,0,.8)}
@@ -136,46 +186,326 @@
   .frame-breakout{width:min(94vw,1560px);position:relative;left:50%;transform:translateX(-50%)}
   .frame-live,.frame-tall{max-height:85vh}
   @media (max-width:640px){.frame-live,.frame-tall{aspect-ratio:3/4;max-height:none}}
-  .caption{font-family:var(--mono);font-size:12px;color:var(--faint);margin:16px 0 0;line-height:1.6;letter-spacing:.01em}
-  .caption b{color:var(--slate);font-weight:500}
+  .caption{font-family:var(--mono);font-size:16px;color:var(--slate);margin:16px 0 0;line-height:1.6;letter-spacing:.01em}
+  .caption b{color:var(--mist);font-weight:500}
+  .caption a{color:var(--current)}
+  /* frame tools: expand / last capture / open — top-right corner */
+  .frame-tools{position:absolute;top:8px;right:8px;z-index:5;display:flex;gap:6px;opacity:.55;transition:.18s}
+  .frame:hover .frame-tools,.frame:focus-within .frame-tools{opacity:1}
+  .frame-tools button,.frame-tools a{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--mist);
+    background:rgba(10,22,26,.85);border:1px solid var(--line);border-radius:3px;padding:5px 9px;cursor:pointer;text-decoration:none;line-height:1.2}
+  .frame-tools button:hover,.frame-tools a:hover{border-color:var(--current);color:var(--current)}
+  .frame:fullscreen{border:0;border-radius:0;background:var(--abyss)}
+  .frame:fullscreen iframe{height:100vh}
+  /* last-capture fallback: shown when the live frame fails to load or on request */
+  .frame-fallback{position:absolute;inset:0;display:none;background:var(--abyss);z-index:4}
+  .frame.offline .frame-fallback{display:block}
+  .frame-fallback img{width:100%;height:100%;object-fit:contain;object-position:top left;display:block}
+  .frame-fallback .tag{position:absolute;left:10px;bottom:10px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--watch);background:rgba(10,22,26,.9);border:1px solid rgba(226,181,43,.5);border-radius:3px;padding:5px 9px}
 
   /* fallback card when live-map URL not yet set */
   .map-fallback{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
     justify-content:center;text-align:center;padding:36px;gap:16px}
   .map-fallback p{margin:0;color:var(--slate);font-family:var(--disp);font-size:19px;max-width:34ch}
-  .map-fallback .hint{font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .map-fallback .hint{font-family:var(--mono);font-size:13px;color:var(--faint)}
+
+  /* ---------- basin table ---------- */
+  details.fold{margin-top:30px;border:1px solid var(--line);border-radius:6px;background:var(--shoal2)}
+  details.fold summary{cursor:pointer;list-style:none;padding:14px 18px;font-family:var(--mono);font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:var(--current);display:flex;align-items:center;gap:10px}
+  details.fold summary::-webkit-details-marker{display:none}
+  details.fold summary::before{content:'+';font-size:18px;line-height:1;color:var(--faint)}
+  details.fold[open] summary::before{content:'−'}
+  details.fold summary span{color:var(--faint);letter-spacing:.02em;text-transform:none;font-size:13px}
+  details.fold .inner{padding:0 18px 18px}
+  .tbl-wrap{overflow-x:auto}
+  table.tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px;line-height:1.4}
+  table.tbl th{font-weight:500;text-align:left;color:var(--faint);letter-spacing:.06em;text-transform:uppercase;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;color:var(--slate)}
+  table.tbl td:first-child{color:var(--mist);font-family:var(--disp);font-size:16px;white-space:nowrap}
+  table.tbl td.num{text-align:right;white-space:nowrap;color:var(--mist)}
+  table.tbl .yes{color:var(--current)}
+  table.tbl .no{color:var(--faint)}
+  table.tbl .ph{color:var(--watch)}
+  .tbl-note{font-family:var(--mono);font-size:13px;color:var(--faint);margin:12px 0 0;line-height:1.6}
 
   /* ---------- prose ---------- */
   .prose p{max-width:60ch;color:var(--mist);margin:0 0 22px}
   .prose p.dim{color:var(--slate)}
   .prose em{font-style:italic;color:var(--current)}
 
+  /* ---------- team / partners ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;margin-top:8px}
+  @media (min-width:1000px){.cards{grid-template-columns:repeat(3,1fr)}}
+  .card{border:1px solid var(--line);border-radius:6px;background:var(--shoal2);padding:18px 20px 20px}
+  .card .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--current);display:block;margin-bottom:8px}
+  .card h3{font-size:21px;margin:0 0 8px;color:var(--mist)}
+  .card p{margin:0;font-size:17px;color:var(--slate);line-height:1.5}
+  .card p+p{margin-top:8px}
+  .card b{color:var(--mist);font-weight:500}
+  .card .bench{display:block;font-family:var(--mono);font-size:13px;color:var(--watch);margin-top:10px;line-height:1.5}
+  .figs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+  .figs figure{margin:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#f4efe6}
+  .figs img{display:block;width:100%;height:auto}
+  .figs figcaption{font-family:var(--mono);font-size:13px;color:var(--slate);padding:10px 14px;background:var(--shoal2);border-top:1px solid var(--line);line-height:1.5}
+  /* photo slots: styled placeholder until the file exists */
+  .photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:22px}
+  .photos figure{margin:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--shoal2);position:relative}
+  .photos .ph{aspect-ratio:4/3;display:block;width:100%;object-fit:cover;background:var(--shoal2)}
+  .photos figure.missing .ph{display:none}
+  .photos .slot{display:none;aspect-ratio:4/3;align-items:center;justify-content:center;text-align:center;padding:24px;
+    background:repeating-linear-gradient(135deg,var(--shoal2) 0 14px,#12262d 14px 28px)}
+  .photos figure.missing .slot{display:flex}
+  .photos .slot span{font-family:var(--mono);font-size:13px;color:var(--faint);line-height:1.6}
+  .photos .slot span b{display:block;color:var(--slate);font-weight:500;margin-bottom:6px}
+  .photos figcaption{font-family:var(--mono);font-size:13px;color:var(--slate);padding:10px 14px;border-top:1px solid var(--line);line-height:1.5}
+
+  /* ---------- open problems ---------- */
+  .asks{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:8px}
+  .ask{border:1px solid var(--line);border-left:3px solid var(--current);border-radius:6px;background:var(--shoal2);padding:16px 18px 18px}
+  .ask .kicker{font-family:var(--mono);font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--current);display:block;margin-bottom:8px}
+  .ask ul{margin:0;padding-left:18px;font-size:17px;color:var(--slate);line-height:1.45}
+  .ask li{margin:0 0 6px}
+  .ask li b{color:var(--mist);font-weight:500}
+  .ask.civil{border-left-color:var(--watch)}.ask.civil .kicker{color:var(--watch)}
+  .ask.me{border-left-color:#7fb3ff}.ask.me .kicker{color:#7fb3ff}
+  .ask.cs{border-left-color:#c792ea}.ask.cs .kicker{color:#c792ea}
+  .ask.all{border-left-color:var(--emergency)}.ask.all .kicker{color:var(--emergency)}
+  .offer{margin-top:28px;font-family:var(--disp);font-size:clamp(20px,2.2vw,26px);line-height:1.3;color:var(--mist);max-width:40ch}
+  .offer em{font-style:normal;color:var(--current)}
+
+  /* ---------- invitation ---------- */
+  .invite{display:grid;grid-template-columns:1fr auto;gap:40px;align-items:center}
+  .invite .big{font-family:var(--disp);font-weight:700;font-size:clamp(34px,5vw,64px);line-height:1.02;letter-spacing:-.02em;margin:0 0 18px;color:var(--mist)}
+  .invite .big em{font-style:normal;color:var(--current)}
+  .invite .where{font-family:var(--mono);font-size:16px;color:var(--slate);line-height:1.8;margin:0}
+  .invite .where a{color:var(--current);text-decoration:none;border-bottom:1px solid var(--line)}
+  .invite .last{font-family:var(--body);font-style:italic;font-size:22px;color:var(--mist);margin:26px 0 0;max-width:34ch}
+  .qr{text-align:center}
+  .qr svg{display:block;width:180px;height:180px;background:var(--abyss);padding:0}
+  .qr span{display:block;font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--faint);margin-top:8px}
+  @media (max-width:760px){.invite{grid-template-columns:1fr}.qr{text-align:left}}
+
+  /* ---------- title / agenda card (talk mode) ---------- */
+  #title{display:none}
+  html.talk #title{display:block}
+  .title-card{max-width:1180px;margin:0 auto;padding:clamp(56px,8vw,110px) 28px 40px;min-height:calc(100vh - var(--banner-h))}
+  .title-card .series{font-family:var(--mono);font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--current);margin:0 0 20px}
+  .title-card h2{font-size:clamp(40px,6vw,84px);line-height:1;margin:0 0 14px;max-width:16ch;font-weight:700;letter-spacing:-.02em}
+  .title-card .sub{font-family:var(--disp);font-size:clamp(20px,2.4vw,30px);color:var(--slate);margin:0 0 30px;max-width:40ch;line-height:1.3}
+  .title-card .meta{font-family:var(--mono);font-size:16px;color:var(--mist);line-height:1.9;margin:0 0 36px}
+  .title-card .meta a{color:var(--current);text-decoration:none;border-bottom:1px solid var(--line)}
+  .title-card .meta .who{color:var(--slate)}
+  .agenda{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:6px 22px;font-family:var(--mono);font-size:14px;color:var(--slate);line-height:1.7;margin:0;padding:0;list-style:none;counter-reset:ag}
+  .agenda li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding:4px 0}
+  .agenda li::before{counter-increment:ag;content:counter(ag,decimal-leading-zero);color:var(--faint);margin-right:10px}
+  .agenda li a{color:var(--mist);text-decoration:none;flex:1}
+  .agenda li a:hover{color:var(--current)}
+  .agenda li .t{color:var(--faint)}
+  .agenda li.q{border-bottom:0}.agenda li.q a{color:var(--watch)}
+
+  /* ---------- appendix ---------- */
+  .appx{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px 30px}
+  .appx h3{font-size:17px;margin:0 0 8px;color:var(--current);font-family:var(--mono);font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+  .appx ul{margin:0;padding-left:18px;font-family:var(--mono);font-size:14px;color:var(--slate);line-height:1.55}
+  .appx li{margin-bottom:5px}
+  .appx b{color:var(--mist);font-weight:500}
+
   /* ---------- footer ---------- */
   .foot{max-width:1120px;margin:0 auto;padding:56px 28px 72px;border-top:1px solid var(--line);
-    font-family:var(--mono);font-size:13px;color:var(--faint);display:flex;flex-wrap:wrap;
+    font-family:var(--mono);font-size:14px;color:var(--faint);display:flex;flex-wrap:wrap;
     justify-content:space-between;gap:16px;align-items:baseline}
   .foot strong{color:var(--mist);font-weight:500}
   .foot a{color:var(--slate);text-decoration:none;border-bottom:1px solid var(--line);padding-bottom:1px}
   .foot a:hover{color:var(--current);border-color:var(--current)}
 
+  /* ---------- section rail (progress + jump) ---------- */
+  #rail{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:1500;display:none;
+    font-family:var(--mono);font-size:12px;letter-spacing:.04em;user-select:none}
+  #rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  #rail li a{display:flex;align-items:center;gap:10px;color:var(--faint);text-decoration:none;line-height:1;padding:2px 0}
+  #rail li a i{width:8px;height:8px;border-radius:50%;border:1px solid var(--faint);flex:0 0 auto;transition:.18s}
+  #rail li a span{opacity:0;transform:translateX(-4px);transition:.18s;white-space:nowrap;color:var(--slate)}
+  #rail li.on a i{background:var(--current);border-color:var(--current);box-shadow:0 0 0 3px rgba(69,208,192,.18)}
+  #rail li.on a span{opacity:1;transform:none;color:var(--mist)}
+  #rail:hover li a span,html.rail-labels #rail li a span{opacity:1;transform:none}
+  #rail li a:hover span{color:var(--current)}
+  #rail .keys{margin-top:14px;color:var(--faint);font-size:11px;line-height:1.7;opacity:0;transition:.18s;max-width:150px}
+  #rail:hover .keys,html.rail-labels #rail .keys{opacity:1}
+  #rail .keys b{color:var(--slate);font-weight:500}
+  @media (min-width:1280px){#rail{display:block}}
+  html.talk #rail{display:block}
+  html.talk #rail li a span,html.talk #rail .keys{opacity:1;transform:none}
+  html.talk #rail{font-size:13px}
+  html.talk #rail .keys{font-size:12px}
+  .talk-btn{display:none}
+
+  /* ---------- keyboard help ---------- */
+  #help{position:fixed;inset:0;z-index:3000;background:rgba(10,22,26,.92);display:none;align-items:center;justify-content:center;padding:24px}
+  #help.open{display:flex}
+  #help .box{max-width:640px;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--shoal);padding:28px 32px}
+  #help h3{margin:0 0 14px;font-size:22px}
+  #help table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:14px;color:var(--slate)}
+  #help td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  #help td:first-child{color:var(--mist);white-space:nowrap;width:130px}
+  #help kbd{display:inline-block;border:1px solid var(--line);border-radius:3px;padding:1px 7px;margin-right:4px;color:var(--current);font-family:var(--mono);font-size:13px}
+  #help p{font-family:var(--mono);font-size:13px;color:var(--faint);margin:14px 0 0;line-height:1.6}
+
+  /* per-section "show text" toggle (talk mode only) */
+  .textbtn{display:none;font-family:var(--mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);
+    background:transparent;border:1px solid var(--line);border-radius:3px;padding:5px 10px;cursor:pointer;margin:-10px 0 26px}
+  .textbtn:hover{color:var(--current);border-color:var(--current)}
+  html.talk .textbtn{display:inline-block}
+
   /* ---------- reveal ---------- */
   .js .reveal{opacity:0;transform:translateY(18px)}
   .js .reveal.in{opacity:1;transform:none;transition:opacity .7s ease,transform .7s ease}
+  html.talk .reveal{opacity:1;transform:none;transition:none}
 
   :focus-visible{outline:2px solid var(--current);outline-offset:3px;border-radius:2px}
+
+  /* =====================================================================
+     TALK MODE  —  ?talk=1  or press T
+     Wider column, larger type, frames fill the viewport, sections snap,
+     long prose folded behind P. The public page is untouched.
+     ===================================================================== */
+  html.talk{scroll-snap-type:y proximity;scroll-padding-top:var(--banner-h)}
+  html.talk .section,html.talk .hero,html.talk .title-card{scroll-snap-align:start}
+  html.talk body{font-size:23px;font-weight:400;--slate:#a3bdbd;--faint:#7c9697}
+  html.talk #devbanner{font-size:15px;padding:11px 16px}
+  html.talk .hero{max-width:1400px;padding-top:calc(var(--banner-h) + 40px)}
+  html.talk .hero h1{font-size:clamp(72px,12vw,160px)}
+  html.talk .thesis{font-size:clamp(26px,3vw,38px)}
+  html.talk .lede{font-size:25px;max-width:36ch}
+  html.talk .defn{font-size:21px}
+  html.talk .defn .src{font-size:14px}
+  html.talk .layers{font-size:17px}
+  html.talk .btn{font-size:16px;padding:16px 26px}
+  html.talk .gauge{max-width:340px}
+  html.talk .tick-label{font-size:13px}
+  html.talk .eyebrow{font-size:16px}
+  html.talk .section{max-width:1400px;padding-top:calc(var(--banner-h) + 56px)}
+  html.talk .section-narrow{max-width:1150px}
+  html.talk .section h2{font-size:clamp(40px,5.2vw,68px);max-width:22ch}
+  html.talk .section-lede{font-size:27px;max-width:58ch;line-height:1.5}
+  html.talk .prose p{font-size:26px;max-width:58ch}
+  html.talk .pull{font-size:clamp(28px,3vw,40px);max-width:36ch}
+  html.talk .pull small{font-size:17px}
+  html.talk .caption{font-size:19px;color:var(--slate)}
+  html.talk .two-col h3{font-size:30px}
+  html.talk .two-col p{font-size:22px}
+  html.talk .two-col .kicker,html.talk .handoff .band .who,html.talk .card .kicker,html.talk .ask .kicker{font-size:16px}
+  html.talk .two-col .status{font-size:16px}
+  html.talk .chain-wrap .sub{font-size:17px}
+  html.talk .chain-wrap h3{font-size:24px}
+  html.talk .agenda{font-size:17px}
+  html.talk .title-card .meta{font-size:19px}
+  html.talk .title-card .series{font-size:17px}
+  html.talk .card .bench{font-size:16px}
+  html.talk .qr span{font-size:14px}
+  html.talk .chain .step .n{font-size:13px}
+  html.talk .frame-fallback .tag{font-size:14px}
+  html.talk details.fold summary span{font-size:16px}
+  html.talk .rules .k{font-size:16px}
+  html.talk .stats{max-width:1400px}
+  html.talk .stat b{font-size:clamp(34px,3.2vw,46px)}
+  html.talk .stat span{font-size:17px}
+  html.talk .chain .step b{font-size:21px}
+  html.talk .chain .step span{font-size:17px}
+  html.talk .chain .step .src{font-size:15px}
+  html.talk .chain-key{font-size:16px}
+    html.talk .rules p{font-size:24px}
+  html.talk .rules p small{font-size:19px}
+  html.talk .handoff .band h3{font-size:27px}
+  html.talk .handoff .band p{font-size:20px}
+  html.talk .handoff-axis{font-size:17px}
+  html.talk .handoff-marks{font-size:17px}
+  html.talk .frame-live,html.talk .frame-tall{aspect-ratio:auto;height:calc(100vh - var(--banner-h) - 24px);max-height:none}
+  html.talk body{padding-left:184px}
+  html.talk .frame-breakout{width:calc(100vw - 204px);max-width:none}
+  @media (max-width:1100px){html.talk body{padding-left:0}html.talk .frame-breakout{width:96vw}}
+  html.talk .frame-tools{opacity:.85}
+  html.talk .frame-tools button,html.talk .frame-tools a{font-size:14px;padding:7px 12px}
+  html.talk .map-fallback p{font-size:24px}
+  html.talk details.fold summary{font-size:16px}
+  html.talk table.tbl{font-size:17px}
+  html.talk table.tbl th{font-size:14px}
+  html.talk table.tbl td:first-child{font-size:19px}
+  html.talk .tbl-note{font-size:16px}
+  html.talk .card h3{font-size:25px}
+  html.talk .card p{font-size:20px}
+  
+  html.talk .figs figcaption,html.talk .photos figcaption{font-size:16px}
+  html.talk .photos .slot span{font-size:16px}
+  html.talk .ask ul{font-size:20px}
+  html.talk .offer{font-size:clamp(24px,2.6vw,32px)}
+  html.talk .invite .big{font-size:clamp(44px,6vw,84px)}
+  html.talk .invite .where{font-size:19px}
+  html.talk .invite .last{font-size:27px}
+  html.talk .qr svg{width:220px;height:220px}
+  html.talk .appx ul{font-size:17px}
+  html.talk .appx h3{font-size:18px}
+  html.talk .foot{font-size:16px;max-width:1400px}
+  /* fold the long prose behind P — headings, pull-quotes, panels and captions stay */
+  html.talk:not(.text) .section-lede:not(.keep),
+  html.talk:not(.text) .prose p{display:none}
+  html.talk:not(.text) .textbtn::before{content:'¶  show text  ·  P'}
+  html.talk.text .textbtn::before{content:'¶  hide text  ·  P'}
 
   @media (max-width:840px){
     .hero{grid-template-columns:1fr;padding-top:48px}
     .hero-gauge{order:-1;max-width:200px;margin:0 auto}
     .gauge{max-width:200px}
     .two-col{grid-template-columns:1fr;gap:28px}
+    .figs{grid-template-columns:1fr}
     body{font-size:18px}
+    .rules{grid-template-columns:1fr;gap:6px}
   }
 </style>
 </head>
 <body>
 
-<header class="hero">
+<div id="devbanner">
+  <strong>DEVELOPMENT SYSTEM — NOT FOR EMERGENCY USE.</strong>
+  No in-stream sensors deployed. Status is modeled from forecast rainfall, not measured.
+  Official warnings: <a href="https://www.weather.gov/gsp/">NWS Greenville-Spartanburg</a>.
+</div>
+<script>if(window.self!==window.top){document.getElementById('devbanner').style.display='none';}</script>
+
+<!-- section rail: progress + jump list; visible on wide screens and in talk mode -->
+<nav id="rail" aria-label="Sections">
+  <ol id="railList"></ol>
+  <div class="keys"><b>→ / J</b> next · <b>← / K</b> back · <b>T</b> talk mode · <b>P</b> text · <b>F</b> full-screen panel · <b>?</b> help</div>
+</nav>
+
+<!-- ======================= TITLE / AGENDA (talk mode only) ======================= -->
+<section id="title" class="title-card" data-rail="Title">
+  <p class="series">SDAP Research Seminar · College of Engineering · Western Carolina University</p>
+  <h2>FRESHET</h2>
+  <p class="sub">A sensor-to-warning flood and landslide intelligence system — starting with Cullowhee Creek, growing to Jackson County and Western North Carolina.</p>
+  <p class="meta">
+    Friday, September 18, 2026 · 11:15 AM – 12:15 PM · Belk 266A · <a href="https://wcu.zoom.us/j/4859066458" target="_blank" rel="noopener">Zoom 485 906 6458</a><br>
+    <span class="who">Dr. Mickey B. Henson, Eng.D., CEng · Department of Civil Engineering and Construction · Nautilus Technologies</span>
+  </p>
+  <ol class="agenda">
+    <li><a href="#top">The creek, the word, the three layers</a><span class="t">4 min</span></li>
+    <li><a href="#howmuch">How much rain would it take?</a><span class="t">6 min</span></li>
+    <li><a href="#what">Three layers, the model, the two rules</a><span class="t">5 min</span></li>
+    <li><a href="#handoff">What the sensors change</a><span class="t">4 min</span></li>
+    <li><a href="#watch">Storm track watch — NOAA/NHC feed, Helene replay</a><span class="t">4 min</span></li>
+    <li><a href="#now">What the creek is doing right now</a><span class="t">6 min</span></li>
+    <li><a href="#ground">TERRA — the ground layer</a><span class="t">5 min</span></li>
+    <li><a href="#nisar">TERRA · NISAR</a><span class="t">2 min</span></li>
+    <li><a href="#how">The whole system, in one model</a><span class="t">2 min</span></li>
+    <li><a href="#satellites">Three ways out — the stack</a><span class="t">5 min</span></li>
+    <li><a href="#hubble">Sensor to satellite</a><span class="t">2 min</span></li>
+    <li><a href="#why">Why · where it stands · partners</a><span class="t">3 min</span></li>
+    <li><a href="#open">Open problems — the ask</a><span class="t">2 min</span></li>
+    <li class="q"><a href="#appendix">Questions</a><span class="t">10 min</span></li>
+  </ol>
+</section>
+
+<header class="hero" data-rail="FRESHET">
   <div class="hero-copy">
     <p class="eyebrow"><span class="live-dot"></span>Cullowhee Creek · Jackson County, NC</p>
     <h1>FRESHET</h1>
@@ -236,38 +566,85 @@
   </div>
 </header>
 
-<section id="howmuch" class="section reveal">
+<!-- ======================= STAT STRIP ======================= -->
+<div class="stats" aria-label="FRESHET at a glance">
+  <div class="stat"><b>8</b><span>nested sub-basins above WCU</span></div>
+  <div class="stat"><b>0.97<i>–</i>23.4<i>mi²</i></b><span>drainage areas, Cox Branch to the mouth</span></div>
+  <div class="stat warn"><b>29<i>–</i>147<i>min</i></b><span>lead times · six of eight under two hours</span></div>
+  <div class="stat meas"><b>1</b><span>measured stage gauge today · FIMAN 25380, Speedwell</span></div>
+  <div class="stat"><b>16<i>+</i></b><span>stage nodes planned · 30+ sensors across the watershed</span></div>
+  <div class="stat"><b>2,200<i>+</i></b><span>Helene landslides mapped by USGS in WNC · 23 dead</span></div>
+</div>
+
+<section id="howmuch" class="section reveal" data-rail="How much rain">
   <p class="eyebrow">The operator's question</p>
   <h2>How much rain would it actually take?</h2>
+  <p class="pull">A 200-year rain produced a 9-year flood — because it fell over three days onto dry ground.<small>Helene at the campus reach · ~2,274 cfs · ~8.4 ft · runoff ratio 0.41</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
   <p class="section-lede">A rainfall total on its own says very little. Ten inches over three days is survivable here; the same ten inches in six hours is not. What decides it is <em>how long the rain lasts</em> and <em>how much water the ground can still absorb</em> — and the second one changes week to week. Helene delivered roughly two-hundred-year rainfall onto drought-dry soil and produced about a nine-year peak. The rain was extreme; the ground was merciful.</p>
   <p class="section-lede">This panel answers the question directly, live: given today's soil and a storm of the length you choose, how many inches would it take to reach watch, warning or emergency in each sub-basin. Rain is delivered in the hourly pattern Helene actually had, not a synthetic design curve — because the difference between those two is a factor of one-and-a-half to four.</p>
   <p class="caption"><b>A planning aid, not a warning</b> — thresholds are modelled, and for seven of eight reaches the stage behind them is not yet survey-validated · wetness is held constant through the storm, so long events are under-predicted · <a href="rain_to_trip.html" target="_blank" rel="noopener">open the rainfall panel full screen</a></p>
 </section>
-<section id="what" class="section reveal">
+
+<section id="what" class="section reveal" data-rail="Three layers">
   <p class="eyebrow">Three layers, one system</p>
   <div class="two-col">
     <article>
       <span class="kicker">SKYE</span>
+      <span class="status live">live</span>
       <h3>In the sky</h3>
       <p>A forecast engine watches radar, rainfall, and how saturated the ground already is, then estimates how the creek will respond — hours before it does. In these mountains, rain squeezed up over the ridges is what turns a stream dangerous.</p>
     </article>
     <article>
       <span class="kicker">NOAH</span>
+      <span class="status build">in build · 2026–27</span>
       <h3>In the water</h3>
       <p>Solar-powered sensors along the creek measure how high and how fast it's running, and relay each reading out by radio, cellular, and satellite — so a measurement gets through even when the power is out and the roads are gone.</p>
     </article>
     <article>
       <span class="kicker">TERRA</span>
+      <span class="status live">satellite live · probes to come</span>
       <h3>In the ground</h3>
       <p>Satellite radar reads the hillsides from orbit, measuring millimetre-scale creep across the whole watershed every twelve days — looking for the slope that starts moving before it fails. Helene broke these mountains loose as much as it flooded them; this layer watches for the next one.</p>
     </article>
   </div>
+
+  <!-- the seven-step chain every basin runs, in Python on the server and in JavaScript in the browser -->
+  <div class="chain-wrap">
+    <h3>The same seven steps for every basin</h3>
+    <p class="sub">Python engine on the server · JavaScript in the live map · the rainfall panel — three implementations, cross-checked in CI on every push (7,040 evaluations, zero disagreements)</p>
+    <div class="chain" role="list">
+      <div class="step" role="listitem"><span class="n">01</span><b>Rain</b><span>Open-Meteo per-basin forecast · NEXRAD · MRMS</span><span class="src mod">proxy today → in-basin gauges</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step" role="listitem"><span class="n">02</span><b>Wetness</b><span>30-day antecedent index or soil-moisture percentile</span><span class="src mod">proxy today → 5/20/50 cm probes</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step" role="listitem"><span class="n">03</span><b>Curve number</b><span>land cover · soil group · shifted by wetness (±15 CN)</span><span class="src mod">modelled</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step" role="listitem"><span class="n">04</span><b>Runoff</b><span>SCS abstraction on Helene's real hourly shape</span><span class="src mod">modelled</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step" role="listitem"><span class="n">05</span><b>Peak</b><span>unit hydrograph · time of concentration per basin</span><span class="src mod">Tc modelled → measured travel time</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step" role="listitem"><span class="n">06</span><b>Calibration</b><span>two-point power law to USGS StreamStats 10- and 100-yr flows</span><span class="src mod">regression → rating from the creek</span></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="step out" role="listitem"><span class="n">07</span><b>Posture</b><span>NORMAL · WATCH · WARNING · EMERGENCY · NO DATA</span><span class="src meas">confirmed only by a measured rise</span></div>
+    </div>
+    <p class="chain-key"><b class="mod">amber</b> — an input the model estimates today and a NOAH sensor will replace &nbsp;·&nbsp; <b class="meas">cyan</b> — measured &nbsp;·&nbsp; the sensors change the <b>inputs</b> and the <b>validation</b>; the seven steps stay the same.</p>
+  </div>
+
+  <div class="rules" id="rules">
+    <span class="k">Rule one</span>
+    <p>Forecast evidence can raise a <em>WATCH</em> and nothing more. <em>WARNING</em> and <em>EMERGENCY</em> require a measured rise.<small>Today one gauge in the watershed can measure a rise — so one gauge is the only thing that can raise anything above WATCH, anywhere.</small></p>
+    <span class="k">Rule two</span>
+    <p>Absent data renders as <em>absent</em> — never as severe, never as normal.<small>Both mistakes were found in this code and fixed. It is a rule because it had to be.</small></p>
+  </div>
 </section>
 
-<section id="handoff" class="section reveal">
+<section id="handoff" class="section reveal" data-rail="Sensors change">
   <p class="eyebrow">Where FRESHET makes the difference</p>
   <h2>They forecast the storm. FRESHET forecasts the creek.</h2>
-  <p class="section-lede">The federal and state system tells Cullowhee a storm is coming; FRESHET tells Cullowhee what the creek will do when it gets here. Five days out, the National Hurricane Center, the Weather Prediction Center and the Weather Service already do the forecasting — and nothing here tries to do it better. What no product covers is the last forty-eight hours on this creek: which of eight reaches rises first, how many hours the campus has after Cox Branch, and whether the rise is measured or modelled. The whole watershed has one state gauge, at Speedwell, and it reports height with no rating.</p>
+  <p class="pull red">The National Water Model held 10.94 cfs for 47 hours through a measured 1.36 ft rise at Speedwell.<small>Continental model, 23-square-mile mountain watershed · the gap the network closes</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
+  <p class="section-lede">Built on the federal and state models, not instead of them. FRESHET ingests NWS forecasts and QPF, NOAA MRMS and FLASH, the National Water Model, USGS gages, NCEM FIMAN and NC FRIS flood profiles — and adds the one thing none of them have: measurement inside this watershed at storm cadence, evaluated locally. The federal and state system tells Cullowhee a storm is coming; FRESHET tells Cullowhee what the creek will do when it gets here. Five days out, the National Hurricane Center, the Weather Prediction Center and the Weather Service already do the forecasting — and nothing here tries to do it better. What no product covers is the last forty-eight hours on this creek: which of eight reaches rises first, how many hours the campus has after Cox Branch, and whether the rise is measured or modelled. The whole watershed has one state gauge, at Speedwell, and it reports height with no rating.</p>
   <div class="handoff">
     <div class="band b-agency"><span class="who">Days 5 – 2 · NHC · WPC · NWS</span><h3>The storm</h3>
       <p>Five-day track and cone, the excessive-rainfall outlook, the county flood watch. FRESHET mirrors this layer — the storm-track watch below tests their track against one fixed corridor gate, and a hundred years of best tracks give a heads-up days before a forecast commits.</p></div>
@@ -282,22 +659,28 @@
     <div><span>measured</span><span>T+1 d</span></div>
   </div>
   <p class="handoff-marks"><b>Helene 2024, reenacted on the validated rain record</b> — <span class="m"><i class="d" style="background:#7fb3ff"></i>forecast track through the gate ≈ 2 days before the rain</span> <span class="m"><i class="d" style="background:var(--watch)"></i>Cox Branch reaches WATCH at T+63 h</span> <span class="m"><i class="d" style="background:var(--watch)"></i>campus WATCH at T+72 h</span> <span class="m"><i class="d" style="background:var(--current)"></i>center over the gate, campus peak 8.4 ft, Speedwell measured 8.86 ft at T+90 h</span></p>
+  <p class="pull cyan" style="margin-top:40px">Every proxy in the model is a placeholder for a sensor that isn't in the ground yet.<small>Wetness on Helene's day: fitted anchor 0.248 · measured 0.53 · worth 1.0–1.7 inches of uncounted rain at the campus 2-yr line</small></p>
 </section>
 
-<section id="watch" class="section reveal">
+<section id="watch" class="section reveal" data-rail="Storm track">
   <p class="eyebrow">Storm track watch</p>
   <h2>Watching the Atlantic and Gulf before it reaches the mountains.</h2>
-  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion.</p>
-  <div class="frame frame-live frame-breakout">
+  <p class="pull">The storm track is not a posture. It is a wake-up call.<small>Tracks, cones and advisories are NOAA / NHC products, shown as issued · FRESHET adds the gate and the readiness floor · a mode changes only how often the system looks — never a threshold, never the WATCH cap</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
+  <p class="section-lede">Live National Hurricane Center guidance for the Cullowhee corridor. When a tropical system's forecast track crosses the corridor gate west of −83.2°, the system raises its readiness floor — days before the first drop of rain. A what-if mode replays Helene, Frances, and Ivan through the same criterion. Four alarms, not one: the corridor (NHC track plus HURDAT2 analogs), the WPC excessive-rainfall outlook, the wetness trend, and the forecast margin to the inches-to-WATCH line.</p>
+  <div class="frame frame-live frame-breakout" data-fallback="fallback/storm_watch.jpg" data-open="storm_watch.html">
     <iframe id="stormWatch" title="NOAH storm track watch — live NHC guidance for the Cullowhee corridor" loading="lazy"></iframe>
   </div>
   <p class="caption"><b>Display mirror</b> of the backend corridor criterion — the authoritative posture floor is computed server-side · data: NOAA/NHC, polled every 15 min · <a href="storm_watch.html" target="_blank" rel="noopener">open the storm watch full screen</a></p>
 </section>
-<section id="now" class="section reveal">
+
+<section id="now" class="section reveal" data-rail="Live map">
   <p class="eyebrow">Current conditions</p>
   <h2>What the creek is doing right now</h2>
-  <p class="section-lede">The live view — the same map the system runs on. Each sub-basin is colored by its status, from normal through watch, warning, and emergency.</p>
-  <div class="frame frame-live frame-breakout">
+  <p class="pull">Six of eight basins have under two hours of lead time. By the time rain is measured on the ground, the headwaters have already delivered it.<small>That is why SKYE exists — and why it can only earn a WATCH</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
+  <p class="section-lede">The live view — the same map the system runs on. Each sub-basin is colored by its status, from normal through watch, warning, and emergency — plus a grey NO DATA state that is deliberately distinct from calm.</p>
+  <div class="frame frame-live frame-breakout" data-fallback="fallback/live.jpg" data-open="live.html">
     <iframe id="liveMap" title="Live Cullowhee Creek watershed status map" loading="lazy" style="display:none"></iframe>
     <div class="map-fallback" id="mapFallback">
       <p>The live watershed map opens in its own window.</p>
@@ -306,83 +689,374 @@
     </div>
   </div>
   <p class="caption">Right now this runs on <b>forecast rainfall and NEXRAD radar</b>. The in-stream sensors deploy over the 2026–27 season; until then, some thresholds stay deliberately cautious.</p>
+
+  <details class="fold" id="basins">
+    <summary>The eight reaches <span>· area · lead time · what the thresholds rest on · who can confirm a rise today</span></summary>
+    <div class="inner tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Reach</th><th>Basin</th><th style="text-align:right">Area mi²</th><th style="text-align:right">Lead (Tc)</th><th>WATCH trips at</th><th>Threshold source</th><th>Can confirm a rise today</th></tr></thead>
+        <tbody>
+          <tr><td>Cox Branch</td><td>CC-COX-097</td><td class="num">0.97</td><td class="num">29 min</td><td>1.5-yr flow (short lead)</td><td>LiDAR-surveyed ladder (QL2 / 3DEP)</td><td class="no">no — no node yet</td></tr>
+          <tr><td>Long Branch</td><td>CC-LB-171</td><td class="num">1.71</td><td class="num">36 min</td><td>1.5-yr flow (short lead)</td><td>LiDAR-surveyed ladder</td><td class="no">no</td></tr>
+          <tr><td>Upper Cullowhee</td><td>CC-UP-503</td><td class="num">5.03</td><td class="num">40 min</td><td>2-yr flow</td><td class="ph">bankfull placeholder — LiDAR ladder non-monotone, rejected</td><td class="no">no</td></tr>
+          <tr><td>Tilley Creek</td><td>CC-TIL-705</td><td class="num">7.05</td><td class="num">62 min</td><td>2-yr flow</td><td>LiDAR-surveyed ladder</td><td class="no">no</td></tr>
+          <tr><td>Mainstem</td><td>CC-MS-1100</td><td class="num">11.0</td><td class="num">~63 min</td><td>2-yr flow</td><td>LiDAR-surveyed ladder</td><td class="no">no</td></tr>
+          <tr><td>Speedwell</td><td>CC-SPD-1830</td><td class="num">18.3</td><td class="num">~62 min</td><td>2-yr flow</td><td>LiDAR-surveyed ladder · NCEM FIMAN 25380 stage</td><td class="yes">yes — the only reach (75-min freshness gate, escalate-only)</td></tr>
+          <tr><td>Campus</td><td>CC-WCU-2260</td><td class="num">22.6</td><td class="num">127 min</td><td>2-yr flow</td><td>surveyed stage 7 / 9 / 11 ft · 11 ft = water in the road, observed</td><td class="no">no — pilot station planned</td></tr>
+          <tr><td>Mouth</td><td>CC-MOUTH-2340</td><td class="num">23.4</td><td class="num">147 min</td><td>2-yr flow</td><td class="ph">no ladder by decision — floods by Tuckasegee backwater</td><td class="no">no</td></tr>
+        </tbody>
+      </table>
+      <p class="tbl-note">Lead time is the basin's time of concentration as published by the live map; two basins differ by 14–17 min between the engine and the registry and will be settled by measured travel time. Under rule one, seven of eight reaches are structurally incapable of WARNING or EMERGENCY today — their skill scores are not low, they are <b>undefined</b>. A stage node at every outlet turns each reach from forecast-only into a reach that can confirm.</p>
+    </div>
+  </details>
+
+  <div class="rules">
+    <span class="k">Rule one</span>
+    <p>Forecast evidence can raise a <em>WATCH</em> and nothing more. <em>WARNING</em> and <em>EMERGENCY</em> require a measured rise.</p>
+    <span class="k">Rule two</span>
+    <p>Absent data renders as <em>absent</em>. If the map is grey, that is a state, not an error — the system shows it rather than hides it.</p>
+  </div>
 </section>
 
-<section id="ground" class="section reveal">
+<section id="ground" class="section reveal" data-rail="Ground layer">
   <p class="eyebrow">TERRA · the ground layer</p>
   <h2>Watching the hillsides the way NOAH watches the creek.</h2>
-  <p class="section-lede">Helene didn't only flood these mountains — it broke them loose. The USGS has mapped more than 2,200 landslides across western North Carolina from that one storm, and they killed 23 people. The worst of them came down Garren Creek in Fairview, Buncombe County, on the morning of September 27, 2024: converging debris flows swept through the community known as Craigtown and killed thirteen people, eleven of them from the Craig family that had lived there for generations. The slopes above Cullowhee Creek carry the same geology. This layer reads them from orbit: ESA's Sentinel-1 radar measures millimetre-scale ground creep across the whole watershed every twelve days, looking for the hillside that starts moving <em>before</em> it fails — then hands its verdict to the same sub-basin roster the flood system runs on.</p>
-  <div class="frame frame-tall frame-breakout">
+  <p class="pull red">2,200 landslides. 23 dead. The slopes above Cullowhee Creek carry the same geology.<small>Weeks-scale, not minutes — this layer finds slow pre-failure creep; it cannot see a debris flow coming mid-storm</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
+  <p class="section-lede">Helene didn't only flood these mountains — it broke them loose. The USGS has mapped more than 2,200 landslides across western North Carolina from that one storm, and they killed 23 people. The worst of them came down Garren Creek in Fairview, Buncombe County, on the morning of September 27, 2024: converging debris flows swept through one community and killed thirteen people, eleven of them from a single family. The slopes above Cullowhee Creek carry the same geology. This layer reads them from orbit: ESA's Sentinel-1 radar measures millimetre-scale ground creep across the whole watershed every twelve days, looking for the hillside that starts moving <em>before</em> it fails — then hands its verdict to the same sub-basin roster the flood system runs on. TERRA is not complete: the trigger for a debris flow is pore pressure in the soil column, and nothing on the ground measures that yet. It becomes a ground layer when the multi-depth soil-moisture probes go in — the Oct 2026 – Jul 2027 campaign.</p>
+  <div class="frame frame-tall frame-breakout" data-fallback="fallback/slope_map.jpg" data-open="slope_map.html">
     <iframe id="slopeMonitor" title="Interactive slope motion map — satellite radar ground-motion for the Cullowhee Creek watershed; click any outlined area for its motion history" loading="lazy"></iframe>
   </div>
   <p class="caption"><b>Click any outlined area</b> for its twelve-month motion history · <b>weeks-scale, not minutes</b> — this layer finds slow pre-failure creep and can never warn of a debris flow mid-storm; that remains SKYE's rainfall thresholds' job · updates with each satellite pass (~12 days) and is cloud-processed, so during an outage its posture is <b>last known</b>, not live · first year of data: slopes broadly quiet; two candidates under watch — Mtn.&nbsp;Lower and Cox&nbsp;Branch · <a href="slope_map.html" target="_blank" rel="noopener">open the map full screen</a> · <a href="slope_monitor.html" target="_blank" rel="noopener">full analysis</a></p>
 </section>
 
-<section id="nisar" class="section reveal">
+<section id="nisar" class="section reveal" data-rail="NISAR">
   <p class="eyebrow">TERRA · NISAR</p>
   <h2>A second radar eye on the hillsides.</h2>
+  <p class="pull">L-band sees through the canopy. None of it is in TERRA yet.<small>Sentinel-1 (C-band) is the operational layer · NISAR imaging this watershed since June 2026 · first interferogram is a week's work</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
   <p class="section-lede"><b>Today's motion map is built from Sentinel-1</b> — twelve months of passes over these slopes, the record TERRA's verdicts rest on. But Sentinel-1 is a C-band radar, and under the Appalachian forest canopy that signal struggles to hold from one pass to the next. NISAR — the NASA–ISRO radar satellite launched in 2025 — carries a longer L-band wavelength that sees through the leaves to the ground beneath, repeats every twelve days, and publishes its data free and open. It has been imaging this watershed since June 2026; <b>none of that data is in TERRA yet.</b> The tracker below shows its passes, and turning them into a second motion map is the next step.</p>
-  <div class="frame frame-tall frame-breakout">
+  <div class="frame frame-tall frame-breakout" data-fallback="fallback/NISAR.jpg" data-open="NISAR.html">
     <iframe id="nisarTracker" title="NISAR over Cullowhee — InSAR pass tracker" loading="lazy"></iframe>
   </div>
   <p class="caption"><b>Pass tracker</b> — the NISAR orbit propagated in the browser, with the next imaging passes over Cullowhee inside the twelve-day cycle: <b>green</b> ascending (northbound), <b>blue</b> descending (southbound). Click a pass to watch the radar swath sweep the watershed · pass times are approximate and drift as the orbital elements age · <a href="NISAR.html" target="_blank" rel="noopener">open the tracker full screen</a></p>
 </section>
 
-<section id="how" class="section reveal">
+<section id="how" class="section reveal" data-rail="3D model">
   <p class="eyebrow">How it works</p>
   <h2>The whole system, in one model</h2>
-  <p class="section-lede">The sensors in the creek, the gateways that carry the data out, the satellites overhead, and the weather that drives it all. Drag to look around; switch between the sensor network, the forecast layer, and the campus alert ladder.</p>
-  <div class="frame frame-tall frame-breakout">
+  <p class="section-lede keep">The sensors in the creek, the gateways that carry the data out, the satellites overhead, and the weather that drives it all. Drag to look around; switch between the sensor network, the forecast layer, and the campus alert ladder.</p>
+  <div class="frame frame-tall frame-breakout" data-fallback="fallback/noah_skye_3d.jpg" data-open="noah_skye_3d.html">
     <iframe id="model3d" title="Interactive 3D model of the NOAH and SKYE system" loading="lazy"></iframe>
   </div>
   <p class="caption">Interactive · the terrain is schematic and sensor positions are indicative — a diagram of how the parts fit, not a survey map.</p>
 </section>
 
-<section id="satellites" class="section reveal">
+<section id="satellites" class="section reveal" data-rail="Three ways out">
   <p class="eyebrow">The satellites overhead</p>
   <h2>From the watershed to the data center — three ways out.</h2>
+  <p class="pull">A ladder failure degrades a warning's reach — never its existence.<small>LoRa → gateway → Starlink · pre-paid cellular · pre-paid geostationary · the gateway evaluates every packet locally, so a local alarm needs zero internet</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
   <p class="section-lede">Sensors in the air, the stream, and the soil send their readings by LoRa radio to the FRESHET gateways. From each gateway the data has three ways out: <b>Starlink</b> is the primary backhaul, <b>cellular</b> the primary backup, and <b>geostationary satellite</b> the secondary backup — the last two on pre-paid service, so they work without anyone renewing a plan mid-storm. Helene took power and cell towers down together for weeks; no single path can be trusted to survive the storm the system is built for.</p>
   <p class="section-lede">Every reading lands in a data center, where it is stored and where a virtual machine runs the FRESHET model — combining the real-time sensor data with internet feeds (forecast rainfall, radar, NHC guidance, soil state) to decide whether a warning should be issued. The tracker below shows the constellations that backhaul rides on, as seen from Cullowhee right now: Starlink and Skylo's geostationary partners. Orbits are computed in your browser from published element sets.</p>
-  <div class="frame frame-tall frame-breakout">
+  <div class="frame frame-tall frame-breakout" data-fallback="fallback/satellite-tracker.jpg" data-open="satellite-tracker.html">
     <iframe id="satTracker" title="Live satellite tracker — Hubble Network, Skylo and Starlink constellations as seen from Cullowhee" loading="lazy"></iframe>
   </div>
   <p class="caption"><b>A picture of the constellations, not a coverage guarantee</b> — real pass windows and message latency come from the gateway once nodes are in the water · positions propagated from TLEs (SGP4) and refreshed in the browser · <a href="satellite-tracker.html" target="_blank" rel="noopener">open the tracker full screen</a></p>
+  <div class="rules">
+    <span class="k">Rule one</span>
+    <p>Forecast evidence can raise a <em>WATCH</em> and nothing more. <em>WARNING</em> and <em>EMERGENCY</em> require a measured rise.<small>The LLM agent that writes each reach's explanation delivers warnings only inside this rule; it cannot raise a posture the rules forbid. More than a third of nodes dark → a human in the loop.</small></p>
+    <span class="k">Rule two</span>
+    <p>Absent data renders as <em>absent</em>.<small>When the whole system goes dark the notifier says “FRESHET is blind — NOT a warning, NOT an all-clear” rather than staying silent.</small></p>
+  </div>
 </section>
 
-<section id="hubble" class="section reveal">
+<section id="hubble" class="section reveal" data-rail="Sensor to satellite">
   <p class="eyebrow">Sensor to satellite</p>
   <h2>Some readings can skip the gateway entirely.</h2>
+  <p class="pull">Twelve days is the wrong path for a rising creek — and the right one for soil moisture.<small>Hubble Network · in development, not deployed · never for stream stage</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
   <p class="section-lede">FRESHET is working with <b>Hubble Network</b>, whose low-orbit satellites listen for sensors directly — the node talks to the satellite with nothing in between. No gateway, no tower, no power line. For now a Hubble satellite passes over Cullowhee about every twelve days and collects whatever the sensor has stored; Hubble is adding satellites every quarter, and each launch shortens that gap.</p>
   <p class="section-lede">A twelve-day pass is no use for a rising creek, where minutes matter — but it is the right path for the things that change slowly and matter enormously: <em>soil moisture</em> above all. How wet the ground already is decides how much of the next storm becomes runoff, and it moves over days, not minutes. Soil probes that report by satellite keep the model fed even if a gateway is gone — and they can sit anywhere in the watershed, not only within radio reach of one.</p>
   <p class="caption"><b>In development</b> — sensor-to-satellite is being built with Hubble, not yet deployed · revisit ~12 days today, shrinking as the fleet grows · suited to soil moisture and battery health; never to stream stage · the Hubble fleet is one of the constellations in the tracker above</p>
 </section>
 
-<section id="why" class="section section-narrow reveal prose">
+<section id="why" class="section section-narrow reveal prose" data-rail="Why">
   <p class="eyebrow">Why</p>
   <h2>The creeks that rise fastest are the ones nobody watches.</h2>
+  <p class="pull cyan">Measure the ground truth, then trust what you measured.<small>Coweeta Hydrologic Laboratory · thirty miles from here · ninety years of gauged basins under the same storms, Helene included — the control dataset</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
   <p>In September 2024, Helene turned quiet Appalachian streams into something unrecognizable. The big rivers everyone watches have gauges and warnings. The small headwater creeks — the ones that go from ankle-deep to over-the-bank in minutes — mostly don't. Cullowhee Creek is one of them.</p>
   <p class="dim">The approach comes out of a habit learned just up the road at the Coweeta Hydrologic Laboratory: <em>measure the ground truth, then trust what you measured.</em> Instruments in the field, checked against reality, carried into a job that's now about warning people in time.</p>
 </section>
 
-<section id="stands" class="section section-narrow reveal prose">
+<section id="stands" class="section section-narrow reveal prose" data-rail="Where it stands">
   <p class="eyebrow">Where it stands</p>
   <h2>Honest about what's proven.</h2>
+  <p class="pull">The system would rather say <em style="color:var(--watch);font-style:normal">watch</em> early than promise more than it can yet prove.<small>SKYE live · TERRA satellite layer live, ground layer waits on the probes · NOAH in build and calibration over the 2026–27 field seasons</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
   <p>The forecast layer is live now. The sensor network is being built and calibrated over the coming field seasons. Until real floods pass real gauges, some thresholds stay cautious on purpose — the system would rather say <em>watch</em> early than promise more than it can yet prove.</p>
-  <p class="dim">FRESHET is developed under an agreement with <em>North Carolina Emergency Management</em>. That partnership connects the project to the state's flood-monitoring network and the people who issue warnings — it does not make this site an official warning source. Official watches and warnings come from the National Weather Service and NCEM.</p>
+  <p class="dim">FRESHET is developed under an executed MOA with <em>North Carolina Emergency Management</em>. That partnership connects the project to the state's flood-monitoring network and the people who issue warnings — it does not make this site an official warning source. Official watches and warnings come from the National Weather Service and NCEM.</p>
+</section>
+
+<!-- ======================= TEAM · PARTNERS · INSTRUMENTS ======================= -->
+<section id="team" class="section reveal" data-rail="Partners &amp; team">
+  <p class="eyebrow">Partners · pilot · team</p>
+  <h2>Who is building it, and against what reference.</h2>
+  <div class="cards">
+    <div class="card">
+      <span class="kicker">NC Emergency Management</span>
+      <h3>Executed MOA · Adopt-a-Gauge</h3>
+      <p>FIMAN gage <b>25380 at Speedwell</b> — the watershed's only measured stage today and the pilot's validation reference. NCGS Helene high-water marks anchor the backtest.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">The Speedwell pilot</span>
+      <h3>First station, beside the state gauge</h3>
+      <p>Streams <b>depth, discharge, temperature, pressure, humidity, rain, soil moisture and wind</b>. Two physically dissimilar level sensors — radar and pressure — because divergence is the only reliable way to tell a log from a flood. A crest-stage gauge at every node.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">FLiTE Scholars · Mechanical Engineering</span>
+      <h3>Low-cost soil-moisture sensor</h3>
+      <p>One FLiTE Scholar and I are building a soil-moisture probe to be <b>at least as accurate</b> as the commercial TEROS-class instrument, validated side by side against it at Speedwell; probes at 5 / 20 / 50 cm, porosity from cores — the largest controllable term in the forecast, worth ±15 curve-number points.</p>
+      <span class="bench">Benchmark: TEROS 12 ≈ $250 · target: below it</span>
+    </div>
+    <div class="card">
+      <span class="kicker">FLiTE Scholars · Mechanical Engineering</span>
+      <h3>Low-cost ADCP + depth sensor</h3>
+      <p>A second FLiTE team is building a low-cost acoustic Doppler current profiler for discharge, paired with a low-cost depth sensor — judged against the reference instruments and FIMAN before anyone calls it better. The discharge, velocity and stage record that <b>NEMO</b> (EnergyTech University Prize 2025, DOE Office of Water Technology regional winner) needs and no agency collects.</p>
+      <span class="bench">Benchmark: used ADCP ≈ $30,000 · target: far below it</span>
+    </div>
+    <div class="card">
+      <span class="kicker">Team · fall 2026</span>
+      <h3>4 ME students · 25 CM students</h3>
+      <p>Three of the ME students are FLiTE Scholars. The twenty-five Construction Management students (CMAA) are the post-storm survey team — high-water marks and crest-stage gauges flagged and shot within days, RTK-tied to NAVD88.</p>
+    </div>
+    <div class="card">
+      <span class="kicker">Campaigns</span>
+      <h3>What is scheduled</h3>
+      <p><b>TERRA soil-probe campaign:</b> Oct 2026 – Jul 2027. <b>Stage nodes:</b> over the 2026–27 season, datum procedure fixed before any post is driven, three reference marks per node. <b>Two-gateway redundancy</b> before next season.</p>
+    </div>
+  </div>
+
+  <div class="figs">
+    <figure><img src="pickering-node.png" alt="Diagram of the soil-moisture sensor node: solar panel, LoRa module with 3.7 V cell in a sealed enclosure, four buried soil-moisture sensors on one run, LoRa link to a gateway" loading="lazy"><figcaption><b>Soil-moisture node</b> — LoRa module, solar, four buried probes on one run · the FLiTE sensor replaces the commercial probe at each depth</figcaption></figure>
+    <figure><img src="adcp-node.png" alt="Diagram of the headwater ADCP node: 12 V solar bus for the instrument, LoRa telemetry on its own cell, bed-mounted upward-looking ADCP measuring velocity profile and depth" loading="lazy"><figcaption><b>Headwater ADCP node</b> — 12 V instrument bus, LoRa telemetry on its own cell, bed-mounted upward-looking profiler · the FLiTE ADCP is built to sit here</figcaption></figure>
+  </div>
+
+  <!-- photo slots: drop the three files into photos/ and the placeholders disappear -->
+  <div class="photos">
+    <figure><img class="ph" src="photos/creek_campus.jpg" alt="Cullowhee Creek at the campus reach" loading="lazy"><div class="slot"><span><b>photos/creek_campus.jpg</b>Cullowhee Creek at the campus reach — ideally with a Helene high-water mark in frame</span></div><figcaption>The campus reach · 7 / 9 / 11 ft ladder · 11 ft is water in the road</figcaption></figure>
+    <figure><img class="ph" src="photos/speedwell_gauge.jpg" alt="The NCEM FIMAN gauge at Speedwell" loading="lazy"><div class="slot"><span><b>photos/speedwell_gauge.jpg</b>The FIMAN gauge at Speedwell, with the pilot site beside it</span></div><figcaption>FIMAN 25380 at Speedwell · the one measured stage in the watershed · the pilot station sits beside it by design</figcaption></figure>
+    <figure><img class="ph" src="photos/node_bench.jpg" alt="A FRESHET sensor node on the bench" loading="lazy"><div class="slot"><span><b>photos/node_bench.jpg</b>A Heltec V4 node or ridge relay on the bench</span></div><figcaption>Sensor node · Heltec LoRa 32 V4 · 30 W solar · 12 V 20 Ah LiFePO4 · 1–2 Wh/day</figcaption></figure>
+  </div>
+</section>
+
+<!-- ======================= OPEN PROBLEMS — THE ASK ======================= -->
+<section id="open" class="section reveal" data-rail="Open problems">
+  <p class="eyebrow">Open problems · where we need collaborators</p>
+  <h2>A shared instrumented watershed, and the papers it will write.</h2>
+  <div class="asks">
+    <div class="ask">
+      <span class="kicker">Electrical</span>
+      <ul>
+        <li><b>LoRa under canopy in steep terrain</b> — validate the pre-registered link predictions (NOAH Part II; an EE co-author slot is open)</li>
+        <li>Relays, antennas, cold-weather charging</li>
+      </ul>
+    </div>
+    <div class="ask me">
+      <span class="kicker">Mechanical</span>
+      <ul>
+        <li><b>Under way:</b> the FLiTE soil-moisture sensor and the FLiTE ADCP / depth team</li>
+        <li>Enclosures that survive debris-laden flow; cantilever and mast design for flood-exposed sites</li>
+        <li><b>ARC / NEMO</b> — hydrokinetic deployment and a moving-hull ADCP (ME co-author slot open)</li>
+      </ul>
+    </div>
+    <div class="ask cs">
+      <span class="kicker">Computer Science · Computer Engineering</span>
+      <ul>
+        <li>Store-and-forward mesh firmware; gateway-local evaluation of versioned thresholds</li>
+        <li>CI verification of warning logic; delay-dominant sensing</li>
+        <li><b>Stage camera</b> — a fixed camera on every node and a model that reads stage off the staff plate: a third independent depth beside radar and pressure</li>
+        <li><b>External heartbeat</b> — a dead-man's switch that cannot live inside the thing it watches; half a day for the right student</li>
+      </ul>
+    </div>
+    <div class="ask civil">
+      <span class="kicker">Civil · Construction Management</span>
+      <ul>
+        <li>An observed-discharge audit of Manning's equation across three orders of drainage area</li>
+        <li>Time of concentration by measurement; curve number against in-basin soil moisture; the datum tie to the NCEM gage</li>
+        <li><b>Post-storm survey team</b> — a standing rapid-response protocol, RTK ties to NAVD88, one deliverable per storm</li>
+        <li><b>Low-flow rating measurements</b> — wading measurements at many flows over one season; unglamorous, essential</li>
+        <li><b>Coweeta as the control</b> — the estimated-versus-measured rainfall comparison against ninety years of gauged basins; a paper on its own</li>
+      </ul>
+    </div>
+    <div class="ask all">
+      <span class="kicker">Cross-cutting · ME + CS + Civil</span>
+      <ul>
+        <li><b>Drone reach survey (conditional on landowner permission)</b> — automated flights over the gauged reaches; large-scale particle image velocimetry on the video for surface velocity and, with the surveyed cross-section, discharge. An independent check on the FLiTE ADCP and the rating curves, and the velocity data NEMO needs. Fair-weather, daylight, FAA Part 107.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="offer">On offer: <em>a shared instrumented watershed</em>, and co-authorship on manuscripts in motion and manuscripts to come. Every reading, forecast and posture is kept raw and timestamped, so a paper written in 2032 can cite the exact 2027 record.</p>
+</section>
+
+<!-- ======================= INVITATION ======================= -->
+<section id="invite" class="section reveal" data-rail="Come">
+  <div class="invite">
+    <div>
+      <p class="eyebrow">The invitation</p>
+      <p class="big">Wednesdays, <em>5:00 pm</em>.<br>Belk 263.<br>Come.</p>
+      <p class="where">Code, data and the same limits you heard today: <a href="https://github.com/mickeybhenson-commits/Cullowhee-Weather" target="_blank" rel="noopener">github.com/mickeybhenson-commits/Cullowhee-Weather</a><br>This page: <a href="https://mickeybhenson-commits.github.io/Cullowhee-Weather/freshet.html">mickeybhenson-commits.github.io/Cullowhee-Weather/freshet.html</a></p>
+      <p class="last">Every bit of Cullowhee Creek and tributaries need to be protected. No lost lives.</p>
+    </div>
+    <div class="qr" aria-label="QR code for the GitHub repository">
+      <svg viewBox="0 0 140 140" role="img" aria-label="QR code linking to the Cullowhee-Weather repository on GitHub"><path transform="scale(4)" stroke="#e9f1ef" d="M1 1.5h7m3 0h1m3 0h1m1 0h1m1 0h3m2 0h1m2 0h7m-33 1h1m5 0h1m3 0h1m1 0h1m2 0h1m4 0h3m3 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m1 0h5m1 0h1m1 0h1m2 0h1m2 0h3m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h1m1 0h1m3 0h2m1 0h1m2 0h1m3 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h2m1 0h1m3 0h1m1 0h2m4 0h2m1 0h3m1 0h1m-33 1h1m5 0h1m2 0h2m1 0h3m2 0h1m2 0h1m3 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-21 1h1m1 0h1m1 0h3m1 0h1m-22 1h1m2 0h7m1 0h1m1 0h1m1 0h2m2 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m-31 1h5m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h2m2 0h2m1 0h2m1 0h1m2 0h1m-33 1h1m4 0h1m4 0h1m2 0h4m1 0h2m2 0h1m1 0h1m1 0h4m-30 1h1m1 0h1m2 0h1m1 0h2m3 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-28 1h1m1 0h3m1 0h4m1 0h1m4 0h2m3 0h1m1 0h1m2 0h1m-31 1h1m3 0h1m1 0h1m1 0h1m1 0h1m2 0h1m2 0h3m2 0h2m1 0h1m2 0h1m-32 1h2m1 0h5m1 0h3m2 0h3m1 0h1m1 0h2m4 0h2m2 0h1m-32 1h4m3 0h2m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m2 0h2m1 0h2m1 0h1m-30 1h1m1 0h1m2 0h1m2 0h2m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h4m-33 1h1m1 0h1m1 0h2m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m-27 1h1m1 0h2m3 0h1m1 0h1m1 0h1m2 0h4m1 0h1m1 0h1m1 0h1m1 0h1m-32 1h1m1 0h1m2 0h1m2 0h1m1 0h2m1 0h1m1 0h2m2 0h3m2 0h1m2 0h1m1 0h1m-33 1h2m1 0h2m1 0h2m1 0h3m1 0h1m1 0h1m1 0h1m1 0h1m2 0h1m1 0h1m2 0h2m-30 1h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m3 0h2m1 0h1m2 0h1m1 0h1m-30 1h1m1 0h1m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m2 0h2m1 0h1m1 0h1m-31 1h1m3 0h1m1 0h1m2 0h2m2 0h2m3 0h2m1 0h1m1 0h4m-32 1h1m1 0h1m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m2 0h5m1 0h1m-24 1h1m1 0h1m1 0h1m2 0h3m3 0h1m3 0h1m1 0h1m-31 1h7m1 0h1m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m1 0h1m1 0h1m-32 1h1m5 0h1m1 0h1m1 0h4m1 0h1m1 0h1m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m-32 1h1m1 0h3m1 0h1m1 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h5m1 0h1m-31 1h1m1 0h3m1 0h1m1 0h1m1 0h3m1 0h2m3 0h5m1 0h1m1 0h2m-31 1h1m1 0h3m1 0h1m1 0h1m2 0h2m1 0h1m1 0h2m1 0h1m1 0h1m1 0h1m2 0h3m-31 1h1m5 0h1m2 0h1m3 0h1m2 0h1m1 0h1m1 0h3m1 0h1m3 0h1m1 0h1m-31 1h7m2 0h1m1 0h2m1 0h1m3 0h4m2 0h1m2 0h2m1 0h1"/></svg>
+      <span>scan for the repo</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Q&A APPENDIX ======================= -->
+<section id="appendix" class="section reveal" data-rail="Appendix">
+  <p class="eyebrow">Appendix · for questions</p>
+  <h2>The evidence behind the claims.</h2>
+  <details class="fold" open>
+    <summary>Hardware, backhaul, calibration, and the lessons of the last networks <span>· open during questions</span></summary>
+    <div class="inner appx" style="padding-top:8px">
+      <div>
+        <h3>Sensor node</h3>
+        <ul>
+          <li><b>Heltec LoRa 32 V4</b> — ESP32-S3 + SX1262, 27 dBm</li>
+          <li>30 W solar · 12 V 20 Ah LiFePO4 · MPPT with low-voltage and cold-charge cutoffs</li>
+          <li>~1–2 Wh/day → months of autonomy under post-hurricane overcast; sized for Helene-length outages</li>
+          <li>Store-and-forward on every node: readings hit flash before transmission and backfill on reconnect — the packets you lose in a storm are the ones with the peak</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Mesh</h3>
+        <ul>
+          <li>915 MHz LoRa, SF7–12, 0–3 hops; stream nodes are leaf clients</li>
+          <li>2–4 solar ridge relays above the canopy</li>
+          <li>Every link screened on a 30 m DEM, RSSI band and delivery class pre-registered before deployment</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Sensors</h3>
+        <ul>
+          <li>Stage: <b>80 GHz radar, ±5 mm</b>, on a surveyed datum; inlet + outlet per sub-basin (16 nodes) — plus pressure, so divergence flags a log</li>
+          <li>Discharge: stage through surveyed lidar cross-sections and rating curves</li>
+          <li>Rain: tipping bucket, 0.01 in, at basin centroids</li>
+          <li>Masthead anemometer-vane with T/RH/P; reference ET on-node (Penman–Monteith)</li>
+          <li>Soil moisture at 5 / 20 / 50 cm, porosity from cores; crest-stage gauge at every node; ESP32-CAM at Speedwell to photo-verify peaks</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Gateways &amp; backhaul</h3>
+        <ul>
+          <li>Sites: Speedwell (beside FIMAN 25380), Jackson County Airport (K24A), Belk Building, Double Springs ridge at 1,220 m; west-rim gateway planned</li>
+          <li>Ladder: <b>Starlink</b> → pre-paid cellular LTE-M / NB-IoT → pre-paid geosynchronous satellite (always visible, ~50-byte packets, rationed to stage exceedances in storm mode)</li>
+          <li>The gateway holds the versioned threshold ladder and evaluates every packet locally — a local alarm needs zero internet</li>
+          <li>Fran took the IFLOWS radio link down “at the most crucial time”; Helene took power and cell down together for weeks</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Cloud &amp; engine</h3>
+        <ul>
+          <li>Firestore as the single source of truth</li>
+          <li>Rainfall-runoff routing engine in Python (server) and JavaScript (browser), validated on Helene marks, cross-checked in CI — 7,040 evaluations, zero disagreements, monotonic</li>
+          <li>Qwen LLM agent runs over the store each cycle: reconciles stage against ladders, QPF/QPE against measured rain, wetness against TERRA, writes the per-reach explanation — inside the two rules; >⅓ nodes dark → human in the loop</li>
+          <li>NSSL FLASH as the independent cross-check — radar-driven, an hour behind, and these mountains sit in a known radar gap</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Helene calibration</h3>
+        <ul>
+          <li>Five NC Geodetic Survey high-water marks (±0.05 ft) → campus peak ~2,274 cfs, ~8.4 ft; Speedwell measured 8.86 ft</li>
+          <li>Two-point power law fitted to USGS StreamStats 10- and 100-yr flows; known weakness: fitted on design storms, applied to real ones (stated in the README)</li>
+          <li>Wetness: fitted anchor 0.248 vs measured 0.53 on the day — 1.0–1.7 in of uncounted rain at the campus 2-yr line</li>
+          <li>Predecessor rain Sept 25–26 saturated the escarpment counties (⅓–½ of their totals); Cullowhee, farther west, kept its storage — Busick 30.78 in, Mount Mitchell 24.20, Asheville airport 13.98</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Thresholds</h3>
+        <ul>
+          <li>Campus: surveyed 7 / 9 / 11 ft; 11 ft = water in the road, observed</li>
+          <li>Five reaches: LiDAR-surveyed ladders (NC QL2 via USGS 3DEP) that reproduce from the cut to the cent</li>
+          <li>Upper Cullowhee: bankfull placeholder — its LiDAR ladder came out non-monotone and was correctly rejected</li>
+          <li>Mouth: no ladder by decision — floods by backwater from the Tuckasegee</li>
+          <li>Cox and Long Branch trip WATCH at 1.5-yr flow because of their 29- and 36-minute leads</li>
+        </ul>
+      </div>
+      <div>
+        <h3>False alarms &amp; maintenance</h3>
+        <ul>
+          <li>Under- and over-warning are not symmetric: a false alarm costs credibility, a missed warning costs a life — the system defaults toward warning and says so</li>
+          <li>Reference: <b>FloodNet</b>, 87 nodes, three years — false positives cut 76% with zero missed floods using a filter cascade</li>
+          <li><b>IFLOWS</b>, the Appalachian flood network that already existed, decayed to nothing because nobody funded maintenance — the plan budgets site visits, a spare site on the shelf, and a named local custodian per site</li>
+        </ul>
+      </div>
+      <div>
+        <h3>The corridor</h3>
+        <ul>
+          <li>Gate: NHC forecast track west of −83.2° between 33° and 36.5° N at tropical-storm strength; NONE → ANALOG → ELEVATED (72 h) → WATCH_PENDING (48 h)</li>
+          <li>HURDAT2, 30 storms within 150 km: gate crossing to closest approach 0–42 h, median 18 h; Helene 6 h</li>
+          <li>1916 (Altapass, 22 in in a day) · Frances then Ivan nine days later, 2004 (Peeks Creek, five dead) · Fred, 2021 (Cruso, six dead) · Helene, 2024 — same corridor, two track families; a crossing inside 14 days raises the sequence flag</li>
+        </ul>
+      </div>
+    </div>
+  </details>
 </section>
 
 <footer class="foot">
-  <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies</p>
-  <p><a href="rain_to_trip.html">How much rain would it take</a> &nbsp;·&nbsp; <a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="flash.html">FLASH cross-check</a> &nbsp;·&nbsp; <a href="slope_monitor.html">Slope monitor</a> &nbsp;·&nbsp; <a href="NISAR.html">NISAR passes</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="satellite-tracker.html">Satellite tracker</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
+  <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies · <a href="https://github.com/mickeybhenson-commits/Cullowhee-Weather" target="_blank" rel="noopener">GitHub</a></p>
+  <p><a href="rain_to_trip.html">How much rain would it take</a> &nbsp;·&nbsp; <a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="flash.html">FLASH cross-check</a> &nbsp;·&nbsp; <a href="slope_monitor.html">Slope monitor</a> &nbsp;·&nbsp; <a href="NISAR.html">NISAR passes</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="satellite-tracker.html">Satellite tracker</a> &nbsp;·&nbsp; <a href="?talk=1" id="talkLink">Presentation mode</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
 </footer>
+
+<!-- keyboard help -->
+<div id="help" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+  <div class="box">
+    <h3>Keys</h3>
+    <table>
+      <tr><td><kbd>→</kbd><kbd>J</kbd></td><td>next section (arrows only in talk mode)</td></tr>
+      <tr><td><kbd>←</kbd><kbd>K</kbd></td><td>previous section</td></tr>
+      <tr><td><kbd>Home</kbd><kbd>End</kbd></td><td>title card · appendix</td></tr>
+      <tr><td><kbd>T</kbd></td><td>talk mode on / off — wider column, larger type, panels fill the screen, sections snap</td></tr>
+      <tr><td><kbd>P</kbd></td><td>show / hide the long text (talk mode folds it behind the pull-quotes)</td></tr>
+      <tr><td><kbd>F</kbd></td><td>full-screen the panel in the current section · <kbd>Esc</kbd> to leave</td></tr>
+      <tr><td><kbd>C</kbd></td><td>swap the current panel for its last capture (if the network drops) · again to restore</td></tr>
+      <tr><td><kbd>N</kbd></td><td>pin the section-rail labels</td></tr>
+      <tr><td><kbd>?</kbd></td><td>this card</td></tr>
+    </table>
+    <p>If keys stop responding, the focus is inside an embedded panel — click the dark margin of the page once. Open with <b>?talk=1</b> to start in talk mode; add <b>&amp;text=1</b> to start with the text shown.</p>
+  </div>
+</div>
 
 <script>
   document.documentElement.classList.add('js');
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var root = document.documentElement;
+  var params = new URLSearchParams(location.search);
+
+  // ---- talk mode: ?talk=1 or T ----
+  var TALK = params.get('talk') === '1' || params.get('talk') === 'true';
+  if(TALK){ root.classList.add('talk'); }
+  if(params.get('text') === '1'){ root.classList.add('text'); }
+  function setTalk(on){
+    root.classList.toggle('talk', on);
+    try{
+      var u = new URL(location.href);
+      if(on){ u.searchParams.set('talk','1'); } else { u.searchParams.delete('talk'); u.searchParams.delete('text'); }
+      history.replaceState(null,'',u);
+    }catch(e){}
+    if(on){ document.querySelectorAll('.reveal').forEach(function(el){el.classList.add('in');}); eagerFrames(); }
+  }
+  document.querySelectorAll('[data-text-toggle]').forEach(function(b){
+    b.addEventListener('click', function(){ root.classList.toggle('text'); });
+  });
 
   // ---- scroll reveal ----
   var reveals = document.querySelectorAll('.reveal');
-  if(reduce || !('IntersectionObserver' in window)){
+  if(TALK || reduce || !('IntersectionObserver' in window)){
     reveals.forEach(function(el){el.classList.add('in');});
   } else {
     var io = new IntersectionObserver(function(entries){
@@ -396,6 +1070,10 @@
   // stamp to the URL forces the latest committed copy every page load.
   var CACHE_BUST = 'v=' + Date.now();
   function bust(url){ return url + (url.indexOf('?') < 0 ? '?' : '&') + CACHE_BUST; }
+
+  // In talk mode every panel fetches on load, so no mid-talk scroll shows a blank frame.
+  function eagerFrames(){ document.querySelectorAll('.frame iframe').forEach(function(f){ f.loading = 'eager'; }); }
+  if(TALK){ eagerFrames(); }
 
   // ---- live map embed ----
   // Paste the address of your live watershed map between the quotes to embed it here.
@@ -420,34 +1098,121 @@
     }
   })();
 
-  // ---- 3D model embed (same cache-busting) ----
-  (function(){
-    var m = document.getElementById('model3d');
-    if(m){ m.src = bust('noah_skye_3d.html'); }
-  })();
+  // ---- the other embeds (same cache-busting) ----
+  [['model3d','noah_skye_3d.html'],['stormWatch','storm_watch.html'],['nisarTracker','NISAR.html'],
+   ['slopeMonitor','slope_map.html'],['satTracker','satellite-tracker.html']].forEach(function(p){
+    var el = document.getElementById(p[0]); if(el){ el.src = bust(p[1]); }
+  });
 
-  // ---- storm track watch embed (same cache-busting) ----
-  (function(){
-    var w = document.getElementById('stormWatch');
-    if(w){ w.src = bust('storm_watch.html'); }
-  })();
+  // ---- frame tools: expand · last capture · open — and an offline fallback ----
+  // Each .frame carries data-fallback (a still of the panel) and data-open (its page).
+  // If the iframe has not fired `load` within FALLBACK_MS, or fires `error`, the still
+  // is shown with an "offline" tag; the C key or the capture button toggles it by hand.
+  var FALLBACK_MS = 25000;
+  document.querySelectorAll('.frame[data-fallback]').forEach(function(fr){
+    var iframe = fr.querySelector('iframe');
+    var fb = document.createElement('div'); fb.className = 'frame-fallback';
+    var img = document.createElement('img'); img.alt = 'Last capture of this panel'; img.loading = 'lazy';
+    img.src = fr.getAttribute('data-fallback');
+    var tag = document.createElement('span'); tag.className = 'tag'; tag.textContent = 'last capture · panel offline';
+    fb.appendChild(img); fb.appendChild(tag); fr.appendChild(fb);
 
-  // ---- NISAR pass tracker embed (same cache-busting) ----
-  (function(){
-    var n = document.getElementById('nisarTracker');
-    if(n){ n.src = bust('NISAR.html'); }
-  })();
+    var tools = document.createElement('div'); tools.className = 'frame-tools';
+    var bx = document.createElement('button'); bx.type='button'; bx.textContent = '⛶ expand'; bx.title = 'Full screen (F)';
+    var bc = document.createElement('button'); bc.type='button'; bc.textContent = '▣ capture'; bc.title = 'Show the last capture instead of the live panel (C)';
+    var bo = document.createElement('a'); bo.textContent = '↗ open'; bo.href = fr.getAttribute('data-open') || '#'; bo.target = '_blank'; bo.rel = 'noopener';
+    tools.appendChild(bx); tools.appendChild(bc); tools.appendChild(bo); fr.appendChild(tools);
 
-  // ---- slope motion map embed (same cache-busting) ----
-  (function(){
-    var s = document.getElementById('slopeMonitor');
-    if(s){ s.src = bust('slope_map.html'); }
-  })();
-  // ---- satellite tracker embed (same cache-busting) ----
-  (function(){
-    var t = document.getElementById('satTracker');
-    if(t){ t.src = bust('satellite-tracker.html'); }
-  })();
+    bx.addEventListener('click', function(){ toggleFull(fr); });
+    bc.addEventListener('click', function(){ fr.classList.toggle('offline'); fr.dataset.manual = '1'; });
+    fr._loaded = false;
+    if(iframe){
+      iframe.addEventListener('load', function(){ fr._loaded = true; if(!fr.dataset.manual){ fr.classList.remove('offline'); } });
+      iframe.addEventListener('error', function(){ if(!fr.dataset.manual){ fr.classList.add('offline'); } });
+      var arm = function(){
+        setTimeout(function(){ if(!fr._loaded && !fr.dataset.manual && iframe.src){ fr.classList.add('offline'); } }, FALLBACK_MS);
+      };
+      if(iframe.loading === 'eager' || TALK){ arm(); }
+      else if('IntersectionObserver' in window){
+        var o = new IntersectionObserver(function(en){ en.forEach(function(e){ if(e.isIntersecting){ arm(); o.disconnect(); } }); },{threshold:0.01});
+        o.observe(fr);
+      } else { arm(); }
+    }
+  });
+  function toggleFull(fr){
+    if(document.fullscreenElement){ document.exitFullscreen(); return; }
+    if(fr && fr.requestFullscreen){ fr.requestFullscreen(); }
+  }
+
+  // ---- section rail: progress + jump ----
+  var stops = Array.prototype.slice.call(document.querySelectorAll('[data-rail]'));
+  var railList = document.getElementById('railList');
+  stops.forEach(function(s){
+    var li = document.createElement('li');
+    var a = document.createElement('a'); a.href = '#' + s.id; a.innerHTML = '<i></i><span></span>';
+    a.querySelector('span').textContent = s.getAttribute('data-rail');
+    li.appendChild(a); railList.appendChild(li);
+    s._rail = li;
+  });
+  if(!document.querySelector('header.hero').id){ document.querySelector('header.hero').id = 'hero'; }
+  function visibleStops(){ return stops.filter(function(s){ return s.offsetParent !== null; }); }
+  function currentIndex(){
+    var vs = visibleStops(), y = window.scrollY + 44 + 8, idx = 0;
+    for(var i=0;i<vs.length;i++){ if(vs[i].offsetTop <= y + 4){ idx = i; } }
+    return idx;
+  }
+  function paintRail(){
+    var vs = visibleStops(), cur = vs[currentIndex()];
+    stops.forEach(function(s){ s._rail.style.display = (s.offsetParent === null) ? 'none' : ''; s._rail.classList.toggle('on', s === cur); });
+  }
+  window.addEventListener('scroll', paintRail, {passive:true});
+  window.addEventListener('resize', paintRail);
+  paintRail();
+
+  function go(delta){
+    var vs = visibleStops(), i = currentIndex() + delta;
+    i = Math.max(0, Math.min(vs.length - 1, i));
+    var top = vs[i].offsetTop - 44;
+    window.scrollTo({top: top, behavior: reduce ? 'auto' : 'smooth'});
+  }
+  function currentFrame(){
+    var vs = visibleStops(), s = vs[currentIndex()];
+    return s ? s.querySelector('.frame') : null;
+  }
+
+  // ---- keys ----
+  var help = document.getElementById('help');
+  help.addEventListener('click', function(e){ if(e.target === help){ help.classList.remove('open'); } });
+  document.addEventListener('keydown', function(e){
+    var t = e.target, tag = (t && t.tagName || '').toLowerCase();
+    if(tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    var talk = root.classList.contains('talk');
+    switch(e.key){
+      case 'j': case 'J': go(1); e.preventDefault(); break;
+      case 'k': case 'K': go(-1); e.preventDefault(); break;
+      case 'ArrowRight': case 'PageDown': if(talk){ go(1); e.preventDefault(); } break;
+      case 'ArrowLeft': case 'PageUp': if(talk){ go(-1); e.preventDefault(); } break;
+      case 'ArrowDown': if(talk){ go(1); e.preventDefault(); } break;
+      case 'ArrowUp': if(talk){ go(-1); e.preventDefault(); } break;
+      case 'Home': if(talk){ window.scrollTo({top:0}); e.preventDefault(); } break;
+      case 'End': if(talk){ var ap = document.getElementById('appendix'); window.scrollTo({top: ap.offsetTop - 44}); e.preventDefault(); } break;
+      case 't': case 'T': setTalk(!talk); paintRail(); break;
+      case 'p': case 'P': root.classList.toggle('text'); break;
+      case 'n': case 'N': root.classList.toggle('rail-labels'); break;
+      case 'f': case 'F': var fr = currentFrame(); if(fr){ toggleFull(fr); } break;
+      case 'c': case 'C': var fc = currentFrame(); if(fc && fc.hasAttribute('data-fallback')){ fc.classList.toggle('offline'); fc.dataset.manual = '1'; } break;
+      case '?': help.classList.toggle('open'); break;
+      case 'Escape': help.classList.remove('open'); break;
+    }
+  });
+
+  // ---- photo slots: show the styled placeholder until the file exists ----
+  document.querySelectorAll('.photos img.ph').forEach(function(im){
+    var fig = im.closest('figure');
+    im.addEventListener('error', function(){ fig.classList.add('missing'); });
+    if(im.complete && im.naturalWidth === 0){ fig.classList.add('missing'); }
+  });
 </script>
 </body>
 </html>

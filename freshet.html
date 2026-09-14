@@ -229,6 +229,30 @@
   table.tbl .ph{color:var(--watch)}
   .tbl-note{font-family:var(--mono);font-size:13px;color:var(--faint);margin:12px 0 0;line-height:1.6}
 
+
+  /* ---------- data-path diagram ---------- */
+  .dp-wrap{overflow-x:auto;margin-top:8px;border-radius:14px}
+  .dp{display:block;width:100%;min-width:900px;height:auto;font-family:var(--disp)}
+  .dp-page{fill:var(--abyss);stroke:var(--line);stroke-width:2}
+  .dp-box{fill:var(--shoal2);stroke:var(--line);stroke-width:2}
+  .dp-box.dp-teal{stroke:var(--current);stroke-width:2.5}
+  .dp-band{fill:rgba(255,255,255,.012);stroke:var(--line);stroke-width:2}
+  .dp-hull{fill:none;stroke:var(--line);stroke-width:2;stroke-dasharray:10 8}
+  .dp-rung{fill:var(--abyss);stroke:var(--line);stroke-width:1.5}
+  .dp-edge{fill:none;stroke:var(--faint);stroke-width:2.5}
+  .dp-edge.dp-dash{stroke-dasharray:10 8}
+  .dp-box.dp-dash{stroke-dasharray:10 8}
+  .dp-dot{fill:var(--faint)}
+  .dp-title{font-size:26px;font-weight:500;fill:var(--mist)}
+  .dp-rung-t{font-size:22px;font-weight:500;fill:var(--mist)}
+  .dp-body{font-size:19px;fill:var(--slate)}
+  .dp-note{font-size:20px;fill:var(--faint)}
+  .dp-label{font-family:var(--mono);font-size:17px;fill:var(--faint)}
+  .dp-num{font-family:var(--mono);font-size:18px}
+  .dp-eyebrow{font-family:var(--mono);font-size:19px;letter-spacing:.14em;fill:var(--faint)}
+  .dp-cyan{fill:var(--current)}
+  .dp-hint{display:none;font-family:var(--mono);font-size:13px;color:var(--faint);margin:8px 0 0}
+  @media (max-width:1000px){.dp-hint{display:block}}
   /* ---------- prose ---------- */
   .prose p{max-width:60ch;color:var(--mist);margin:0 0 22px}
   .prose p.dim{color:var(--slate)}
@@ -320,7 +344,7 @@
   .foot a:hover{color:var(--current);border-color:var(--current)}
 
   /* ---------- section rail (progress + jump) ---------- */
-  #rail{position:fixed;left:14px;top:50%;transform:translateY(-50%);z-index:1500;display:none;
+  #rail{position:fixed;left:22px;top:50%;transform:translateY(-50%);z-index:1500;display:none;
     font-family:var(--mono);font-size:12px;letter-spacing:.04em;user-select:none}
   #rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
   #rail li a{display:flex;align-items:center;gap:10px;color:var(--faint);text-decoration:none;line-height:1;padding:2px 0}
@@ -485,7 +509,7 @@
   <p class="sub">A sensor-to-warning flood and landslide intelligence system — starting with Cullowhee Creek, growing to Jackson County and Western North Carolina.</p>
   <p class="meta">
     Friday, September 18, 2026 · 11:15 AM – 12:15 PM · Belk 266A · <a href="https://wcu.zoom.us/j/4859066458" target="_blank" rel="noopener">Zoom 485 906 6458</a><br>
-    <span class="who">Dr. Mickey B. Henson, Eng.D., CEng · Department of Civil Engineering and Construction · Nautilus Technologies</span>
+    <span class="who">Dr. Mickey B. Henson, Eng.D., CEng · Department of Civil Engineering and Construction · Western Carolina University</span>
   </p>
   <ol class="agenda">
     <li><a href="#top">The creek, the word, the three layers</a><span class="t">4 min</span></li>
@@ -752,6 +776,187 @@
   <p class="caption">Interactive · the terrain is schematic and sensor positions are indicative — a diagram of how the parts fit, not a survey map.</p>
 </section>
 
+<section id="datapaths" class="section reveal" data-rail="Data path">
+  <p class="eyebrow">What happens to a reading</p>
+  <h2>Three inputs, three cadences, one data center.</h2>
+  <p class="pull">Teal marks the gateway — the only place a reading is evaluated before it leaves the watershed.<small>Solid = the operational path · dashed = off the clock · the slow loop never touches the warning path</small></p>
+  <button class="textbtn" type="button" data-text-toggle aria-label="Show or hide the section text"></button>
+  <p class="section-lede">The warning path is one chain: sensors → LoRa → the FRESHET gateway → the Blues module → Starlink, then cellular, then Skylo GEO, in that order → Firestore. The federal and state feeds never touch a gateway; they are captured as issued, straight into the same store. The soil-moisture campaign reports direct to orbit through Hubble Network on a twelve-day revisit — validation for the ground layer, never a warning path.</p>
+  <p class="section-lede">Firestore forks: <b>now</b> — the virtual machine reads it, runs the model and the Qwen agent inside the two rules, and decides; <b>later</b> — it mirrors once to the corpus — the permanent record of forecast ⇄ observed pairs that the agencies discard after four weeks. What is learned from the corpus comes back only as a frozen, versioned parameter set that runs in shadow through real storms first, and a person flips it on — exactly like a threshold ladder.</p>
+<div class="dp-wrap">
+<svg class="dp" viewBox="0 0 2000 1552" role="img" aria-label="What happens to a reading: sensors send by LoRa to the FRESHET gateway, which evaluates every packet and disseminates through the Blues module over Starlink, cellular or Skylo GEO into Firestore in the data center; federal and state feeds (NOAA, NWS, NWM, NHC, USGS, NASA) go straight to Firestore with no gateway; the soil-moisture node reports direct to orbit through Hubble Network on a ~12-day revisit, for validation only. Firestore feeds the virtual machine, which runs the FRESHET model and the Qwen agent inside the two rules and decides warnings; Firestore also mirrors once to the corpus, the permanent record of forecast and observed pairs, with raw artifacts and provenance in an archive. A slow loop, months not minutes, fits parameter sets offline from the corpus, shadows them beside the active set, and a person promotes them.">
+  <defs>
+    <marker id="dpArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--faint)"/></marker>
+    <marker id="dpArrowD" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--faint)"/></marker>
+  </defs>
+  <rect x="2" y="2" width="1996" height="1548" rx="18" class="dp-page"/>
+
+  <!-- header -->
+  <text x="86" y="116" class="dp-eyebrow dp-cyan">WHAT HAPPENS TO A READING</text>
+  <text x="86" y="158" class="dp-note">Three inputs, three cadences. Teal marks the gateway — the only</text>
+  <text x="86" y="184" class="dp-note">place a reading is evaluated before it leaves the watershed.</text>
+
+  <!-- federal & state feeds -->
+  <rect x="1386" y="66" width="434" height="118" rx="12" class="dp-box"/>
+  <text x="1603" y="109" class="dp-title" text-anchor="middle">Federal &amp; state feeds</text>
+  <text x="1603" y="141" class="dp-body" text-anchor="middle">NOAA · NWS · NWM · NHC · USGS · NASA</text>
+  <text x="1603" y="169" class="dp-body" text-anchor="middle">captured as issued</text>
+  <line x1="1603" y1="186" x2="1603" y2="284" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="1620" y="221" class="dp-label">direct — no gateway</text>
+
+  <!-- data center hull -->
+  <rect x="1276" y="236" width="652" height="788" rx="14" class="dp-hull"/>
+  <text x="1302" y="268" class="dp-eyebrow">DATA CENTER</text>
+
+  <!-- storm band -->
+  <rect x="56" y="246" width="1176" height="372" rx="14" class="dp-band"/>
+  <text x="86" y="292" class="dp-eyebrow dp-cyan">STORM CADENCE — THE WARNING PATH</text>
+
+  <rect x="90" y="332" width="258" height="164" rx="12" class="dp-box"/>
+  <text x="219" y="384" class="dp-title" text-anchor="middle">Sensors</text>
+  <text x="219" y="418" class="dp-body" text-anchor="middle">stage · discharge · rain</text>
+  <text x="219" y="446" class="dp-body" text-anchor="middle">wind · humidity</text>
+  <text x="219" y="474" class="dp-body" text-anchor="middle">soil moisture</text>
+
+  <line x1="350" y1="414" x2="484" y2="414" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="413" y="398" class="dp-label" text-anchor="middle">LoRa 915 MHz</text>
+  <text x="413" y="444" class="dp-label" text-anchor="middle">0–3 hops</text>
+
+  <rect x="488" y="312" width="324" height="204" rx="12" class="dp-box dp-teal"/>
+  <text x="650" y="362" class="dp-title" text-anchor="middle">FRESHET gateway</text>
+  <text x="650" y="398" class="dp-body" text-anchor="middle">holds the versioned</text>
+  <text x="650" y="425" class="dp-body" text-anchor="middle">threshold ladder</text>
+  <text x="650" y="462" class="dp-body" text-anchor="middle">evaluates every packet</text>
+  <text x="650" y="489" class="dp-body" text-anchor="middle">on arrival</text>
+
+  <line x1="814" y1="414" x2="934" y2="414" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="866" y="398" class="dp-label" text-anchor="middle">dissemination</text>
+
+  <rect x="938" y="272" width="280" height="302" rx="12" class="dp-box"/>
+  <text x="1078" y="313" class="dp-title" text-anchor="middle">Blues module</text>
+  <text x="1078" y="339" class="dp-body" text-anchor="middle">three ways out, in order</text>
+  <rect x="956" y="358" width="244" height="58" rx="8" class="dp-rung"/>
+  <text x="984" y="394" class="dp-num dp-cyan">1</text>
+  <text x="1010" y="386" class="dp-rung-t">Starlink</text>
+  <text x="1010" y="409" class="dp-body">primary</text>
+  <rect x="956" y="428" width="244" height="58" rx="8" class="dp-rung"/>
+  <text x="984" y="464" class="dp-num dp-cyan">2</text>
+  <text x="1010" y="456" class="dp-rung-t">Cellular</text>
+  <text x="1010" y="479" class="dp-body">first fallback</text>
+  <rect x="956" y="498" width="244" height="58" rx="8" class="dp-rung"/>
+  <text x="984" y="534" class="dp-num dp-cyan">3</text>
+  <text x="1010" y="526" class="dp-rung-t">Skylo GEO</text>
+  <text x="1010" y="549" class="dp-body">second fallback</text>
+
+  <!-- Blues + Hubble join → Firestore -->
+  <polyline points="1218,414 1254,414 1254,362 1316,362" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <circle cx="1254" cy="414" r="5" class="dp-dot"/>
+
+  <!-- 12-day band -->
+  <rect x="56" y="654" width="1176" height="240" rx="14" class="dp-band"/>
+  <text x="86" y="700" class="dp-eyebrow">~12-DAY REVISIT — VALIDATION, NOT A WARNING PATH</text>
+  <rect x="90" y="720" width="258" height="126" rx="12" class="dp-box"/>
+  <text x="219" y="769" class="dp-title" text-anchor="middle">Soil-moisture node</text>
+  <text x="219" y="803" class="dp-body" text-anchor="middle">Nordic module</text>
+  <text x="219" y="831" class="dp-body" text-anchor="middle">no LoRa, no gateway</text>
+  <line x1="350" y1="784" x2="484" y2="784" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="413" y="766" class="dp-label" text-anchor="middle">direct to orbit</text>
+  <rect x="488" y="720" width="324" height="126" rx="12" class="dp-box"/>
+  <text x="650" y="769" class="dp-title" text-anchor="middle">Hubble Network</text>
+  <text x="650" y="803" class="dp-body" text-anchor="middle">LEO · the satellite listens</text>
+  <text x="650" y="831" class="dp-body" text-anchor="middle">to the node directly</text>
+  <polyline points="814,784 1254,784 1254,418" class="dp-edge"/>
+
+  <!-- Firestore -->
+  <rect x="1320" y="290" width="566" height="144" rx="12" class="dp-box"/>
+  <text x="1603" y="338" class="dp-title" text-anchor="middle">Firestore</text>
+  <text x="1603" y="374" class="dp-body" text-anchor="middle">single source of truth · the hot path</text>
+  <text x="1603" y="406" class="dp-body" text-anchor="middle">what the engine reads now</text>
+
+  <line x1="1468" y1="436" x2="1468" y2="536" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="1452" y="493" class="dp-label" text-anchor="end">reads</text>
+  <line x1="1748" y1="436" x2="1748" y2="536" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="1764" y="493" class="dp-label">mirrors once</text>
+
+  <!-- VM -->
+  <rect x="1334" y="540" width="268" height="176" rx="12" class="dp-box"/>
+  <text x="1468" y="587" class="dp-title" text-anchor="middle">Virtual machine</text>
+  <text x="1468" y="621" class="dp-body" text-anchor="middle">FRESHET model</text>
+  <text x="1468" y="649" class="dp-body" text-anchor="middle">+ Qwen agent</text>
+  <text x="1468" y="682" class="dp-body" text-anchor="middle">inside the two rules</text>
+
+  <!-- the corpus -->
+  <rect x="1632" y="540" width="216" height="176" rx="12" class="dp-box"/>
+  <text x="1740" y="587" class="dp-title" text-anchor="middle">The corpus</text>
+  <text x="1740" y="621" class="dp-body" text-anchor="middle">every reading kept</text>
+  <text x="1740" y="649" class="dp-body" text-anchor="middle">forecast ⇄ observed</text>
+  <text x="1740" y="682" class="dp-body" text-anchor="middle">pairs · permanent</text>
+
+  <line x1="1468" y1="718" x2="1468" y2="780" class="dp-edge" marker-end="url(#dpArrow)"/>
+  <text x="1484" y="754" class="dp-label">decides</text>
+
+  <!-- Warnings -->
+  <rect x="1334" y="784" width="268" height="146" rx="12" class="dp-box"/>
+  <text x="1468" y="831" class="dp-title" text-anchor="middle">Warnings</text>
+  <text x="1468" y="865" class="dp-body" text-anchor="middle">flood and landslide</text>
+  <text x="1468" y="893" class="dp-body" text-anchor="middle">reach depends on the ladder</text>
+
+  <!-- archive -->
+  <rect x="1682" y="784" width="176" height="146" rx="12" class="dp-box"/>
+  <text x="1770" y="831" class="dp-title" text-anchor="middle">Archive</text>
+  <text x="1770" y="865" class="dp-body" text-anchor="middle">raw artifacts</text>
+  <text x="1770" y="893" class="dp-body" text-anchor="middle">+ provenance</text>
+  <polyline points="1740,718 1740,748 1770,748 1770,780" class="dp-edge" marker-end="url(#dpArrow)"/>
+
+  <!-- corpus → slow loop (dashed, right gutter) -->
+  <polyline points="1848,628 1900,628 1900,1090 1716,1090 1716,1124" class="dp-edge dp-dash" marker-end="url(#dpArrowD)"/>
+  <text x="1922" y="860" class="dp-label" transform="rotate(-90 1922 860)" text-anchor="middle">reads the corpus</text>
+
+  <!-- promote → VM (dashed, left channel) -->
+  <polyline points="1236,1126 1236,1094 1304,1094 1304,628 1330,628" class="dp-edge dp-dash" marker-end="url(#dpArrowD)"/>
+  <text x="1320" y="1055" class="dp-label">active set only</text>
+
+  <!-- slow loop band -->
+  <rect x="56" y="1074" width="1872" height="424" rx="14" class="dp-hull"/>
+  <text x="86" y="1122" class="dp-eyebrow">THE SLOW LOOP — MONTHS, NOT MINUTES</text>
+  <text x="86" y="1174" class="dp-note">Nothing in this band is in the warning path, and nothing here reaches the</text>
+  <text x="86" y="1202" class="dp-note">engine on its own. What is learned is a set of coefficients — frozen,</text>
+  <text x="86" y="1230" class="dp-note">versioned, and switched on by a person, exactly like a threshold ladder.</text>
+  <text x="86" y="1282" class="dp-note">A candidate cannot be promoted until it has run beside the live set</text>
+  <text x="86" y="1310" class="dp-note">through real storms and been judged on what it would have said.</text>
+
+  <rect x="1682" y="1128" width="212" height="166" rx="12" class="dp-box dp-dash"/>
+  <text x="1788" y="1173" class="dp-title" text-anchor="middle">Fit</text>
+  <text x="1788" y="1207" class="dp-body" text-anchor="middle">offline, never</text>
+  <text x="1788" y="1235" class="dp-body" text-anchor="middle">on the VM</text>
+  <text x="1788" y="1263" class="dp-body" text-anchor="middle">notebook → job</text>
+  <line x1="1680" y1="1210" x2="1622" y2="1210" class="dp-edge dp-dash" marker-end="url(#dpArrowD)"/>
+
+  <rect x="1406" y="1128" width="212" height="166" rx="12" class="dp-box dp-dash"/>
+  <text x="1512" y="1173" class="dp-title" text-anchor="middle">Parameter set</text>
+  <text x="1512" y="1207" class="dp-body" text-anchor="middle">coefficients only</text>
+  <text x="1512" y="1235" class="dp-body" text-anchor="middle">frozen + versioned</text>
+  <text x="1512" y="1263" class="dp-body" text-anchor="middle">lands as candidate</text>
+  <line x1="1512" y1="1296" x2="1512" y2="1334" class="dp-edge dp-dash" marker-end="url(#dpArrowD)"/>
+
+  <rect x="1334" y="1338" width="356" height="132" rx="12" class="dp-box dp-dash"/>
+  <text x="1512" y="1383" class="dp-title" text-anchor="middle">Shadow</text>
+  <text x="1512" y="1416" class="dp-body" text-anchor="middle">runs beside the active set, logs what</text>
+  <text x="1512" y="1444" class="dp-body" text-anchor="middle">it would have said, never acts</text>
+  <polyline points="1332,1404 1236,1404 1236,1298" class="dp-edge dp-dash" marker-end="url(#dpArrowD)"/>
+
+  <rect x="1130" y="1128" width="212" height="166" rx="12" class="dp-box dp-dash"/>
+  <text x="1236" y="1173" class="dp-title" text-anchor="middle">Promote</text>
+  <text x="1236" y="1207" class="dp-body" text-anchor="middle">held-out + shadowed</text>
+  <text x="1236" y="1235" class="dp-body" text-anchor="middle">a person flips it</text>
+  <text x="1236" y="1263" class="dp-body" text-anchor="middle">rollback = flip back</text>
+</svg>
+</div>
+
+  <p class="dp-hint">scroll sideways to see the whole diagram</p>
+  <p class="caption"><b>Simplifications on record</b> — the VM also writes results back to Firestore (the live pages read from there); a promoted parameter set would also be pushed to the gateway, as thresholds are. Neither arrow is drawn.</p>
+</section>
+
 <section id="satellites" class="section reveal" data-rail="Three ways out">
   <p class="eyebrow">The satellites overhead</p>
   <h2>From the watershed to the data center — three ways out.</h2>
@@ -1008,7 +1213,7 @@
 </section>
 
 <footer class="foot">
-  <p>Built by <strong>Mickey Henson</strong> · Nautilus Technologies · <a href="https://github.com/mickeybhenson-commits/Cullowhee-Weather" target="_blank" rel="noopener">GitHub</a></p>
+  <p>Built by <strong>Mickey Henson</strong> · <a href="https://github.com/mickeybhenson-commits/Cullowhee-Weather" target="_blank" rel="noopener">GitHub</a></p>
   <p><a href="rain_to_trip.html">How much rain would it take</a> &nbsp;·&nbsp; <a href="storm_watch.html">Storm track watch</a> &nbsp;·&nbsp; <a href="flash.html">FLASH cross-check</a> &nbsp;·&nbsp; <a href="slope_monitor.html">Slope monitor</a> &nbsp;·&nbsp; <a href="NISAR.html">NISAR passes</a> &nbsp;·&nbsp; <a href="noah_skye_3d.html" id="model3dLink">The 3D model</a> &nbsp;·&nbsp; <a href="satellite-tracker.html">Satellite tracker</a> &nbsp;·&nbsp; <a href="?talk=1" id="talkLink">Presentation mode</a> &nbsp;·&nbsp; <a href="#top">Back to top</a></p>
 </footer>
 

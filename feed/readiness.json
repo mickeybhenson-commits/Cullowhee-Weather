@@ -1,5 +1,5 @@
 {
- "fetched_utc": "2026-09-14T22:09:41Z",
+ "fetched_utc": "2026-09-14T22:28:38Z",
  "status": "ok",
  "tier": "readiness",
  "mode": "QUIET",
@@ -14,7 +14,7 @@
   "node_rain": "on tip"
  },
  "ero": {
-  "fetched_utc": "2026-09-14T22:09:41Z",
+  "fetched_utc": "2026-09-14T22:28:38Z",
   "status": "ok",
   "tier": "gov_estimate",
   "source": "WPC Excessive Rainfall Outlook (NOAA map services)",
@@ -129,7 +129,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -138,10 +138,10 @@
     "EMERGENCY": 12.33
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -149,7 +149,7 @@
    },
    "margin_in": {
     "p50": 6.9,
-    "p90": 6.84
+    "p90": 6.87
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -184,7 +184,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -193,10 +193,10 @@
     "EMERGENCY": 12.57
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -204,7 +204,7 @@
    },
    "margin_in": {
     "p50": 5.38,
-    "p90": 5.32
+    "p90": 5.35
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -239,7 +239,7 @@
     "soil_pct": 14.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -248,10 +248,10 @@
     "EMERGENCY": 13.07
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -259,7 +259,7 @@
    },
    "margin_in": {
     "p50": 6.02,
-    "p90": 5.96
+    "p90": 5.99
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -294,7 +294,7 @@
     "soil_pct": 20.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -303,10 +303,10 @@
     "EMERGENCY": 10.28
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -314,7 +314,7 @@
    },
    "margin_in": {
     "p50": 4.27,
-    "p90": 4.21
+    "p90": 4.24
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -349,7 +349,7 @@
     "soil_pct": 25.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -358,10 +358,10 @@
     "EMERGENCY": 11.22
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -369,7 +369,7 @@
    },
    "margin_in": {
     "p50": 7.84,
-    "p90": 7.78
+    "p90": 7.81
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -404,7 +404,7 @@
     "soil_pct": 25.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -413,10 +413,10 @@
     "EMERGENCY": 11.66
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -424,7 +424,7 @@
    },
    "margin_in": {
     "p50": 6.61,
-    "p90": 6.55
+    "p90": 6.58
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -459,7 +459,7 @@
     "soil_pct": 25.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": {
@@ -468,10 +468,10 @@
     "EMERGENCY": 9.64
    },
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",
@@ -479,7 +479,7 @@
    },
    "margin_in": {
     "p50": 4.68,
-    "p90": 4.62
+    "p90": 4.65
    },
    "outlook_level": "NORMAL",
    "ceiling": "WATCH",
@@ -514,15 +514,15 @@
     "soil_pct": 25.0,
     "tier": "modeled",
     "source": "live_rainfall ladder (Open-Meteo soil percentile)",
-    "ts": "2026-09-14T22:09:41Z",
+    "ts": "2026-09-14T22:28:38Z",
     "note": ""
    },
    "trip_in": null,
    "forecast": {
-    "qpf24_p50": 0.036,
-    "qpf24_p90": 0.096,
+    "qpf24_p50": 0.042,
+    "qpf24_p90": 0.072,
     "qpf72_p50": 0.048,
-    "qpf72_p90": 0.143,
+    "qpf72_p90": 0.108,
     "nws_qpf24": 0.0,
     "tier": "gov_estimate",
     "source": "WeatherNext-2 ensemble + NWS gridded QPF",

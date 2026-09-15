@@ -279,8 +279,8 @@
       accuracy degrades over weeks, so positions drift the further this is opened from that date.
       Skylo flies no satellites of its own &mdash; shown are its partner GEOs covering North
       America (Ligado SkyTerra 1, TerreStar 1, Viasat Inmarsat 4-F3).
-      The Starlink layer draws <b>only the two likeliest</b> of the cataloged satellites currently
-      above the user terminal&rsquo;s 25&deg; mask at Cullowhee (tick &ldquo;show all&rdquo; for the rest), from the CelesTrak element set refreshed every
+      The Starlink layer draws <b>every cataloged satellite</b> currently above the user
+      terminal&rsquo;s 25&deg; mask at Cullowhee, the likeliest link in yellow (untick &ldquo;show all&rdquo; to keep just the two best), from the CelesTrak element set refreshed every
       feed cycle (<code>feed/starlink_overhead.json</code>). The <b>likely link</b> block is an
       educated guess: the dish never reports which satellite serves it, so candidates are ranked
       by elevation, offset from the dish boresight and time left in the cone. The modeled
@@ -2359,7 +2359,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
   // scheduler is known to prefer them — high elevation, near the dish boresight, and not
   // about to leave the cone before the next 15-second re-plan. It is a guess and says so.
   var likelyTop = null, likelyList = [], starlinkFeed = null;
-  var SHOW_N = 2, showAll = false;   // draw only the two best candidates unless asked for all
+  var SHOW_N = 2, showAll = true;    // draw every bird above the mask; untick to see only the two best
   var bore = { az: 0, el: 70 };            // NC default: dish tilted north, ~70° up
   try { var sb = JSON.parse(localStorage.getItem('freshet_boresight') || 'null'); if (sb && isFinite(sb.az) && isFinite(sb.el)) bore = sb; } catch (e) {}
   function angSep(az1, el1, az2, el2) {
@@ -2410,7 +2410,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
     inCone.slice(0, SHOW_N).forEach(function (s, i) {
       html += '<div class="lk-row' + (i === 0 ? ' top' : '') + '" data-norad="' + s.meta.norad + '"><b>' + (i + 1) + '. ' + s.meta.name + '</b><span>elev ' + Math.round(s.elev) + '° · ' + Math.round(s.offBore) + '° off · ' + (s.secLeft >= 180 ? '>3 min' : s.secLeft + ' s') + ' left</span></div>';
     });
-    html += '<div class="lk-in"><label><input type="checkbox" id="lk-all"' + (showAll ? ' checked' : '') + '> show all ' + cands.length + ' in view (default: the ' + SHOW_N + ' best)</label></div>';
+    html += '<div class="lk-in"><label><input type="checkbox" id="lk-all"' + (showAll ? ' checked' : '') + '> show all ' + cands.length + ' in view (untick: only the ' + SHOW_N + ' best)</label></div>';
     html += '<div class="lk-in">dish boresight az <input id="lk-az" type="number" min="0" max="359" step="1" value="' + Math.round(bore.az) + '">° · up <input id="lk-el" type="number" min="25" max="90" step="1" value="' + Math.round(bore.el) + '">°</div>' +
       '<div class="lk-note">Boresight from the dish: <code>boresightAzimuthDeg / boresightElevationDeg</code> at 192.168.100.1. Catalog ' + (age < 1 ? 'just now' : age + ' min ago') + ' · ' + starlinkFeed.n_operational + ' operational of ' + starlinkFeed.n_catalog + ' cataloged.</div>';
     var azF = document.activeElement && (document.activeElement.id === 'lk-az' || document.activeElement.id === 'lk-el');
@@ -2459,7 +2459,7 @@ var LAND_RINGS = [[[-59.57,-80.04],[-59.87,-80.55],[-60.16,-81],[-62.25,-80.86],
           sats.push(s); if (window.__makeStarlinkRow) window.__makeStarlinkRow(s);   // visuals are made when its pass begins
           s.row.style.display = 'none';
         });
-        if (sub) sub.textContent = j.sats.length + ' reach ≥' + j.mask_deg + '° in the next ' + j.window_min + ' min · the ' + SHOW_N + ' likeliest drawn';
+        if (sub) sub.textContent = j.sats.length + ' reach ≥' + j.mask_deg + '° in the next ' + j.window_min + ' min · all in view drawn, likeliest in yellow';
         updateTracks(true); rankLikely(true);
       })
       .catch(function (e) {

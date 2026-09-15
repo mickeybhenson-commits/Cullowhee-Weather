@@ -1,5 +1,5 @@
 {
-  "fetched_utc": "2026-09-14T23:18:33.432794+00:00",
+  "fetched_utc": "2026-09-15T00:45:19.959282+00:00",
   "status": {
     "usgs": "ok",
     "alerts": "ok",
@@ -13,11 +13,11 @@
       "site": "03508050",
       "lid": "TKRN7",
       "00060": [
-        1789424100,
+        1789431300,
         39.3
       ],
       "00065": [
-        1789424100,
+        1789431300,
         3.83
       ],
       "name": "TUCKASEGEE RIVER AT SR 1172 NR CULLOWHEE, NC",
@@ -32,40 +32,16 @@
       "site": "03510577",
       "name": "TUCKASEGEE RIVER AT BARKER'S CREEK, NC",
       "00060": [
-        1789424100,
-        180.0
+        1789431300,
+        177.0
       ],
       "00065": [
-        1789424100,
-        2.98
+        1789431300,
+        2.97
       ]
     },
-    "local_inflow_cfs": 140.7,
+    "local_inflow_cfs": 137.7,
     "stage_series_up": [
-      [
-        1789407000,
-        3.83
-      ],
-      [
-        1789407900,
-        3.83
-      ],
-      [
-        1789408800,
-        3.83
-      ],
-      [
-        1789409700,
-        3.83
-      ],
-      [
-        1789410600,
-        3.83
-      ],
-      [
-        1789411500,
-        3.83
-      ],
       [
         1789412400,
         3.83
@@ -120,35 +96,43 @@
       ],
       [
         1789424100,
+        3.83
+      ],
+      [
+        1789425000,
+        3.83
+      ],
+      [
+        1789425900,
+        3.83
+      ],
+      [
+        1789426800,
+        3.83
+      ],
+      [
+        1789427700,
+        3.83
+      ],
+      [
+        1789428600,
+        3.83
+      ],
+      [
+        1789429500,
+        3.83
+      ],
+      [
+        1789430400,
+        3.83
+      ],
+      [
+        1789431300,
         3.83
       ]
     ],
     "stage_series_down": [
       [
-        1789407000,
-        2.98
-      ],
-      [
-        1789407900,
-        2.98
-      ],
-      [
-        1789408800,
-        2.98
-      ],
-      [
-        1789409700,
-        2.98
-      ],
-      [
-        1789410600,
-        2.98
-      ],
-      [
-        1789411500,
-        2.98
-      ],
-      [
         1789412400,
         2.98
       ],
@@ -203,6 +187,38 @@
       [
         1789424100,
         2.98
+      ],
+      [
+        1789425000,
+        2.98
+      ],
+      [
+        1789425900,
+        2.98
+      ],
+      [
+        1789426800,
+        2.97
+      ],
+      [
+        1789427700,
+        2.97
+      ],
+      [
+        1789428600,
+        2.97
+      ],
+      [
+        1789429500,
+        2.97
+      ],
+      [
+        1789430400,
+        2.97
+      ],
+      [
+        1789431300,
+        2.97
       ]
     ],
     "provenance": "MEASURED"
@@ -218,75 +234,75 @@
     "reach_is_cullowhee": false,
     "series": [
       [
-        1789419600,
-        46.3
-      ],
-      [
-        1789423200,
-        57.6
-      ],
-      [
         1789426800,
-        73.8
+        45.2
       ],
       [
         1789430400,
-        94.3
+        56.5
       ],
       [
         1789434000,
-        117.9
+        72.8
       ],
       [
         1789437600,
-        142.0
+        93.6
       ],
       [
         1789441200,
-        163.1
+        117.2
       ],
       [
         1789444800,
-        180.8
+        141.3
       ],
       [
         1789448400,
-        193.5
+        162.8
       ],
       [
         1789452000,
-        202.7
+        180.5
       ],
       [
         1789455600,
-        208.7
+        193.5
       ],
       [
         1789459200,
-        212.9
+        202.7
       ],
       [
         1789462800,
-        215.4
+        208.7
       ],
       [
         1789466400,
-        216.8
+        212.6
       ],
       [
         1789470000,
-        217.9
+        215.4
       ],
       [
         1789473600,
-        218.2
+        216.8
       ],
       [
         1789477200,
-        218.6
+        217.9
       ],
       [
         1789480800,
+        218.2
+      ],
+      [
+        1789484400,
+        218.6
+      ],
+      [
+        1789488000,
         218.9
       ]
     ]
@@ -295,20 +311,20 @@
     "site_id": "25380",
     "nws_lid": "CUCN7",
     "source": "NCEM FIMAN 25380 (CUCN7) \u2014 Cullowhee Ck @ Speedwell",
-    "stage_ft": 2.47,
+    "stage_ft": 2.46,
     "condition": "Normal",
     "level": "NORMAL",
     "trend": "Constant",
     "rain_1hr": null,
     "rain_24hr": null,
-    "age_min": 75.6,
-    "fresh": false,
-    "last_updated_utc": "2026-09-14T22:03:00+00:00",
+    "age_min": 72.4,
+    "fresh": true,
+    "last_updated_utc": "2026-09-14T23:33:00+00:00",
     "datum_verified": false,
     "gage_datum_ft": null,
     "wse_navd88_ft": null,
     "datum_note": "gage datum unresolved (NCEM FIMAN 25380 2125.0 vs NWS CUCN7 (implied) 2126.0); elevations suppressed, stage and condition only",
-    "note": "NOT driving posture: stale/invalid (age 75.6 min, limit 75)"
+    "note": ""
   },
   "flash": {
     "source": "NSSL FLASH (CREST/EF5, MRMS-forced) via MRMS CONUS FLASH GRIB2",
@@ -349,7 +365,7 @@
     },
     "enabled": true,
     "diagnostic": null,
-    "bundle": "MRMS_CONUS_FLASH_20260914_2300.grib2",
+    "bundle": "MRMS_CONUS_FLASH_20260915_0000.grib2",
     "wms": {
       "base": "https://thredds.aos.wisc.edu/thredds/wms/grib/NCEP/MRMS/CONUS/FLASH",
       "layers": {
@@ -394,7 +410,7 @@
         "streamflow_m3s": 0.1,
         "soil_sat_pct": 46.0,
         "ffg_ratio_1h": 0.0,
-        "ffg_ratio_3h": 5.0,
+        "ffg_ratio_3h": 0.0,
         "ffg_ratio_units": "",
         "ari_max_yr": 0.0,
         "reading": "BELOW",
@@ -443,7 +459,7 @@
         "name": "WCU Campus",
         "unit_streamflow": 0.0,
         "unit_streamflow_units": "",
-        "streamflow_m3s": 7.0,
+        "streamflow_m3s": 6.9,
         "soil_sat_pct": 49.0,
         "ffg_ratio_1h": 0.0,
         "ffg_ratio_3h": 0.0,
@@ -469,7 +485,7 @@
     "headline": "BELOW",
     "fresh": true,
     "age_min": 0.0,
-    "valid_utc": "2026-09-14T23:18:35.964750+00:00",
+    "valid_utc": "2026-09-15T00:45:23.476315+00:00",
     "note": "",
     "valid_source": "derived from bundle hour (service reported no time)"
   }
